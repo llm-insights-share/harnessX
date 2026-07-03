@@ -505,7 +505,7 @@
         <span class="tag tag-blue">Harness Engineering</span>
         <span class="tag tag-green">Spec-Driven Development</span>
         <span class="tag tag-amber">OpenSpec 兼容</span>
-        <span class="tag">v0.3 设计稿</span>
+        <span class="tag">v0.4 设计稿</span>
         <span class="tag">2026-07-03</span>
       </div>
     </div>
@@ -658,7 +658,7 @@
           <text x="735" y="165" text-anchor="middle" fill="#e7ecf3" font-size="10">Lint / Test / Spec / AI Judge</text>
           <rect x="160" y="210" width="580" height="55" rx="6" fill="#1a2332" stroke="#2d3f56"/>
           <text x="450" y="235" text-anchor="middle" fill="#94a3b8" font-size="11">Steering Loop Engine</text>
-          <text x="450" y="252" text-anchor="middle" fill="#e7ecf3" font-size="10">Failure Catalog → Harness Patch Proposals → Template Versioning</text>
+          <text x="450" y="252" text-anchor="middle" fill="#e7ecf3" font-size="10">Failure Catalog → Harness Patch Proposals → Bundle Versioning</text>
           <!-- Agent -->
           <rect x="300" y="310" width="300" height="50" rx="8" fill="#243044" stroke="#22c55e"/>
           <text x="450" y="340" text-anchor="middle" fill="#22c55e" font-size="13" font-weight="bold">Code Agent (Model + Inner Harness)</text>
@@ -754,10 +754,10 @@
         系统 SHALL 提供 <code>/hx:plan</code>：从 specs + design 生成 tasks.md，含实现任务与测试任务的双轨清单。</p>
 
       <p><span class="req-id">FR-007</span><span class="priority p0">P0</span>
-        系统 SHALL 提供 <code>/hx:apply</code>：按 tasks 顺序驱动 Agent 编码，每完成一项任务运行 Pre-Task Sensor Profile。</p>
+        系统 SHALL 提供 <code>/hx:apply</code>：按 tasks 顺序驱动 Agent 编码，每完成一项任务运行 Fast Sensor Suite（§8.1）。</p>
 
       <p><span class="req-id">FR-008</span><span class="priority p0">P0</span>
-        系统 SHALL 提供 <code>/hx:verify</code>：运行完整 Verification Profile（Spec 覆盖、测试、结构、可选 AI Review）。</p>
+        系统 SHALL 提供 <code>/hx:verify</code>：运行 Verification Suite（Spec 覆盖、测试、结构、可选 AI Review）。</p>
 
       <p><span class="req-id">FR-009</span><span class="priority p0">P0</span>
         系统 SHALL 提供 <code>/hx:archive</code>：合并 delta specs 至主 specs/，移动 change 至 archive/，触发 Steering Loop 摘要。</p>
@@ -783,7 +783,7 @@
         Gate Orchestrator SHALL 定义可配置阶段门：<code>proposed → designed → specified → planned → implementing → verified → archived</code>。</p>
 
       <p><span class="req-id">FR-021</span><span class="priority p0">P0</span>
-        每个 Gate SHALL 关联 Sensor Profile；失败时返回结构化报告，含 <code>fix_hint</code> 字段供 Agent 自校正。</p>
+        每个 Gate SHALL 关联 Sensor Suite；失败时返回结构化报告，含 <code>fix_hint</code> 字段供 Agent 自校正。</p>
 
       <p><span class="req-id">FR-022</span><span class="priority p0">P0</span>
         系统 SHALL 内置 OpenSpec 兼容的 delta spec 校验 Sensor（ADDED/MODIFIED/REMOVED 格式、Scenario 完整性），
@@ -808,20 +808,26 @@
         除命令流挂载外，可由文件保存等事件触发轻量检查（如 fixtures 目录变动即校验哈希），
         或定时调度巡检（借鉴 Kiro Agent Hooks）。</p>
 
+      <p><span class="req-id">FR-028</span><span class="priority p1">P1</span>
+        Waiver（豁免）SHALL 记录申请人、审批人、理由与过期时间于 meta.yaml；审批属于人工批准范畴（§12.3）；
+        过期自动失效，janitor 巡检提醒清理（orch.waiver 资产定义豁免策略，本条定义豁免实例的流程）。</p>
+
       <h3>3.3 Guide 与 Context Pack</h3>
 
       <p><span class="req-id">FR-030</span><span class="priority p0">P0</span>
         Guide Engine SHALL 按阶段注入不同 Context Pack（见 §8.2），避免 Token 浪费与指令冲突。</p>
 
       <p><span class="req-id">FR-031</span><span class="priority p1">P1</span>
-        系统 SHALL 支持 Harness Template：按服务拓扑（API 服务、事件消费者、Dashboard）预置 Guides + Sensors bundle。</p>
+        系统 SHALL 支持拓扑 Bundle：按服务拓扑（API 服务、事件消费者、Dashboard）打包 Guides + Sensors，
+        经 Hub 分发与版本化（对应 Fowler 的 Harness Template 概念，术语统一为 Bundle）。</p>
 
       <p><span class="req-id">FR-032</span><span class="priority p1">P1</span>
-        系统 SHALL 支持 Skills 注册表，与 Cursor/Codex Skills 格式兼容。</p>
+        Skills SHALL 作为 <code>guide.skill</code> 控制资产统一管理（§11），经 Adapter 单源编译输出为各工具原生格式
+        （Cursor / Claude Code / Qoder Skills 等），不设独立注册表。</p>
 
       <p><span class="req-id">FR-033</span><span class="priority p1">P1</span>
         Adapter SHALL 支持单源编译：命令与 Skill 定义单源维护于 harnessX/assets/，
-        编译输出至 <code>.cursor/</code>、<code>.trae/rules/</code>、<code>CLAUDE.md</code>、<code>AGENTS.md</code> 等目标格式，
+        编译输出至 <code>.cursor/</code>、<code>.trae/rules/</code>、<code>.qoder/</code>、<code>CLAUDE.md</code>、<code>AGENTS.md</code> 等目标格式，
         生成文件标注源资产版本，drift sensor 检测手工修改。</p>
 
       <p><span class="req-id">FR-034</span><span class="priority p0">P0</span>
@@ -870,7 +876,7 @@
           <tbody>
             <tr>
               <td>NFR-001</td><td>性能</td>
-              <td>Fast Sensor Profile（lint + unit test 子集）执行时间</td>
+              <td>Fast Sensor Suite（lint + unit test 子集）执行时间</td>
               <td>&lt; 60s；按 diff 依赖图启发式选择相关子集（借鉴 Stripe minions）</td>
             </tr>
             <tr>
@@ -881,7 +887,7 @@
             <tr>
               <td>NFR-003</td><td>可移植性</td>
               <td>支持 Agent 平台</td>
-              <td>Cursor, Trae, Claude Code, Codex, 通用 CLI（Adapter 单源编译，见 FR-033）</td>
+              <td>Tier 1：Cursor / Trae / Qoder / Claude Code；Tier 2：Codex / Copilot / Windsurf 等；Tier 0：任何工具（能力声明模型，见 §16.1）</td>
             </tr>
             <tr>
               <td>NFR-004</td><td>兼容性</td>
@@ -964,7 +970,7 @@
         </div>
         <div class="timeline-item">
           <h4>Phase 5 — Apply（编码）</h4>
-          <p><strong>行为：</strong>Agent 逐 task 执行；每 task 后运行 Fast Sensor Profile；失败则自校正循环（上限 N 次）。
+          <p><strong>行为：</strong>Agent 逐 task 执行；每 task 后运行 Fast Sensor Suite；失败则自校正循环（上限 N 次）。
             strict profile 下<strong>测试轨先行</strong>：先从 Scenario 生成测试并人审，再由独立 session 执行实现轨（FR-026）。</p>
           <p><strong>Gates：</strong>Lint、TypeCheck、相关单元测试、Spec-Task 状态同步。</p>
         </div>
@@ -992,8 +998,8 @@
       <h3>7.1 Change 目录结构（OpenSpec 超集）</h3>
       <pre><code>harnessX/                          # 或兼容 openspec/
 ├── constitution.md                # 项目宪法：最高优先级原则，不随 change 变化（FR-034）
-├── config.yaml                    # 全局配置：profile、sensor profiles、templates
-├── harness.yaml                   # Guides & Sensors 注册表
+├── config.yaml                    # 本仓库的选择：当前 workflow profile、compat_mode 等
+├── harness.yaml                   # 注册表：guides / sensors / suites / profiles 定义（见 §8.1）
 ├── specs/                         # 主规格库（Behaviour 真值源）
 │   └── &lt;domain&gt;/spec.md
 ├── changes/
@@ -1008,10 +1014,13 @@
 │       ├── traces/                # Spec ↔ Test ↔ Code 映射
 │       │   └── traceability.yaml
 │       └── runs/                  # 本次 change 的 sensor 运行日志
-├── templates/                     # Harness 模板（拓扑级）
-│   └── api-service/
-│       ├── harness.yaml
-│       └── skills/
+├── assets/                        # 本仓库控制资产（统一模型见 §11）
+│   ├── guides/
+│   ├── sensors/
+│   └── bundles/                   # 拓扑 Bundle（原「Harness 模板」，术语已收敛）
+│       └── api-service/
+│           ├── harness.yaml
+│           └── skills/
 ├── runs/                          # 全局运行遥测
 └── archive/</code></pre>
 
@@ -1090,60 +1099,79 @@ THE SYSTEM SHALL return the original refund result without creating a new charge
       <h2>8. Guides 与 Sensors 注册</h2>
 
       <h3>8.1 harness.yaml 示例</h3>
+      <p>
+        字段语义说明：资产<strong>方向</strong>（前馈/反馈）由 <code>kind</code> 前缀（guide./sensor.）决定，
+        <strong>执行类型</strong>用独立的 <code>execution</code> 字段声明 —— 两个维度正交，不混用。
+      </p>
       <pre><code>version: "1.0"
 constitution: harnessX/constitution.md   # 最高优先级 Guide（FR-034）
 
-profiles:
-  lite:       # 小改动
+profiles:                     # Workflow Profile：阶段组合 + 各阶段使用的 Sensor Suite
+  lite:
     phases: [propose, apply, archive]
-    sensors: [lint, unit-changed]
-  standard:   # 默认
+    suites: { apply: fast-lite }
+  standard:
     phases: [propose, design, spec, plan, apply, verify, archive]
-  strict:     # 核心域/合规
+    suites: { apply: fast, verify: verification }
+  strict:
     phases: [explore, propose, design, spec, plan, apply, verify, archive]
-    sensors: [..., mutation, ai-review]
+    suites: { apply: fast, verify: verification-strict }
+
+suites:                       # Sensor Suite：可复用的传感器套件（与 Workflow Profile 是两个概念）
+  fast-lite:            [lint, unit-changed]
+  fast:                 [lint, typecheck, unit-changed]
+  verification:         [spec-validate, spec-trace, unit-all, arch-boundary]
+  verification-strict:  [spec-validate, spec-trace, unit-all, arch-boundary, mutation, ai-spec-review]
 
 guides:
   - id: coding-conventions
-    type: inferential
+    kind: guide.skill
+    execution: inferential
     phase: [apply]
-    source: .cursor/skills/coding-conventions/SKILL.md
-  - id: api-topology
-    type: feedforward
+    source: harnessX/assets/guides/coding-conventions/SKILL.md   # 单源，.cursor/ 等为编译产物
+  - id: api-design
+    kind: guide.skill
+    execution: inferential
     phase: [design, apply]
-    source: harnessX/templates/api-service/skills/api-design.md
+    source: harnessX/assets/bundles/api-service/skills/api-design.md
   - id: proposal-template
-    type: computational
+    kind: guide.template
+    execution: computational
     phase: [propose]
-    source: harnessX/templates/proposal.md
+    source: harnessX/assets/guides/proposal-template/template.md
 
 sensors:
   - id: spec-validate
-    type: computational
+    kind: sensor.script
+    execution: computational
     phase: [spec, verify, archive]
     run: hx sensor spec-validate --change $CHANGE
     on_fail: block
     fix_hint: "Fix delta spec format; ensure each Requirement has ≥1 Scenario"
   - id: lint
-    type: computational
+    kind: sensor.rule
+    execution: computational
     phase: [apply, verify]
     run: npm run lint
     on_fail: retry
     max_retries: 3
   - id: spec-trace
-    type: computational
+    kind: sensor.script
+    execution: computational
     phase: [verify]
     run: hx sensor trace --change $CHANGE
     on_fail: block
   - id: ai-spec-review
-    type: inferential
+    kind: sensor.rubric
+    execution: inferential
     phase: [propose, verify]
     run: hx sensor ai-review --target specs
     on_fail: warn
     budget_tokens: 8000
   - id: fixture-guard
-    type: computational
-    trigger: file-save              # 事件驱动（FR-027）
+    kind: sensor.script
+    execution: computational
+    trigger: file-save          # 事件驱动（FR-027）
     scope: ["tests/fixtures/**"]
     run: hx sensor fixture-hash --verify
     on_fail: block</code></pre>
@@ -1213,14 +1241,14 @@ sensors:
         <div class="card">
           <h4>🏗 Architecture Fitness Harness</h4>
           <p><strong>调节目标：</strong>架构特征 — 性能、可观测性、模块边界、弹性。</p>
-          <p><strong>Guides：</strong>性能预算 Skill、日志标准、拓扑模板。</p>
+          <p><strong>Guides：</strong>性能预算 Skill、日志标准、拓扑 Bundle。</p>
           <p><strong>Sensors：</strong>Perf 测试、结构测试、SLO 探针、依赖规则。</p>
         </div>
         <div class="card">
           <h4>✅ Behaviour Harness</h4>
+          <p><strong>Guides：</strong>Delta Specs、Scenario（fixtures 在 apply 阶段作为输入提供，但资产归类为反馈基准）。</p>
+          <p><strong>Sensors：</strong>Spec validate、Traceability、Approved Fixtures 对比、集成/E2E 测试、Mutation、AI 行为审查。</p>
           <p><strong>调节目标：</strong>功能行为是否符合需求。</p>
-          <p><strong>Guides：</strong>Delta Specs、Scenario、Approved Fixtures。</p>
-          <p><strong>Sensors：</strong>Spec validate、Traceability、集成/E2E 测试、Mutation、AI 行为审查。</p>
         </div>
       </div>
 
@@ -1235,6 +1263,11 @@ sensors:
     <section id="steering-loop">
       <h2>10. Steering Loop 机制</h2>
 
+      <p>
+        <strong>本节范围界定：</strong>本节定义控制回路本身（信号如何流动、何时触发改进）；
+        沉淀产物的资产化实现（蒸馏流水线、生命周期、证据链）统一在 §11.4，两节不重复展开。
+      </p>
+
       <div class="diagram">
         <div class="flow" style="justify-content:center; flex-wrap:wrap;">
           <span class="flow-step">Agent 执行</span>
@@ -1247,7 +1280,7 @@ sensors:
           <span class="flow-arrow">→</span>
           <span class="flow-step">Harness Patch PR</span>
           <span class="flow-arrow">→</span>
-          <span class="flow-step">Template 版本发布</span>
+          <span class="flow-step">Bundle 版本发布</span>
         </div>
       </div>
 
@@ -1260,7 +1293,7 @@ sensors:
   "pattern": "Agent imports payment domain from UI layer",
   "suggested_patch": {
     "type": "guide",
-    "target": "harnessX/templates/api-service/skills/layering.md",
+    "target": "harnessX/assets/bundles/api-service/skills/layering.md",
     "action": "add explicit forbidden import examples"
   }
 }</code></pre>
@@ -1462,11 +1495,12 @@ metrics:                      # 效果数据（自动回填）
 
       <h3>11.2 前馈资产：模板的管理</h3>
 
-      <h4>模板三层结构</h4>
+      <h4>术语收敛：模板 vs Skill vs Bundle</h4>
+      <p>「模板」一词在本方案中<strong>只指制品模板</strong>，三个概念严格区分：</p>
       <ul>
-        <li><strong>制品模板</strong> — proposal / design / spec / tasks 的骨架，含变量占位符与「填写指引注释」（Agent 可读的 inline instruction）。</li>
-        <li><strong>Skill 模板</strong> — 编码约定、API 设计规范等知识型 Guide，兼容 Cursor / Claude Skills 格式。</li>
-        <li><strong>拓扑 Harness 模板</strong> — 按服务类型打包的 Guides + Sensors bundle（如 <code>api-service</code>），对应 Fowler 的 Harness Template 概念。</li>
+        <li><strong>模板（guide.template）</strong> — proposal / design / spec / tasks 的制品骨架，含变量占位符与「填写指引注释」（Agent 可读的 inline instruction）。</li>
+        <li><strong>Skill（guide.skill）</strong> — 编码约定、API 设计规范等知识型 Guide，经 Adapter 编译输出为各工具原生格式（FR-032），不称「模板」。</li>
+        <li><strong>Bundle</strong> — 按服务拓扑打包的 Guides + Sensors 集合（如 <code>api-service</code>），存于 <code>assets/bundles/</code> 或经 Hub 分发（对应 Fowler 的 Harness Template 概念，全文统一用 Bundle）。</li>
       </ul>
 
       <h4>分层解析（Layered Resolution）</h4>
@@ -1723,7 +1757,7 @@ hx hub sync --apply                        # 三方合并：上游新版 vs 本�
             <tr><td>Slash commands / Skills / 模板</td><td>L1</td><td>Agent 上下文（Context Pack）</td></tr>
             <tr><td>工具白名单 / MCP 配置</td><td>L2</td><td>Agent 平台配置</td></tr>
             <tr><td>Fixtures 写保护</td><td>L2 + L3</td><td>平台文件权限 + CI 哈希对比</td></tr>
-            <tr><td>Fast Sensor Profile（lint / typecheck / 单测）</td><td>L1 → L3</td><td>Apply 循环（快反馈）→ git hook → CI 重放</td></tr>
+            <tr><td>Fast Sensor Suite（lint / typecheck / 单测）</td><td>L1 → L3</td><td>Apply 循环（快反馈）→ git hook → CI 重放</td></tr>
             <tr><td>Verify Gate（全量验证）</td><td>L3</td><td>CI 必过检查 + branch protection</td></tr>
             <tr><td>人工批准门（spec → plan）</td><td>L3</td><td>CODEOWNERS + PR review 必需</td></tr>
             <tr><td>meta.yaml 状态转换</td><td>L3</td><td>hx CLI 独占写入 + 日志哈希 + CI 校验</td></tr>
@@ -1758,9 +1792,10 @@ hx hub sync --apply                        # 三方合并：上游新版 vs 本�
 │   ├── compiler/           # 单源编译引擎（FR-033）
 │   ├── cursor/             # → .cursor/commands|skills|rules
 │   ├── trae/               # → .trae/rules/project_rules.md + Agent 配置
+│   ├── qoder/              # → .qoder/ rules|skills + Quest Spec 对接
 │   ├── claude-code/        # → CLAUDE.md + .claude/commands
 │   └── openspec/           # OpenSpec 互操作
-└── templates/              # 默认 harness 模板
+└── bundles/                # 内置默认 Bundle
 
 docs/
 └── harness-delivery-system-design.html  # 本文档</code></pre>
@@ -1777,7 +1812,7 @@ docs/
             <tr><th>命令</th><th>说明</th></tr>
           </thead>
           <tbody>
-            <tr><td><code>hx init [--template api-service]</code></td><td>初始化 harnessX/ 目录与配置</td></tr>
+            <tr><td><code>hx init [--bundle api-service]</code></td><td>初始化 harnessX/ 目录与配置</td></tr>
             <tr><td><code>hx change create &lt;name&gt;</code></td><td>创建 change 工作区</td></tr>
             <tr><td><code>hx change status [name]</code></td><td>查看阶段与 Gate 状态</td></tr>
             <tr><td><code>hx gate check --phase verify</code></td><td>运行当前阶段 Sensors</td></tr>
@@ -1846,6 +1881,25 @@ interface GateResult {
 // 阶段推进规则：仅当 blockers 为空
 function advance(change: Change): Phase | null</code></pre>
 
+      <p>三套命名的唯一映射（显示名 / meta.yaml 状态名 / 命令名），避免混用：</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>阶段显示名</th><th>状态名（meta.yaml）</th><th>命令</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Explore</td><td><code>explore</code></td><td><code>/hx:explore</code></td></tr>
+            <tr><td>Propose</td><td><code>proposed</code></td><td><code>/hx:propose</code></td></tr>
+            <tr><td>Design</td><td><code>designed</code></td><td><code>/hx:design</code></td></tr>
+            <tr><td>Spec</td><td><code>specified</code></td><td><code>/hx:spec</code></td></tr>
+            <tr><td>Plan</td><td><code>planned</code></td><td><code>/hx:plan</code></td></tr>
+            <tr><td>Apply</td><td><code>implementing</code></td><td><code>/hx:apply</code></td></tr>
+            <tr><td>Verify</td><td><code>verified</code></td><td><code>/hx:verify</code></td></tr>
+            <tr><td>Archive</td><td><code>archived</code></td><td><code>/hx:archive</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
       <h3>15.2 Apply 循环（核心）</h3>
       <pre><code>async function applyLoop(changeId: string) {
   const tasks = loadTasks(changeId).filter(t => !t.done);
@@ -1855,7 +1909,7 @@ function advance(change: Change): Phase | null</code></pre>
 
     let retries = 0;
     while (retries &lt; MAX_RETRIES) {
-      const result = await sensorRunner.run("fast", changeId);
+      const result = await sensorRunner.runSuite("fast", changeId);  // Sensor Suite（§8.1）
       if (result.passed) break;
       await agent.run(result.fixHints, "Fix sensor failures");
       retries++;
@@ -1894,17 +1948,45 @@ function advance(change: Change): Phase | null</code></pre>
     <section id="integration">
       <h2>16. Agent 集成方案</h2>
 
-      <h3>16.1 Adapter 单源编译</h3>
+      <h3>16.1 Adapter 能力声明模型与分级支持</h3>
       <p>
         命令与 Skill 定义<strong>只写一份</strong>（存于 <code>harnessX/assets/</code>），
-        由 <code>hx adapter sync</code> 编译输出到各工具的原生格式 —— 避免多工具团队各自维护一套指令导致 Harness 行为不一致
-        （这本身就违背 Harness Coherence）：
+        由 <code>hx adapter sync</code> 编译输出到各工具的原生格式 —— 避免多工具团队各自维护一套指令导致 Harness 行为不一致。
+        适配采用<strong>能力声明模型</strong>而非逐工具枚举：每个 adapter 声明一份能力清单
+        （hooks？rules？自定义 Agent？MCP？文件权限？Skills？），
+        Gate Orchestrator 据此自动调整 —— <strong>L2 能力缺失的工具自动提高 L3 检查强度</strong>。
+        新工具接入只需编写能力声明与格式映射，不改核心。
       </p>
 
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>目标工具</th><th>编译输出</th><th>L2 强制机制</th></tr>
+            <tr><th>层级</th><th>定义</th><th>工具</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Tier 1 深度适配</strong></td>
+              <td>专用 adapter，L2 能力完整（hooks / rules / 自定义 Agent / 权限）</td>
+              <td>Cursor、Trae、Qoder、Claude Code</td>
+            </tr>
+            <tr>
+              <td><strong>Tier 2 标准适配</strong></td>
+              <td>AGENTS.md + MCP 接入 hx CLI，L2 部分可用</td>
+              <td>Codex、Copilot、Windsurf、Cline 等</td>
+            </tr>
+            <tr>
+              <td><strong>Tier 0 兜底</strong></td>
+              <td>AGENTS.md + 手动 hx CLI，完全依赖 L3（git hooks / CI）</td>
+              <td>任何工具</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Tier 1 工具</th><th>编译输出</th><th>L2 强制机制</th></tr>
           </thead>
           <tbody>
             <tr>
@@ -1918,14 +2000,14 @@ function advance(change: Change): Phase | null</code></pre>
               <td>规则引擎、按阶段配置的自定义 Agent、MCP 工具约束</td>
             </tr>
             <tr>
+              <td>Qoder</td>
+              <td><code>.qoder/</code> rules、Skills / Plugins、<code>AGENTS.md</code></td>
+              <td>Memory &amp; Rules、Quest Spec 对接、Worktree 环境隔离</td>
+            </tr>
+            <tr>
               <td>Claude Code</td>
               <td><code>CLAUDE.md</code>、<code>.claude/commands/</code></td>
               <td>Hooks、permission 配置</td>
-            </tr>
-            <tr>
-              <td>通用 / Codex</td>
-              <td><code>AGENTS.md</code></td>
-              <td>—（依赖 L3 兜底）</td>
             </tr>
           </tbody>
         </table>
@@ -1933,7 +2015,6 @@ function advance(change: Change): Phase | null</code></pre>
 
       <ul>
         <li>生成文件头部标注 <code>generated by hx adapter sync</code> + 源资产版本；drift sensor 检测手工修改并提示回写源资产。</li>
-        <li>各工具的 L2 能力差异由 adapter 声明：能力缺失的工具（如纯 CLI）自动提高对 L3 检查的依赖强度。</li>
       </ul>
 
       <h3>16.2 Cursor 集成</h3>
@@ -1952,14 +2033,24 @@ function advance(change: Change): Phase | null</code></pre>
         <li>Trae 规则引擎作为 L2 落点；L3 检查（git hooks / CI）与工具无关，保持一致。</li>
       </ul>
 
-      <h3>16.4 OpenSpec 互操作</h3>
+      <h3>16.4 Qoder 集成</h3>
+      <ul>
+        <li><strong>Memory &amp; Rules</strong> 由 adapter 生成，注入阶段约束；Skills / Plugins 承接 <code>guide.skill</code> 资产。</li>
+        <li><strong>Quest Spec 对接</strong>（Qoder 特有机会）：Qoder 的 Quest Mode 本身就是 spec-driven ——
+          HarnessX 的 delta spec + tasks 可直接作为 Quest 的 Spec 输入，Quest 的验收标准对齐 Scenario；
+          避免两套 spec 并存产生漂移。</li>
+        <li><strong>Worktree 环境隔离</strong>：apply 阶段的重型变更映射到 Qoder Worktree 环境，天然满足变更隔离与安全回退。</li>
+        <li>通过 MCP 接入 <code>hx</code> CLI；原生支持 <code>AGENTS.md</code> 作为兜底上下文。</li>
+      </ul>
+
+      <h3>16.5 OpenSpec 互操作</h3>
       <ul>
         <li><code>hx openspec import</code>：读取 <code>openspec/</code>，映射为 <code>harnessX/</code> 结构，保留 git 历史。</li>
         <li>Delta 格式 100% 兼容；额外字段（traceability、meta.yaml）为超集。</li>
         <li>可选 <code>compat_mode: openspec</code>：直接使用 <code>openspec/</code> 作为 Artifact Store 路径。</li>
       </ul>
 
-      <h3>16.5 CI/CD 集成（L3 最终裁决）</h3>
+      <h3>16.6 CI/CD 集成（L3 最终裁决）</h3>
       <pre><code># .github/workflows/harness-verify.yml
 on: pull_request
 jobs:
@@ -2015,9 +2106,9 @@ jobs:
               <td>每个 Scenario 可追溯到测试；verify gate 阻断未覆盖；篡改 fixture 被 CI 检出</td>
             </tr>
             <tr>
-              <td><strong>M4 — Architecture & Templates</strong></td>
+              <td><strong>M4 — Architecture & Bundles</strong></td>
               <td>
-                Harness Templates（api-service）；ArchUnit sensor；性能预算 guide；
+                拓扑 Bundle（api-service）；ArchUnit sensor；性能预算 guide；
                 OpenSpec import
               </td>
               <td>FR-031, FR-004, NFR-004</td>
@@ -2035,7 +2126,7 @@ jobs:
               <td><strong>M6 — Assets, Hub & Multi-tool</strong></td>
               <td>
                 控制资产模型（asset.yaml + 生命周期）；<code>hx hub</code> 命令族；
-                供应链校验（lock 哈希、注入扫描）；Adapter 单源编译（Cursor / Trae / Claude Code）；
+                供应链校验（lock 哈希、注入扫描）；Adapter 单源编译（Cursor / Trae / Qoder / Claude Code）；
                 并发 change 冲突检测；事件驱动 hooks；Scale-Adaptive profile 推荐；janitor 巡检
               </td>
               <td>FR-011, FR-013, FR-027, FR-033, NFR-009，§11 全部能力</td>
@@ -2125,6 +2216,9 @@ jobs:
             <tr><td>Harness Hub</td><td>组织级资产共享仓库，提供验证发布、引用消费与三方同步</td></tr>
             <tr><td>Waiver（豁免）</td><td>显式声明跳过某项 Gate/Sensor 检查的记录，需审批且有过期机制</td></tr>
             <tr><td>Enforcement Level（强制等级）</td><td>控制的不可绕过程度：L1 建议级 / L2 平台强制 / L3 系统强制</td></tr>
+            <tr><td>Workflow Profile</td><td>阶段组合与检查强度的预设（lite / standard / strict），与 Sensor Suite 是两个概念</td></tr>
+            <tr><td>Sensor Suite</td><td>可复用的传感器套件（如 fast / verification），由 Workflow Profile 按阶段引用</td></tr>
+            <tr><td>Bundle</td><td>按服务拓扑打包的 Guides + Sensors 集合，经 Hub 分发（对应 Fowler 的 Harness Template）</td></tr>
           </tbody>
         </table>
       </div>
@@ -2146,7 +2240,7 @@ jobs:
         <li>Guides 与 Sensors 矛盾时，Agent 如何仲裁？—— v0.3 已部分解决：constitution 优先级链 + <code>hx harness lint</code> 静态检测（§8.3）；剩余问题是运行时的动态语义冲突。</li>
         <li>Sensor 从不触发 — 检测不足还是质量真的好？需引入 Mutation / 混沌探测。</li>
         <li>Behaviour Harness 在 UI/UX 域的 Approved Fixtures 如何规模化？</li>
-        <li>Harness Template 版本分叉与上游同步机制如何设计？</li>
+        <li>Bundle 版本分叉与上游同步机制如何设计？</li>
         <li>Inferential Sensor 的非确定性如何影响 Gate 可信度？建议仅作 warn，block 仅限 computational。</li>
       </ul>
 
@@ -2186,7 +2280,7 @@ jobs:
     </section>
 
     <footer>
-      <p>HarnessX Design Document v0.3 — 更新于 2026-07-03</p>
+      <p>HarnessX Design Document v0.4 — 更新于 2026-07-03</p>
       <p>本文档为自适应 HTML，支持浏览器预览、打印导出 PDF、一键下载。</p>
     </footer>
 
