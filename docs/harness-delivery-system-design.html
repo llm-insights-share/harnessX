@@ -478,6 +478,7 @@
     <a href="#guides-sensors">Guides &amp; Sensors</a>
     <a href="#regulation">三类调节域</a>
     <a href="#steering-loop">Steering Loop</a>
+    <a href="#asset-management">控制资产管理与共享</a>
 
     <h3>实现</h3>
     <a href="#directory">目录结构</a>
@@ -783,7 +784,7 @@
       <h3>3.3 Guide 与 Context Pack</h3>
 
       <p><span class="req-id">FR-030</span><span class="priority p0">P0</span>
-        Guide Engine SHALL 按阶段注入不同 Context Pack（见 §5.3），避免 Token 浪费与指令冲突。</p>
+        Guide Engine SHALL 按阶段注入不同 Context Pack（见 §8.2），避免 Token 浪费与指令冲突。</p>
 
       <p><span class="req-id">FR-031</span><span class="priority p1">P1</span>
         系统 SHALL 支持 Harness Template：按服务拓扑（API 服务、事件消费者、Dashboard）预置 Guides + Sensors _bundle。</p>
@@ -1166,9 +1167,234 @@ sensors:
 }</code></pre>
     </section>
 
+    <!-- Asset Management -->
+    <section id="asset-management">
+      <h2>11. 前馈与反馈资产的管理、沉淀与共享</h2>
+
+      <p>
+        前馈模板（proposal/design 模板、Skills、拓扑模板）与反馈规则（lint 配置、结构测试、AI Review 规则）
+        如果散落在各处，Harness 会迅速失去一致性（Fowler 提出的 Harness Coherence 问题）。
+        HarnessX 的解法是：<strong>把两者统一建模为版本化的「控制资产」（Control Asset），
+        用同一套注册、分层解析、效果度量、晋级发布机制管理</strong>。
+      </p>
+
+      <h3>11.1 统一控制资产模型</h3>
+      <p>每个 Guide 或 Sensor 都是一个带 manifest 的目录，Guides 与 Sensors 同构管理：</p>
+
+      <pre><code>harnessX/assets/guides/proposal-template/
+├── asset.yaml          # 元数据 manifest
+├── template.md         # 模板正文（带变量占位符）
+└── examples/           # 好/坏示例（供 Agent few-shot 参考）
+
+# asset.yaml
+id: proposal-template
+kind: guide.template          # guide.template | guide.skill | guide.context
+                              # sensor.rule | sensor.script | sensor.rubric
+category: behaviour           # maintainability | architecture | behaviour
+phase: [propose]
+version: 1.3.0
+owner: platform-team
+origin: hub                   # builtin | local | team | hub
+status: enforced              # draft | trial | enforced | deprecated
+provenance:                   # 沉淀来源追溯
+  - type: failure-pattern
+    ref: FC-2026-042
+metrics:                      # 效果数据（自动回填）
+  first_attempt_pass_delta: +12%
+  false_positive_rate: 3%</code></pre>
+
+      <div class="callout">
+        <strong>为什么同构？</strong>前馈和反馈资产共享同一套版本号、来源追溯、效果指标与发布流程，
+        才能实现「一条 Review 规则总是与对应的模板/Skill 成对演进」——
+        例如 layering Skill（前馈）与 arch-boundary Sensor（反馈）绑定为同一 bundle，避免指令与检查相互矛盾。
+      </div>
+
+      <h3>11.2 前馈资产：模板的管理</h3>
+
+      <h4>模板三层结构</h4>
+      <ul>
+        <li><strong>制品模板</strong> — proposal / design / spec / tasks 的骨架，含变量占位符与「填写指引注释」（Agent 可读的 inline instruction）。</li>
+        <li><strong>Skill 模板</strong> — 编码约定、API 设计规范等知识型 Guide，兼容 Cursor / Claude Skills 格式。</li>
+        <li><strong>拓扑 Harness 模板</strong> — 按服务类型打包的 Guides + Sensors bundle（如 <code>api-service</code>），对应 Fowler 的 Harness Template 概念。</li>
+      </ul>
+
+      <h4>分层解析（Layered Resolution）</h4>
+      <p>同一资产 ID 按优先级从高到低解析，高层可覆盖低层，覆盖必须显式声明：</p>
+
+      <div class="flow">
+        <span class="flow-step">Change 级覆盖</span>
+        <span class="flow-arrow">&gt;</span>
+        <span class="flow-step">仓库本地 assets/</span>
+        <span class="flow-arrow">&gt;</span>
+        <span class="flow-step">团队模板包</span>
+        <span class="flow-arrow">&gt;</span>
+        <span class="flow-step">组织 Harness Hub</span>
+        <span class="flow-arrow">&gt;</span>
+        <span class="flow-step">HarnessX 内置</span>
+      </div>
+
+      <pre><code># harness.yaml 中声明依赖与覆盖
+dependencies:
+  - "@org/api-service-harness@^2.1"    # 来自 Hub 的 bundle
+overrides:
+  - id: proposal-template
+    source: harnessX/assets/guides/proposal-template   # 本地定制版
+    reason: "增加合规审批段落（金融域要求）"            # 覆盖必须写明原因</code></pre>
+
+      <p>
+        <code>hx guide pack</code> 在组装 Context Pack 时完成解析与渲染；
+        <code>harness.lock</code> 锁定所有资产的精确版本，保证团队成员与 CI 使用一致的 Harness。
+      </p>
+
+      <h3>11.3 反馈资产：Review 规则的管理</h3>
+
+      <h4>Computational 规则</h4>
+      <p>
+        lint 配置、结构测试、自定义 Sensor 脚本直接作为 <code>sensor.rule / sensor.script</code> 资产管理，
+        封装要点是<strong>输出必须转换为 LLM-Optimized 报告格式</strong>（含 <code>fix_hint</code>，见 §14.3）。
+      </p>
+
+      <h4>Inferential 规则：Rubric as Data</h4>
+      <p>
+        AI Review 规则不写成自由文本 prompt，而是结构化 Rubric —— 每条规则独立编号、可单独启停、可单独度量误报率：
+      </p>
+
+      <pre><code># harnessX/assets/sensors/api-review-rubric/rubric.yaml
+id: api-review-rubric
+model_hint: high-reasoning        # 建议的 judge 模型档位
+rules:
+  - id: R-API-001
+    check: "所有对外 endpoint 是否有显式错误响应定义（4xx/5xx schema）"
+    severity: block               # block | warn | info
+    scope: ["src/api/**"]
+    good_example: |
+      @ApiResponse(status = 400, schema = ErrorResponse.class)
+    bad_example: |
+      // endpoint 只声明了 200 响应
+    fix_hint: "为每个 endpoint 补充 ErrorResponse schema 定义"
+  - id: R-API-002
+    check: "分页参数是否遵循 cursor-based 规范而非 offset"
+    severity: warn
+    scope: ["src/api/**"]
+    fix_hint: "参考 skill:api-design §分页 改为 cursor 分页"</code></pre>
+
+      <p>LLM Judge 逐条评估 Rubric 并输出结构化 findings（与 Computational Sensor 报告同格式），使 Gate Orchestrator 可统一处理。</p>
+
+      <h4>规则生命周期</h4>
+      <div class="flow">
+        <span class="flow-step">draft（草稿）</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">trial（试运行，仅 warn）</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">enforced（可 block）</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">deprecated（退役）</span>
+      </div>
+      <ul>
+        <li><strong>trial 期</strong>：规则只产生 warning，系统统计触发率与人工标注的误报率；误报率 &lt; 10% 且触发有效才可晋级 enforced。</li>
+        <li><strong>Inferential 规则默认最高 warn</strong>：非确定性规则不建议作为硬 block（见 §18.3 开放问题），除非有高一致性验证集背书。</li>
+        <li><strong>退役条件</strong>：连续 N 个周期零触发且对应风险已被上游 Guide 消除，或误报率持续超标。</li>
+      </ul>
+
+      <h3>11.4 沉淀机制：从经验到资产</h3>
+
+      <p>沉淀的三个来源，统一汇入 Steering Loop 的蒸馏流水线：</p>
+
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-icon">📉</div>
+          <h4>Sensor 失败模式</h4>
+          <p>Failure Catalog 中重复 ≥3 次的模式，自动生成资产补丁草稿（新 Skill 条目 / 新 Rubric 规则 / lint 规则脚手架）。</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">💬</div>
+          <h4>人工 Review 意见</h4>
+          <p><code>hx steer harvest-pr</code> 收集 PR 中人类 reviewer 的修改意见，聚类后转化为 Rubric 规则草稿 —— 人的判断被逐步外化为可复用规则。</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📋</div>
+          <h4>Archive Retro</h4>
+          <p>每次 <code>/hx:archive</code> 生成回顾摘要：本次哪些环节返工最多、哪些 Guide 缺失，作为蒸馏输入。</p>
+        </div>
+      </div>
+
+      <h4>蒸馏流水线（hx steer distill）</h4>
+      <div class="flow">
+        <span class="flow-step">聚合三类信号</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">模式聚类</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">生成 draft 资产（Agent 辅助）</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">人工审核 PR</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">trial 试运行</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">enforced</span>
+      </div>
+
+      <ul>
+        <li><strong>证据链</strong>：每个蒸馏出的资产在 <code>provenance</code> 中链接原始 failure / PR comment，审核者可追溯「这条规则为什么存在」。</li>
+        <li><strong>数据驱动晋级</strong>：资产的 <code>metrics</code>（首次通过率提升、误报率、触发率）由运行遥测自动回填，晋级与退役都以数据为准，避免规则只增不减导致 Harness 膨胀。</li>
+        <li><strong>成对沉淀</strong>：蒸馏时优先「前馈 + 反馈成对生成」—— 例如同时产出 layering Skill 条目（教 Agent 怎么做）和 arch-boundary 规则（检查是否做对），单独的 Sensor 只能反复报错，单独的 Guide 无法验证是否生效。</li>
+      </ul>
+
+      <h3>11.5 共享机制：Harness Hub</h3>
+
+      <p>
+        组织级共享通过一个中心 Git 仓库 <strong>harness-hub</strong> 实现（类比私有 npm registry，但资产即目录、Git 即分发）：
+      </p>
+
+      <pre><code>harness-hub/
+├── packages/
+│   ├── api-service-harness/        # 拓扑级 bundle
+│   │   ├── package.yaml            # 版本、依赖、CHANGELOG
+│   │   ├── guides/
+│   │   └── sensors/
+│   ├── frontend-harness/
+│   └── common-review-rubrics/      # 纯规则包（跨拓扑通用）
+├── evals/                          # 资产质量验证
+│   ├── golden-repos/               # Sensor 在标准仓库上的自测基准
+│   └── rubric-eval-sets/           # Inferential 规则的一致性验证集
+└── .github/workflows/validate.yml  # 资产 CI：schema 校验 + 自测</code></pre>
+
+      <h4>消费端</h4>
+      <pre><code>hx hub add @org/api-service-harness@^2     # 添加依赖，写入 harness.yaml + lock
+hx hub sync                                # 拉取上游更新，输出 diff 报告
+hx hub sync --apply                        # 三方合并：上游新版 vs 本地 override vs 基线</code></pre>
+
+      <h4>贡献端（沉淀 → 共享的晋级路径）</h4>
+      <div class="flow">
+        <span class="flow-step">仓库本地沉淀</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">团队内验证（metrics 达标）</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">hx hub promote &lt;asset&gt;</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">Hub PR（附证据链+指标）</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">Hub CI 验证</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">SemVer 发布</span>
+      </div>
+
+      <ul>
+        <li><strong>Hub CI 把关</strong>：Computational Sensor 必须在 golden repos 上通过自测（能查出植入的坏例、不误报好例）；Inferential Rubric 必须在验证集上达到一致性阈值（同一输入多次评估结论稳定）。</li>
+        <li><strong>解决 Template Drift</strong>（Fowler 指出的核心难题）：资产按<strong>引用 + lock</strong> 消费而非复制粘贴；本地定制必须走显式 <code>overrides</code> 声明；<code>hub sync</code> 用三方对比合并上游改进与本地定制，而不是二选一。</li>
+        <li><strong>跨仓库信号聚合</strong>：Hub 定期收集各消费仓库上报的资产 metrics（匿名化），当同一失败模式出现在多个仓库时，优先在 Hub 层修复而非各仓库各自打补丁。</li>
+      </ul>
+
+      <div class="callout callout-ok">
+        <strong>小结：</strong>管理 = 统一资产模型 + 分层解析 + lock 版本化；
+        沉淀 = 三源信号 → 蒸馏流水线 → 证据链 + 数据驱动的生命周期晋级；
+        共享 = Harness Hub 的「引用消费 / 验证发布 / 三方同步」。
+        前馈与反馈成对演进，是保持 Harness Coherence 的根本手段。
+      </div>
+    </section>
+
     <!-- Directory -->
     <section id="directory">
-      <h2>11. 实现目录结构（HarnessX 工具本身）</h2>
+      <h2>12. 实现目录结构（HarnessX 工具本身）</h2>
       <pre><code>packages/
 ├── cli/                    # hx 命令行入口
 │   ├── commands/
@@ -1200,9 +1426,9 @@ docs/
 
     <!-- CLI -->
     <section id="cli-api">
-      <h2>12. CLI 与 Slash Commands</h2>
+      <h2>13. CLI 与 Slash Commands</h2>
 
-      <h3>12.1 终端命令（<code>hx</code>）</h3>
+      <h3>13.1 终端命令（<code>hx</code>）</h3>
       <div class="table-wrap">
         <table>
           <thead>
@@ -1220,13 +1446,18 @@ docs/
             <tr><td><code>hx spec merge &lt;change&gt;</code></td><td>归档合并（也可由 archive 调用）</td></tr>
             <tr><td><code>hx trace check &lt;change&gt;</code></td><td>Spec-Test 追溯检查</td></tr>
             <tr><td><code>hx steer report</code></td><td>Failure Catalog 与补丁建议</td></tr>
+            <tr><td><code>hx steer distill</code></td><td>三源信号蒸馏为 draft 资产（见 §11.4）</td></tr>
+            <tr><td><code>hx steer harvest-pr</code></td><td>收集 PR 人工 Review 意见作为沉淀输入</td></tr>
+            <tr><td><code>hx hub add &lt;pkg&gt;</code></td><td>添加 Hub 资产包依赖并锁定版本</td></tr>
+            <tr><td><code>hx hub sync [--apply]</code></td><td>与 Hub 同步，三方合并上游更新与本地覆盖</td></tr>
+            <tr><td><code>hx hub promote &lt;asset&gt;</code></td><td>将本地沉淀的资产（附证据链）晋级到 Hub</td></tr>
             <tr><td><code>hx openspec import</code></td><td>从现有 openspec/ 导入</td></tr>
             <tr><td><code>hx view</code></td><td>本地 Web 仪表盘（Change 状态可视化）</td></tr>
           </tbody>
         </table>
       </div>
 
-      <h3>12.2 Agent Slash Commands（<code>/hx:*</code>）</h3>
+      <h3>13.2 Agent Slash Commands（<code>/hx:*</code>）</h3>
       <div class="table-wrap">
         <table>
           <thead>
@@ -1249,9 +1480,9 @@ docs/
 
     <!-- Runtime -->
     <section id="runtime">
-      <h2>13. 运行时引擎设计</h2>
+      <h2>14. 运行时引擎设计</h2>
 
-      <h3>13.1 Gate 状态机</h3>
+      <h3>14.1 Gate 状态机</h3>
       <pre><code>type Phase =
   | "explore" | "proposed" | "designed" | "specified"
   | "planned" | "implementing" | "verified" | "archived";
@@ -1267,7 +1498,7 @@ interface GateResult {
 // 阶段推进规则：仅当 blockers 为空
 function advance(change: Change): Phase | null</code></pre>
 
-      <h3>13.2 Apply 循环（核心）</h3>
+      <h3>14.2 Apply 循环（核心）</h3>
       <pre><code>async function applyLoop(changeId: string) {
   const tasks = loadTasks(changeId).filter(t => !t.done);
   for (const task of tasks) {
@@ -1287,7 +1518,7 @@ function advance(change: Change): Phase | null</code></pre>
   }
 }</code></pre>
 
-      <h3>13.3 Sensor 报告格式（LLM-Optimized）</h3>
+      <h3>14.3 Sensor 报告格式（LLM-Optimized）</h3>
       <pre><code>{
   "sensor": "lint",
   "status": "fail",
@@ -1307,23 +1538,23 @@ function advance(change: Change): Phase | null</code></pre>
 
     <!-- Integration -->
     <section id="integration">
-      <h2>14. Agent 集成方案</h2>
+      <h2>15. Agent 集成方案</h2>
 
-      <h3>14.1 Cursor 集成</h3>
+      <h3>15.1 Cursor 集成</h3>
       <ul>
         <li>在 <code>.cursor/commands/</code> 放置 <code>hx-propose.md</code> 等命令定义，正文调用 <code>hx guide pack</code> 并约束输出路径。</li>
         <li>Skills 置于 <code>.cursor/skills/</code>，由 harness.yaml 引用。</li>
         <li>Cloud Agent 规则中注入「必须通过 hx gate check 才能 archive」约束。</li>
       </ul>
 
-      <h3>14.2 OpenSpec 互操作</h3>
+      <h3>15.2 OpenSpec 互操作</h3>
       <ul>
         <li><code>hx openspec import</code>：读取 <code>openspec/</code>，映射为 <code>harnessX/</code> 结构，保留 git 历史。</li>
         <li>Delta 格式 100% 兼容；额外字段（traceability、meta.yaml）为超集。</li>
         <li>可选 <code>compat_mode: openspec</code>：直接使用 <code>openspec/</code> 作为 Artifact Store 路径。</li>
       </ul>
 
-      <h3>14.3 CI/CD 集成</h3>
+      <h3>15.3 CI/CD 集成</h3>
       <pre><code># .github/workflows/harness-verify.yml
 on: pull_request
 jobs:
@@ -1338,7 +1569,7 @@ jobs:
 
     <!-- Roadmap -->
     <section id="roadmap">
-      <h2>15. 实施路线图</h2>
+      <h2>16. 实施路线图</h2>
 
       <div class="table-wrap">
         <table>
@@ -1394,7 +1625,7 @@ jobs:
         </table>
       </div>
 
-      <h3>15.1 技术栈建议</h3>
+      <h3>16.1 技术栈建议</h3>
       <ul>
         <li><strong>语言：</strong>TypeScript（与 OpenSpec 生态一致，便于 npm 分发）</li>
         <li><strong>CLI：</strong>Commander.js + zx（Sensor 脚本执行）</li>
@@ -1406,7 +1637,7 @@ jobs:
 
     <!-- Metrics -->
     <section id="metrics">
-      <h2>16. 度量与 Harness 质量评估</h2>
+      <h2>17. 度量与 Harness 质量评估</h2>
 
       <p>Fowler 提出：需要类似 Code Coverage 的「Harness Coverage」概念。HarnessX 建议跟踪：</p>
 
@@ -1453,9 +1684,9 @@ jobs:
 
     <!-- Appendix -->
     <section id="appendix">
-      <h2>17. 附录</h2>
+      <h2>18. 附录</h2>
 
-      <h3>17.1 术语表</h3>
+      <h3>18.1 术语表</h3>
       <div class="table-wrap">
         <table>
           <thead>
@@ -1473,7 +1704,7 @@ jobs:
         </table>
       </div>
 
-      <h3>17.2 参考资料</h3>
+      <h3>18.2 参考资料</h3>
       <ul>
         <li><a href="https://martinfowler.com/articles/harness-engineering.html" target="_blank" rel="noopener">Martin Fowler — Harness engineering for coding agent users</a></li>
         <li><a href="https://github.com/Fission-AI/OpenSpec" target="_blank" rel="noopener">Fission-AI/OpenSpec — Spec-Driven Development</a></li>
@@ -1482,7 +1713,7 @@ jobs:
         <li>Ashby's Law — 控制复杂度需匹配系统多样性（Fowler 文内 Sidebar）</li>
       </ul>
 
-      <h3>17.3 开放问题（来自 Fowler + HarnessX 扩展）</h3>
+      <h3>18.3 开放问题（来自 Fowler + HarnessX 扩展）</h3>
       <ul>
         <li>Guides 与 Sensors 矛盾时，Agent 如何仲裁？需要优先级语义（<code>harness.yaml priority</code>）。</li>
         <li>Sensor 从不触发 — 检测不足还是质量真的好？需引入 Mutation / 混沌探测。</li>
