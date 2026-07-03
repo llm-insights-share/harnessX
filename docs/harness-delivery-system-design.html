@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Code Agent Harness 系统 — 从需求到设计、编码、测试的完整 AI 交付约束方案">
+  <title>HarnessX — AI 交付 Harness 系统 需求与实现方案</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface-2: #243044;
+      --border: #2d3f56;
+      --text: #e7ecf3;
+      --text-muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-soft: rgba(59, 130, 246, 0.15);
+      --green: #22c55e;
+      --green-soft: rgba(34, 197, 94, 0.12);
+      --amber: #f59e0b;
+      --amber-soft: rgba(245, 158, 11, 0.12);
+      --red: #ef4444;
+      --purple: #a78bfa;
+      --radius: 10px;
+      --shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+      --font: "Segoe UI", system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      --mono: "Cascadia Code", "Fira Code", "JetBrains Mono", Consolas, monospace;
+      --sidebar-w: 280px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 80px;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.75rem 1.5rem;
+      background: rgba(15, 20, 25, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 700;
+      font-size: 1.05rem;
+      white-space: nowrap;
+    }
+
+    .topbar-brand .logo {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+    }
+
+    .topbar-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.9rem;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .btn:hover { background: var(--surface-2); border-color: var(--accent); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+
+    /* ── Layout ── */
+    .layout {
+      display: flex;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 56px;
+      width: var(--sidebar-w);
+      height: calc(100vh - 56px);
+      overflow-y: auto;
+      padding: 1.5rem 1rem;
+      border-right: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sidebar h3 {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin: 1.2rem 0 0.5rem;
+    }
+
+    .sidebar h3:first-child { margin-top: 0; }
+
+    .sidebar a {
+      display: block;
+      padding: 0.35rem 0.6rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.88rem;
+      border-radius: 5px;
+      border-left: 2px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .sidebar a:hover,
+    .sidebar a.active {
+      color: var(--text);
+      background: var(--accent-soft);
+      border-left-color: var(--accent);
+    }
+
+    .main {
+      flex: 1;
+      min-width: 0;
+      padding: 2rem 2.5rem 4rem;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      margin-bottom: 3rem;
+      padding: 2.5rem;
+      background: linear-gradient(135deg, var(--surface) 0%, rgba(59, 130, 246, 0.08) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .hero h1 {
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      line-height: 1.25;
+      margin-bottom: 0.75rem;
+    }
+
+    .hero .subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 720px;
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin-top: 1.25rem;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 0.2rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
+    .tag-blue { background: var(--accent-soft); color: var(--accent); }
+    .tag-green { background: var(--green-soft); color: var(--green); }
+    .tag-amber { background: var(--amber-soft); color: var(--amber); }
+
+    /* ── Sections ── */
+    section { margin-bottom: 3rem; }
+
+    h2 {
+      font-size: 1.55rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h3 { font-size: 1.15rem; margin: 1.5rem 0 0.75rem; }
+    h4 { font-size: 1rem; margin: 1.2rem 0 0.5rem; color: var(--text-muted); }
+
+    p { margin-bottom: 0.85rem; }
+
+    ul, ol { margin: 0.5rem 0 1rem 1.5rem; }
+    li { margin-bottom: 0.35rem; }
+
+    a { color: var(--accent); }
+
+    /* ── Cards ── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      transition: border-color 0.15s;
+    }
+
+    .card:hover { border-color: var(--accent); }
+
+    .card-icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .card h4 {
+      margin: 0 0 0.4rem;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    .card p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    /* ── Tables ── */
+    .table-wrap {
+      overflow-x: auto;
+      margin: 1rem 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    th, td {
+      padding: 0.65rem 0.9rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: var(--surface);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(59, 130, 246, 0.04); }
+
+    /* ── Code ── */
+    pre {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.2rem;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      line-height: 1.55;
+      margin: 1rem 0;
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.85em;
+      background: var(--surface-2);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre code { background: none; padding: 0; }
+
+    /* ── Diagrams ── */
+    .diagram {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin: 1rem 0;
+      overflow-x: auto;
+    }
+
+    .diagram svg { max-width: 100%; height: auto; }
+
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem;
+      margin: 1rem 0;
+    }
+
+    .flow-step {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.85rem;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+
+    .flow-arrow { color: var(--text-muted); font-size: 0.9rem; }
+
+    /* ── Callout ── */
+    .callout {
+      border-left: 3px solid var(--accent);
+      background: var(--accent-soft);
+      padding: 1rem 1.2rem;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+
+    .callout-warn { border-color: var(--amber); background: var(--amber-soft); }
+    .callout-ok { border-color: var(--green); background: var(--green-soft); }
+
+    /* ── Requirement IDs ── */
+    .req-id {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      background: var(--surface-2);
+      padding: 0.1rem 0.45rem;
+      border-radius: 4px;
+      color: var(--purple);
+      margin-right: 0.3rem;
+    }
+
+    .priority {
+      font-size: 0.72rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .p0 { background: rgba(239, 68, 68, 0.2); color: var(--red); }
+    .p1 { background: var(--amber-soft); color: var(--amber); }
+    .p2 { background: var(--accent-soft); color: var(--accent); }
+
+    /* ── Phase timeline ── */
+    .timeline {
+      position: relative;
+      padding-left: 1.5rem;
+      border-left: 2px solid var(--border);
+      margin: 1rem 0;
+    }
+
+    .timeline-item {
+      position: relative;
+      margin-bottom: 1.5rem;
+      padding-left: 0.5rem;
+    }
+
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      left: -1.65rem;
+      top: 0.45rem;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid var(--bg);
+    }
+
+    .timeline-item h4 { margin-top: 0; color: var(--text); }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    /* ── Mobile ── */
+    .menu-toggle {
+      display: none;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.4rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1.1rem;
+    }
+
+    @media (max-width: 900px) {
+      .sidebar {
+        position: fixed;
+        left: -100%;
+        top: 56px;
+        z-index: 99;
+        background: var(--bg);
+        transition: left 0.25s;
+        box-shadow: var(--shadow);
+      }
+
+      .sidebar.open { left: 0; }
+      .menu-toggle { display: block; }
+      .main { padding: 1.5rem 1rem 3rem; }
+      .hero { padding: 1.5rem; }
+    }
+
+    @media print {
+      .topbar, .sidebar, .menu-toggle, .topbar-actions { display: none !important; }
+      body { background: #fff; color: #111; }
+      .main { padding: 0; max-width: 100%; }
+      .hero, .card, .diagram, pre { border: 1px solid #ccc; break-inside: avoid; }
+      a { color: #0066cc; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div style="display:flex;align-items:center;gap:0.75rem;">
+    <button class="menu-toggle" id="menuToggle" aria-label="打开导航">☰</button>
+    <div class="topbar-brand">
+      <div class="logo">⚙</div>
+      <span>HarnessX 设计文档</span>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn" onclick="window.print()" title="打印或导出 PDF">🖨 打印 / PDF</button>
+    <button class="btn btn-primary" id="downloadBtn" title="下载本 HTML 文件">⬇ 下载 HTML</button>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <h3>概览</h3>
+    <a href="#overview">背景与目标</a>
+    <a href="#references">参考框架</a>
+    <a href="#architecture">系统架构</a>
+
+    <h3>需求</h3>
+    <a href="#req-functional">功能需求</a>
+    <a href="#req-nonfunctional">非功能需求</a>
+    <a href="#req-constraints">约束与边界</a>
+
+    <h3>设计</h3>
+    <a href="#delivery-phases">交付阶段</a>
+    <a href="#artifacts">制品模型</a>
+    <a href="#guides-sensors">Guides &amp; Sensors</a>
+    <a href="#regulation">三类调节域</a>
+    <a href="#steering-loop">Steering Loop</a>
+
+    <h3>实现</h3>
+    <a href="#directory">目录结构</a>
+    <a href="#cli-api">CLI 与命令</a>
+    <a href="#runtime">运行时引擎</a>
+    <a href="#integration">Agent 集成</a>
+    <a href="#roadmap">实施路线图</a>
+    <a href="#metrics">度量与评估</a>
+    <a href="#appendix">附录</a>
+  </nav>
+
+  <main class="main">
+
+    <!-- Hero -->
+    <div class="hero" id="overview">
+      <h1>Code Agent 之上的 Harness 交付系统</h1>
+      <p class="subtitle">
+        基于 Martin Fowler《Harness Engineering for Coding Agent Users》的控制论模型，
+        融合 OpenSpec 规格驱动开发（SDD）实践，设计一套约束 AI 从<strong>需求 → 设计 → 编码 → 测试</strong>
+        完整交付过程的 Outer Harness 系统 — <strong>HarnessX</strong>。
+      </p>
+      <div class="hero-meta">
+        <span class="tag tag-blue">Harness Engineering</span>
+        <span class="tag tag-green">Spec-Driven Development</span>
+        <span class="tag tag-amber">OpenSpec 兼容</span>
+        <span class="tag">v0.1 设计稿</span>
+        <span class="tag">2026-07-03</span>
+      </div>
+    </div>
+
+    <!-- References -->
+    <section id="references">
+      <h2>1. 参考框架与核心概念</h2>
+
+      <h3>1.1 Harness Engineering 控制模型</h3>
+      <p>
+        Martin Fowler 将 Coding Agent 定义为 <code>Agent = Model + Harness</code>。
+        内置 Harness（系统提示、检索、编排）之外，团队需要构建 <strong>Outer Harness</strong>，
+        承担两项职责：提高首次正确率（Feedforward）与提供自校正反馈（Feedback）。
+      </p>
+
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-icon">🧭</div>
+          <h4>Guides（前馈控制）</h4>
+          <p>在 Agent 行动前引导行为：Skills、AGENTS.md、Bootstrap 脚本、架构规范、Spec 制品。</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📡</div>
+          <h4>Sensors（反馈控制）</h4>
+          <p>在 Agent 行动后观测结果：Linter、测试、结构测试、Spec 校验、LLM-as-Judge 审查。</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">⚡</div>
+          <h4>Computational</h4>
+          <p>确定性、快速（毫秒~秒）：类型检查、单元测试、ArchUnit、OpenSpec validate。</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🧠</div>
+          <h4>Inferential</h4>
+          <p>语义推理、较慢且非确定：AI Code Review、需求对齐审查、Mutation 质量评估。</p>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>Steering Loop：</strong>当同类问题重复出现时，人类（或 Agent）迭代改进 Harness —
+        将反馈信号转化为新的 Guide 或更强的 Sensor，使问题在未来发生概率降低。
+        这与 OpenSpec 中「实施过程中可随时回写 proposal / design / specs」的理念一致。
+      </div>
+
+      <h3>1.2 OpenSpec SDD 工作流映射</h3>
+      <p>
+        OpenSpec 提供轻量、无刚性阶段门的规格驱动流程。HarnessX 将其作为 <strong>Behaviour Harness</strong>
+        的核心制品层，并扩展 Guides/Sensors 覆盖 Maintainability 与 Architecture Fitness。
+      </p>
+
+      <div class="flow">
+        <span class="flow-step">/hx:explore</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">/hx:propose</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">/hx:design</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">/hx:spec</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">/hx:apply</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">/hx:verify</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">/hx:archive</span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>OpenSpec 概念</th>
+              <th>HarnessX 扩展</th>
+              <th>Harness 类型</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>specs/</code> 主规格库</td>
+              <td>持久化 Behaviour 真值源 + Sensor 基准</td>
+              <td>Guide + Sensor 输入</td>
+            </tr>
+            <tr>
+              <td><code>changes/&lt;name&gt;/proposal.md</code></td>
+              <td>需求意图、范围、验收标准</td>
+              <td>Feedforward Guide</td>
+            </tr>
+            <tr>
+              <td><code>changes/&lt;name&gt;/specs/</code> Delta</td>
+              <td>ADDED/MODIFIED/REMOVED 需求与 Scenario</td>
+              <td>Behaviour Guide + 校验 Sensor</td>
+            </tr>
+            <tr>
+              <td><code>design.md</code></td>
+              <td>技术方案、架构决策记录（ADR）</td>
+              <td>Architecture Guide</td>
+            </tr>
+            <tr>
+              <td><code>tasks.md</code></td>
+              <td>可追踪实现清单 + 测试任务</td>
+              <td>Implementation Guide</td>
+            </tr>
+            <tr>
+              <td><code>/opsx:apply</code></td>
+              <td>带 Gate 的编码执行（必须通过 Sensor 才能推进）</td>
+              <td>Runtime 编排</td>
+            </tr>
+            <tr>
+              <td><code>/opsx:archive</code></td>
+              <td>Spec 合并 + Harness 经验沉淀</td>
+              <td>Steering Loop 输入</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Architecture -->
+    <section id="architecture">
+      <h2>2. 系统架构</h2>
+
+      <div class="diagram">
+        <svg viewBox="0 0 900 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="HarnessX 架构图">
+          <defs>
+            <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.3"/>
+              <stop offset="100%" style="stop-color:#a78bfa;stop-opacity:0.3"/>
+            </linearGradient>
+          </defs>
+          <!-- Human -->
+          <rect x="380" y="10" width="140" height="40" rx="8" fill="#243044" stroke="#2d3f56"/>
+          <text x="450" y="35" text-anchor="middle" fill="#e7ecf3" font-size="13">Human Steerer</text>
+          <!-- HarnessX Core -->
+          <rect x="50" y="80" width="800" height="200" rx="12" fill="url(#g1)" stroke="#3b82f6" stroke-width="1.5"/>
+          <text x="450" y="105" text-anchor="middle" fill="#3b82f6" font-size="14" font-weight="bold">HarnessX Outer Harness</text>
+          <!-- Sub modules -->
+          <rect x="70" y="120" width="170" height="70" rx="6" fill="#1a2332" stroke="#2d3f56"/>
+          <text x="155" y="145" text-anchor="middle" fill="#94a3b8" font-size="11">Artifact Store</text>
+          <text x="155" y="165" text-anchor="middle" fill="#e7ecf3" font-size="10">specs / changes / ADR</text>
+          <rect x="260" y="120" width="170" height="70" rx="6" fill="#1a2332" stroke="#2d3f56"/>
+          <text x="345" y="145" text-anchor="middle" fill="#94a3b8" font-size="11">Guide Engine</text>
+          <text x="345" y="165" text-anchor="middle" fill="#e7ecf3" font-size="10">Skills / Context Pack</text>
+          <rect x="450" y="120" width="170" height="70" rx="6" fill="#1a2332" stroke="#2d3f56"/>
+          <text x="535" y="145" text-anchor="middle" fill="#94a3b8" font-size="11">Gate Orchestrator</text>
+          <text x="535" y="165" text-anchor="middle" fill="#e7ecf3" font-size="10">Phase / Quality Gates</text>
+          <rect x="640" y="120" width="190" height="70" rx="6" fill="#1a2332" stroke="#2d3f56"/>
+          <text x="735" y="145" text-anchor="middle" fill="#94a3b8" font-size="11">Sensor Runner</text>
+          <text x="735" y="165" text-anchor="middle" fill="#e7ecf3" font-size="10">Lint / Test / Spec / AI Judge</text>
+          <rect x="160" y="210" width="580" height="55" rx="6" fill="#1a2332" stroke="#2d3f56"/>
+          <text x="450" y="235" text-anchor="middle" fill="#94a3b8" font-size="11">Steering Loop Engine</text>
+          <text x="450" y="252" text-anchor="middle" fill="#e7ecf3" font-size="10">Failure Catalog → Harness Patch Proposals → Template Versioning</text>
+          <!-- Agent -->
+          <rect x="300" y="310" width="300" height="50" rx="8" fill="#243044" stroke="#22c55e"/>
+          <text x="450" y="340" text-anchor="middle" fill="#22c55e" font-size="13" font-weight="bold">Code Agent (Model + Inner Harness)</text>
+          <!-- Codebase -->
+          <rect x="200" y="390" width="500" height="50" rx="8" fill="#1a2332" stroke="#2d3f56"/>
+          <text x="450" y="420" text-anchor="middle" fill="#e7ecf3" font-size="13">Repository: Source + Tests + harnessX/ + openspec/</text>
+          <!-- CI -->
+          <rect x="720" y="390" width="150" height="50" rx="8" fill="#1a2332" stroke="#f59e0b"/>
+          <text x="795" y="415" text-anchor="middle" fill="#f59e0b" font-size="11">CI/CD Pipeline</text>
+          <text x="795" y="430" text-anchor="middle" fill="#94a3b8" font-size="10">Post-integration Sensors</text>
+          <!-- Arrows -->
+          <line x1="450" y1="50" x2="450" y2="80" stroke="#94a3b8" marker-end="url(#arrow)"/>
+          <line x1="450" y1="280" x2="450" y2="310" stroke="#3b82f6" stroke-width="2"/>
+          <line x1="450" y1="360" x2="450" y2="390" stroke="#22c55e" stroke-width="2"/>
+          <line x1="700" y1="190" x2="795" y2="390" stroke="#f59e0b" stroke-dasharray="4"/>
+          <text x="760" y="290" fill="#94a3b8" font-size="10" transform="rotate(65,760,290)">expensive sensors</text>
+        </svg>
+      </div>
+
+      <h3>2.1 核心组件</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>组件</th><th>职责</th><th>关键接口</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Artifact Store</strong></td>
+              <td>管理 specs、changes、design、tasks、ADR；支持 Delta 合并与版本历史</td>
+              <td><code>store.read()</code>, <code>store.merge()</code>, <code>store.archive()</code></td>
+            </tr>
+            <tr>
+              <td><strong>Guide Engine</strong></td>
+              <td>按阶段组装 Context Pack：规格片段、Skills、AGENTS.md、拓扑模板</td>
+              <td><code>guide.pack(phase, changeId)</code></td>
+            </tr>
+            <tr>
+              <td><strong>Gate Orchestrator</strong></td>
+              <td>定义阶段转换条件；阻断未通过 Quality Gate 的推进</td>
+              <td><code>gate.check(phase)</code>, <code>gate.advance()</code></td>
+            </tr>
+            <tr>
+              <td><strong>Sensor Runner</strong></td>
+              <td>并行/串行执行 Sensors；输出 LLM 可消费的修正指令</td>
+              <td><code>sensor.run(profile)</code>, <code>sensor.report()</code></td>
+            </tr>
+            <tr>
+              <td><strong>Steering Loop Engine</strong></td>
+              <td>聚合失败模式；生成 Harness 补丁建议；管理 Template 版本</td>
+              <td><code>steer.analyze()</code>, <code>steer.proposePatch()</code></td>
+            </tr>
+            <tr>
+              <td><strong>Agent Adapter</strong></td>
+              <td>对接 Cursor / Claude Code / Codex 等；暴露 Slash Commands</td>
+              <td><code>/hx:*</code> 命令族</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>2.2 设计原则</h3>
+      <ul>
+        <li><strong>Shift Quality Left</strong> — 便宜快速的 Computational Sensor 前置到每次 Agent 迭代；昂贵 Inferential Sensor 后置到 PR/CI。</li>
+        <li><strong>Spec as Source of Truth</strong> — 行为需求持久化于仓库，而非聊天历史；编码与测试均 Trace 到 Spec Scenario。</li>
+        <li><strong>Soft Gates, Hard Sensors</strong> — 阶段可灵活回退（OpenSpec 无 rigid phase gate），但 Sensor 失败必须阻断归档与合并。</li>
+        <li><strong>Harness Coherence</strong> — Guides 与 Sensors 统一注册于 <code>harness.yaml</code>，避免矛盾指令。</li>
+        <li><strong>Brownfield First</strong> — 支持增量接入；小改动走 Lite Profile，跳过多余制品。</li>
+      </ul>
+    </section>
+
+    <!-- Functional Requirements -->
+    <section id="req-functional">
+      <h2>3. 功能需求</h2>
+
+      <h3>3.1 交付生命周期管理</h3>
+
+      <p><span class="req-id">FR-001</span><span class="priority p0">P0</span>
+        系统 SHALL 支持创建 Change 工作区，包含 proposal、delta specs、design、tasks 四类制品。</p>
+
+      <p><span class="req-id">FR-002</span><span class="priority p0">P0</span>
+        系统 SHALL 提供 <code>/hx:explore</code> 命令：只读分析代码库，输出探索笔记，不创建代码或制品（可选）。</p>
+
+      <p><span class="req-id">FR-003</span><span class="priority p0">P0</span>
+        系统 SHALL 提供 <code>/hx:propose</code>：从自然语言意图生成 proposal.md 与初始 delta specs 草稿。</p>
+
+      <p><span class="req-id">FR-004</span><span class="priority p0">P0</span>
+        系统 SHALL 提供 <code>/hx:design</code>：基于已批准的需求生成/更新 design.md，含 ADR 条目与架构约束。</p>
+
+      <p><span class="req-id">FR-005</span><span class="priority p0">P0</span>
+        系统 SHALL 提供 <code>/hx:spec</code>：细化 delta specs，每个 Requirement 至少包含一个 GIVEN/WHEN/THEN Scenario。</p>
+
+      <p><span class="req-id">FR-006</span><span class="priority p0">P0</span>
+        系统 SHALL 提供 <code>/hx:plan</code>：从 specs + design 生成 tasks.md，含实现任务与测试任务的双轨清单。</p>
+
+      <p><span class="req-id">FR-007</span><span class="priority p0">P0</span>
+        系统 SHALL 提供 <code>/hx:apply</code>：按 tasks 顺序驱动 Agent 编码，每完成一项任务运行 Pre-Task Sensor Profile。</p>
+
+      <p><span class="req-id">FR-008</span><span class="priority p0">P0</span>
+        系统 SHALL 提供 <code>/hx:verify</code>：运行完整 Verification Profile（Spec 覆盖、测试、结构、可选 AI Review）。</p>
+
+      <p><span class="req-id">FR-009</span><span class="priority p0">P0</span>
+        系统 SHALL 提供 <code>/hx:archive</code>：合并 delta specs 至主 specs/，移动 change 至 archive/，触发 Steering Loop 摘要。</p>
+
+      <p><span class="req-id">FR-010</span><span class="priority p1">P1</span>
+        系统 SHALL 支持 <code>/hx:sync</code>：检测代码与 specs 漂移，提示回写 specs 或修正代码。</p>
+
+      <h3>3.2 Quality Gate 与 Sensor</h3>
+
+      <p><span class="req-id">FR-020</span><span class="priority p0">P0</span>
+        Gate Orchestrator SHALL 定义可配置阶段门：<code>proposed → designed → specified → planned → implementing → verified → archived</code>。</p>
+
+      <p><span class="req-id">FR-021</span><span class="priority p0">P0</span>
+        每个 Gate SHALL 关联 Sensor Profile；失败时返回结构化报告，含 <code>fix_hint</code> 字段供 Agent 自校正。</p>
+
+      <p><span class="req-id">FR-022</span><span class="priority p0">P0</span>
+        系统 SHALL 内置 OpenSpec 兼容的 delta spec 校验 Sensor（ADDED/MODIFIED/REMOVED 格式、Scenario 完整性）。</p>
+
+      <p><span class="req-id">FR-023</span><span class="priority p0">P0</span>
+        系统 SHALL 支持 Spec-to-Test Traceability Sensor：每个 Scenario 至少映射一个测试用例或显式 waiver。</p>
+
+      <p><span class="req-id">FR-024</span><span class="priority p1">P1</span>
+        系统 SHALL 支持注册自定义 Sensor（Shell、Node、Python 插件），并标注 computational / inferential 类型。</p>
+
+      <p><span class="req-id">FR-025</span><span class="priority p1">P1</span>
+        系统 SHALL 支持 Approved Fixtures 模式：关键 Scenario 的期望输出由人类预先批准，Agent 不得修改 fixture 内容。</p>
+
+      <h3>3.3 Guide 与 Context Pack</h3>
+
+      <p><span class="req-id">FR-030</span><span class="priority p0">P0</span>
+        Guide Engine SHALL 按阶段注入不同 Context Pack（见 §5.3），避免 Token 浪费与指令冲突。</p>
+
+      <p><span class="req-id">FR-031</span><span class="priority p1">P1</span>
+        系统 SHALL 支持 Harness Template：按服务拓扑（API 服务、事件消费者、Dashboard）预置 Guides + Sensors _bundle。</p>
+
+      <p><span class="req-id">FR-032</span><span class="priority p1">P1</span>
+        系统 SHALL 支持 Skills 注册表，与 Cursor/Codex Skills 格式兼容。</p>
+
+      <h3>3.4 Steering Loop</h3>
+
+      <p><span class="req-id">FR-040</span><span class="priority p1">P1</span>
+        系统 SHALL 记录每次 Sensor 失败与人工干预，聚合为 Failure Catalog。</p>
+
+      <p><span class="req-id">FR-041</span><span class="priority p1">P1</span>
+        Steering Loop SHALL 能建议 Harness 补丁：新 Skill 条目、新 ArchUnit 规则、proposal 模板改进等。</p>
+
+      <p><span class="req-id">FR-042</span><span class="priority p2">P2</span>
+        系统 SHOULD 提供 Harness Coverage 报告：已注册 Controls  vs  历史 Failure Mode 的覆盖矩阵。</p>
+    </section>
+
+    <!-- Non-functional -->
+    <section id="req-nonfunctional">
+      <h2>4. 非功能需求</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>ID</th><th>类别</th><th>需求</th><th>目标值</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>NFR-001</td><td>性能</td>
+              <td>Fast Sensor Profile（lint + unit test 子集）执行时间</td>
+              <td>&lt; 60s（典型项目）</td>
+            </tr>
+            <tr>
+              <td>NFR-002</td><td>性能</td>
+              <td>Guide Context Pack 组装时间</td>
+              <td>&lt; 2s</td>
+            </tr>
+            <tr>
+              <td>NFR-003</td><td>可移植性</td>
+              <td>支持 Agent 平台</td>
+              <td>Cursor, Claude Code, Codex, 通用 CLI</td>
+            </tr>
+            <tr>
+              <td>NFR-004</td><td>兼容性</td>
+              <td>OpenSpec 目录与 Delta 格式</td>
+              <td>可 import 现有 openspec/ 或双向同步</td>
+            </tr>
+            <tr>
+              <td>NFR-005</td><td>可观测性</td>
+              <td>每次 Change 的 Gate/Sensor 执行日志</td>
+              <td>JSON Lines 持久化至 <code>harnessX/runs/</code></td>
+            </tr>
+            <tr>
+              <td>NFR-006</td><td>安全</td>
+              <td>Inferential Sensor 不得将密钥/PII 发送至外部 API</td>
+              <td>Redaction 中间件 + 本地 Judge 选项</td>
+            </tr>
+            <tr>
+              <td>NFR-007</td><td>易用性</td>
+              <td>新项目初始化到首次 propose</td>
+              <td>&lt; 5 分钟（<code>hx init</code>）</td>
+            </tr>
+            <tr>
+              <td>NFR-008</td><td>扩展性</td>
+              <td>Sensor/Guide 插件 API 版本化</td>
+              <td>SemVer，向后兼容一个 Major</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Constraints -->
+    <section id="req-constraints">
+      <h2>5. 约束与边界</h2>
+      <ul>
+        <li>HarnessX 是 <strong>Outer Harness</strong>，不替换 Agent 内置能力，不绑定特定 LLM。</li>
+        <li>不追求消除人工审查，而是将人工注意力引导至 proposal/spec 对齐与高风险决策。</li>
+        <li>小改动（单文件 typo、依赖补丁）可走 <code>profile: lite</code>，跳过 design 与完整 verify。</li>
+        <li>Legacy 代码库可先只启用 Maintainability Harness，逐步补全 Behaviour Spec。</li>
+        <li>制品默认存 Git，不依赖外部 SaaS（Inferential Sensor 可选云服务）。</li>
+      </ul>
+    </section>
+
+    <!-- Delivery Phases -->
+    <section id="delivery-phases">
+      <h2>6. 交付阶段详解</h2>
+
+      <div class="timeline">
+        <div class="timeline-item">
+          <h4>Phase 0 — Explore（可选）</h4>
+          <p><strong>输入：</strong>模糊需求、问题域。 <strong>输出：</strong><code>explore.md</code>（选项分析、风险、推荐路径）。</p>
+          <p><strong>Gates：</strong>无硬门；只读 Sensor 确认未修改代码。</p>
+        </div>
+        <div class="timeline-item">
+          <h4>Phase 1 — Propose（需求）</h4>
+          <p><strong>输出：</strong><code>proposal.md</code> — Intent、Scope、Out-of-Scope、Acceptance Criteria、Stakeholders。</p>
+          <p><strong>Gates：</strong>Proposal Completeness Sensor；可选 Inferential「需求歧义审查」。</p>
+        </div>
+        <div class="timeline-item">
+          <h4>Phase 2 — Design（设计）</h4>
+          <p><strong>输出：</strong><code>design.md</code> + ADR；组件图、数据流、错误策略、可观测性设计。</p>
+          <p><strong>Gates：</strong>Architecture Fitness Sensors（模块边界、性能预算、日志标准）。</p>
+        </div>
+        <div class="timeline-item">
+          <h4>Phase 3 — Spec（规格）</h4>
+          <p><strong>输出：</strong>Delta specs（ADDED/MODIFIED/REMOVED + Scenarios）。</p>
+          <p><strong>Gates：</strong>OpenSpec validate；Scenario 覆盖率；与 proposal 追溯一致性。</p>
+        </div>
+        <div class="timeline-item">
+          <h4>Phase 4 — Plan（任务分解）</h4>
+          <p><strong>输出：</strong><code>tasks.md</code> — 实现轨 + 测试轨；每项标注关联 Requirement ID。</p>
+          <p><strong>Gates：</strong>每个 Requirement 至少一条 task；测试 task 不可缺失（可 waiver）。</p>
+        </div>
+        <div class="timeline-item">
+          <h4>Phase 5 — Apply（编码）</h4>
+          <p><strong>行为：</strong>Agent 逐 task 执行；每 task 后运行 Fast Sensor Profile；失败则自校正循环（上限 N 次）。</p>
+          <p><strong>Gates：</strong>Lint、TypeCheck、相关单元测试、Spec-Task 状态同步。</p>
+        </div>
+        <div class="timeline-item">
+          <h4>Phase 6 — Verify（测试验证）</h4>
+          <p><strong>行为：</strong>全量测试、Spec Traceability、结构测试、可选 Mutation / AI Review。</p>
+          <p><strong>Gates：</strong>所有 P0 Sensor 通过；人工 Sign-off 记录（可选）。</p>
+        </div>
+        <div class="timeline-item">
+          <h4>Phase 7 — Archive（归档）</h4>
+          <p><strong>行为：</strong>合并 Spec；归档 Change；生成 Retro 摘要；Steering Loop 输入。</p>
+        </div>
+      </div>
+
+      <div class="callout callout-warn">
+        <strong>与 OpenSpec 的差异：</strong>HarnessX 显式拆分 <code>design</code> 与 <code>spec</code> 阶段门，
+        新增 <code>verify</code> 阶段及三类 Harness 传感器配置。Core 模式下可合并 propose+design+spec 为单次 <code>/hx:propose --full</code> 以兼容 OpenSpec 快速路径。
+      </div>
+    </section>
+
+    <!-- Artifacts -->
+    <section id="artifacts">
+      <h2>7. 制品模型（Artifact Schema）</h2>
+
+      <h3>7.1 Change 目录结构（OpenSpec 超集）</h3>
+      <pre><code>harnessX/                          # 或兼容 openspec/
+├── config.yaml                    # 全局配置：profile、sensor profiles、templates
+├── harness.yaml                   # Guides & Sensors 注册表
+├── specs/                         # 主规格库（Behaviour 真值源）
+│   └── &lt;domain&gt;/spec.md
+├── changes/
+│   └── &lt;change-id&gt;/
+│       ├── meta.yaml              # 阶段状态、gate 历史、关联 PR
+│       ├── explore.md             # 可选
+│       ├── proposal.md
+│       ├── design.md
+│       ├── tasks.md
+│       ├── specs/                 # Delta specs
+│       │   └── &lt;domain&gt;/spec.md
+│       ├── traces/                # Spec ↔ Test ↔ Code 映射
+│       │   └── traceability.yaml
+│       └── runs/                  # 本次 change 的 sensor 运行日志
+├── templates/                     # Harness 模板（拓扑级）
+│   └── api-service/
+│       ├── harness.yaml
+│       └── skills/
+├── runs/                          # 全局运行遥测
+└── archive/</code></pre>
+
+      <h3>7.2 proposal.md 模板</h3>
+      <pre><code># Proposal: &lt;title&gt;
+
+## Intent
+[业务目标与用户价值]
+
+## Scope
+- In scope: ...
+- Out of scope: ...
+
+## Acceptance Criteria
+- [ ] AC-1: ...
+- [ ] AC-2: ...
+
+## Constraints
+[性能、安全、兼容性约束]
+
+## Risks & Open Questions
+| ID | 描述 | 状态 |
+|----|------|------|
+
+## Stakeholder Sign-off
+- [ ] Product  - [ ] Tech Lead</code></pre>
+
+      <h3>7.3 Delta Spec 示例（OpenSpec 兼容）</h3>
+      <pre><code># Delta for Payments
+
+## ADDED Requirements
+
+### Requirement: Idempotent Refund
+The system MUST process refund requests idempotently by idempotency key.
+
+#### Scenario: Duplicate refund request
+- GIVEN a successful refund for order O-123
+- WHEN a duplicate refund request arrives with the same idempotency key
+- THEN the system returns the original refund result
+- AND no additional charge is created
+
+## MODIFIED Requirements
+...
+
+## REMOVED Requirements
+...</code></pre>
+
+      <h3>7.4 traceability.yaml</h3>
+      <pre><code>requirements:
+  "Requirement: Idempotent Refund":
+    scenarios:
+      "Duplicate refund request":
+        tests:
+          - tests/payments/refund_idempotency.test.ts::duplicate request
+        code:
+          - src/payments/refund-handler.ts
+        status: covered  # covered | partial | waived</code></pre>
+    </section>
+
+    <!-- Guides & Sensors -->
+    <section id="guides-sensors">
+      <h2>8. Guides 与 Sensors 注册</h2>
+
+      <h3>8.1 harness.yaml 示例</h3>
+      <pre><code>version: "1.0"
+profiles:
+  lite:       # 小改动
+    phases: [propose, apply, archive]
+    sensors: [lint, unit-changed]
+  standard:   # 默认
+    phases: [propose, design, spec, plan, apply, verify, archive]
+  strict:     # 核心域/合规
+    phases: [explore, propose, design, spec, plan, apply, verify, archive]
+    sensors: [..., mutation, ai-review]
+
+guides:
+  - id: coding-conventions
+    type: inferential
+    phase: [apply]
+    source: .cursor/skills/coding-conventions/SKILL.md
+  - id: api-topology
+    type: feedforward
+    phase: [design, apply]
+    source: harnessX/templates/api-service/skills/api-design.md
+  - id: proposal-template
+    type: computational
+    phase: [propose]
+    source: harnessX/templates/proposal.md
+
+sensors:
+  - id: spec-validate
+    type: computational
+    phase: [spec, verify, archive]
+    run: hx sensor spec-validate --change $CHANGE
+    on_fail: block
+    fix_hint: "Fix delta spec format; ensure each Requirement has ≥1 Scenario"
+  - id: lint
+    type: computational
+    phase: [apply, verify]
+    run: npm run lint
+    on_fail: retry
+    max_retries: 3
+  - id: spec-trace
+    type: computational
+    phase: [verify]
+    run: hx sensor trace --change $CHANGE
+    on_fail: block
+  - id: ai-spec-review
+    type: inferential
+    phase: [propose, verify]
+    run: hx sensor ai-review --target specs
+    on_fail: warn
+    budget_tokens: 8000</code></pre>
+
+      <h3>8.2 阶段 Context Pack 组成</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>阶段</th><th>Context Pack 内容</th><th>排除（防污染）</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>propose</td>
+              <td>proposal 模板、相关 specs/ 片段、explore.md</td>
+              <td>完整 codebase、无关 domain specs</td>
+            </tr>
+            <tr>
+              <td>design</td>
+              <td>proposal、现有架构 ADR、harness 模板、模块边界规则</td>
+              <td>tasks、测试日志</td>
+            </tr>
+            <tr>
+              <td>spec</td>
+              <td>proposal、design、delta 模板、同 domain 主 spec</td>
+              <td>实现细节代码</td>
+            </tr>
+            <tr>
+              <td>apply</td>
+              <td>tasks（当前项）、delta specs、design 摘要、Skills</td>
+              <td>完整 proposal 历史版本</td>
+            </tr>
+            <tr>
+              <td>verify</td>
+              <td>全 specs、traceability、测试报告、Sensor 失败历史</td>
+              <td>—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Regulation categories -->
+    <section id="regulation">
+      <h2>9. 三类调节域（Regulation Categories）</h2>
+
+      <div class="card-grid">
+        <div class="card">
+          <h4>🛠 Maintainability Harness</h4>
+          <p><strong>调节目标：</strong>代码质量、可维护性、风格一致性。</p>
+          <p><strong>Guides：</strong>AGENTS.md、Coding Skills、OpenRewrite 配方。</p>
+          <p><strong>Sensors：</strong>ESLint、TypeCheck、复杂度、重复代码、覆盖率、ArchUnit。</p>
+        </div>
+        <div class="card">
+          <h4>🏗 Architecture Fitness Harness</h4>
+          <p><strong>调节目标：</strong>架构特征 — 性能、可观测性、模块边界、弹性。</p>
+          <p><strong>Guides：</strong>性能预算 Skill、日志标准、拓扑模板。</p>
+          <p><strong>Sensors：</strong>Perf 测试、结构测试、SLO 探针、依赖规则。</p>
+        </div>
+        <div class="card">
+          <h4>✅ Behaviour Harness</h4>
+          <p><strong>调节目标：</strong>功能行为是否符合需求。</p>
+          <p><strong>Guides：</strong>Delta Specs、Scenario、Approved Fixtures。</p>
+          <p><strong>Sensors：</strong>Spec validate、Traceability、集成/E2E 测试、Mutation、AI 行为审查。</p>
+        </div>
+      </div>
+
+      <div class="callout callout-ok">
+        <strong>关键洞察（Fowler）：</strong>Maintainability 与 Architecture 的 Computational Sensor 已较成熟；
+        Behaviour Harness 仍是最大挑战。HarnessX 通过 OpenSpec 规格层 + Traceability + Approved Fixtures 组合，
+        减少对「AI 自生成测试质量」的单一依赖。
+      </div>
+    </section>
+
+    <!-- Steering Loop -->
+    <section id="steering-loop">
+      <h2>10. Steering Loop 机制</h2>
+
+      <div class="diagram">
+        <div class="flow" style="justify-content:center; flex-wrap:wrap;">
+          <span class="flow-step">Agent 执行</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step">Sensor 失败/人工修正</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step">Failure Catalog 聚合</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step">模式识别（≥3 次）</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step">Harness Patch PR</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step">Template 版本发布</span>
+        </div>
+      </div>
+
+      <h3>10.1 Failure Catalog 条目</h3>
+      <pre><code>{
+  "id": "FC-2026-042",
+  "change": "add-refund-api",
+  "sensor": "arch-module-boundary",
+  "count": 4,
+  "pattern": "Agent imports payment domain from UI layer",
+  "suggested_patch": {
+    "type": "guide",
+    "target": "harnessX/templates/api-service/skills/layering.md",
+    "action": "add explicit forbidden import examples"
+  }
+}</code></pre>
+    </section>
+
+    <!-- Directory -->
+    <section id="directory">
+      <h2>11. 实现目录结构（HarnessX 工具本身）</h2>
+      <pre><code>packages/
+├── cli/                    # hx 命令行入口
+│   ├── commands/
+│   │   ├── init.ts
+│   │   ├── propose.ts
+│   │   ├── apply.ts
+│   │   ├── verify.ts
+│   │   └── archive.ts
+│   └── index.ts
+├── core/
+│   ├── artifact-store/     # 制品读写、Delta 合并
+│   ├── guide-engine/       # Context Pack 组装
+│   ├── gate-orchestrator/  # 阶段状态机
+│   ├── sensor-runner/      # Sensor 调度与报告
+│   └── steering/           # Failure Catalog & Patch
+├── sensors/                # 内置 Sensor 实现
+│   ├── spec-validate/
+│   ├── traceability/
+│   └── arch-boundary/
+├── adapters/
+│   ├── cursor/             # .cursor/commands/hx-*.md
+│   ├── claude-code/
+│   └── openspec/           # OpenSpec 互操作
+└── templates/              # 默认 harness 模板
+
+docs/
+└── harness-delivery-system-design.html  # 本文档</code></pre>
+    </section>
+
+    <!-- CLI -->
+    <section id="cli-api">
+      <h2>12. CLI 与 Slash Commands</h2>
+
+      <h3>12.1 终端命令（<code>hx</code>）</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>命令</th><th>说明</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>hx init [--template api-service]</code></td><td>初始化 harnessX/ 目录与配置</td></tr>
+            <tr><td><code>hx change create &lt;name&gt;</code></td><td>创建 change 工作区</td></tr>
+            <tr><td><code>hx change status [name]</code></td><td>查看阶段与 Gate 状态</td></tr>
+            <tr><td><code>hx gate check --phase verify</code></td><td>运行当前阶段 Sensors</td></tr>
+            <tr><td><code>hx gate advance</code></td><td>通过后推进阶段</td></tr>
+            <tr><td><code>hx sensor run &lt;id&gt;</code></td><td>运行单个 Sensor</td></tr>
+            <tr><td><code>hx guide pack --phase apply</code></td><td>输出 Context Pack（JSON/Markdown）</td></tr>
+            <tr><td><code>hx spec validate &lt;change&gt;</code></td><td>校验 Delta specs</td></tr>
+            <tr><td><code>hx spec merge &lt;change&gt;</code></td><td>归档合并（也可由 archive 调用）</td></tr>
+            <tr><td><code>hx trace check &lt;change&gt;</code></td><td>Spec-Test 追溯检查</td></tr>
+            <tr><td><code>hx steer report</code></td><td>Failure Catalog 与补丁建议</td></tr>
+            <tr><td><code>hx openspec import</code></td><td>从现有 openspec/ 导入</td></tr>
+            <tr><td><code>hx view</code></td><td>本地 Web 仪表盘（Change 状态可视化）</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>12.2 Agent Slash Commands（<code>/hx:*</code>）</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>命令</th><th>映射</th><th>说明</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>/hx:explore &lt;topic&gt;</code></td><td>guide.pack(explore)</td><td>只读探索，不写代码</td></tr>
+            <tr><td><code>/hx:propose &lt;idea&gt;</code></td><td>change create + 生成制品</td><td>创建 proposal + 初始 specs</td></tr>
+            <tr><td><code>/hx:design</code></td><td>gate.check(proposed) → 生成 design</td><td>需 proposal Gate 通过</td></tr>
+            <tr><td><code>/hx:spec</code></td><td>细化 delta specs</td><td>运行 spec-validate</td></tr>
+            <tr><td><code>/hx:plan</code></td><td>生成 tasks.md</td><td>双轨任务清单</td></tr>
+            <tr><td><code>/hx:apply</code></td><td>循环 tasks + sensor</td><td>核心编码循环</td></tr>
+            <tr><td><code>/hx:verify</code></td><td>verify profile</td><td>完整验证</td></tr>
+            <tr><td><code>/hx:archive</code></td><td>spec merge + steer</td><td>完成变更</td></tr>
+            <tr><td><code>/hx:sync</code></td><td>drift detection</td><td>代码/spec 同步</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Runtime -->
+    <section id="runtime">
+      <h2>13. 运行时引擎设计</h2>
+
+      <h3>13.1 Gate 状态机</h3>
+      <pre><code>type Phase =
+  | "explore" | "proposed" | "designed" | "specified"
+  | "planned" | "implementing" | "verified" | "archived";
+
+interface GateResult {
+  passed: boolean;
+  sensorResults: SensorResult[];
+  blockers: string[];      // 必须修复
+  warnings: string[];      // 可继续但需记录
+  fixHints: string[];      // 聚合给 Agent 的修正指令
+}
+
+// 阶段推进规则：仅当 blockers 为空
+function advance(change: Change): Phase | null</code></pre>
+
+      <h3>13.2 Apply 循环（核心）</h3>
+      <pre><code>async function applyLoop(changeId: string) {
+  const tasks = loadTasks(changeId).filter(t => !t.done);
+  for (const task of tasks) {
+    const pack = guideEngine.pack("apply", changeId, { currentTask: task });
+    await agent.run(pack, task.description);
+
+    let retries = 0;
+    while (retries &lt; MAX_RETRIES) {
+      const result = await sensorRunner.run("fast", changeId);
+      if (result.passed) break;
+      await agent.run(result.fixHints, "Fix sensor failures");
+      retries++;
+    }
+    if (retries >= MAX_RETRIES) throw new GateBlockedError(task.id);
+    markTaskDone(task);
+    updateTraceability(changeId, task);
+  }
+}</code></pre>
+
+      <h3>13.3 Sensor 报告格式（LLM-Optimized）</h3>
+      <pre><code>{
+  "sensor": "lint",
+  "status": "fail",
+  "summary": "3 errors in src/payments/refund-handler.ts",
+  "findings": [
+    {
+      "file": "src/payments/refund-handler.ts",
+      "line": 42,
+      "rule": "@typescript-eslint/no-floating-promises",
+      "message": "Promises must be awaited",
+      "fix_hint": "Add await to handleRefund() call on line 42"
+    }
+  ],
+  "agent_instruction": "Fix all lint errors. Do not disable rules. Re-run tests after fix."
+}</code></pre>
+    </section>
+
+    <!-- Integration -->
+    <section id="integration">
+      <h2>14. Agent 集成方案</h2>
+
+      <h3>14.1 Cursor 集成</h3>
+      <ul>
+        <li>在 <code>.cursor/commands/</code> 放置 <code>hx-propose.md</code> 等命令定义，正文调用 <code>hx guide pack</code> 并约束输出路径。</li>
+        <li>Skills 置于 <code>.cursor/skills/</code>，由 harness.yaml 引用。</li>
+        <li>Cloud Agent 规则中注入「必须通过 hx gate check 才能 archive」约束。</li>
+      </ul>
+
+      <h3>14.2 OpenSpec 互操作</h3>
+      <ul>
+        <li><code>hx openspec import</code>：读取 <code>openspec/</code>，映射为 <code>harnessX/</code> 结构，保留 git 历史。</li>
+        <li>Delta 格式 100% 兼容；额外字段（traceability、meta.yaml）为超集。</li>
+        <li>可选 <code>compat_mode: openspec</code>：直接使用 <code>openspec/</code> 作为 Artifact Store 路径。</li>
+      </ul>
+
+      <h3>14.3 CI/CD 集成</h3>
+      <pre><code># .github/workflows/harness-verify.yml
+on: pull_request
+jobs:
+  harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: hx gate check --phase verify --change ${{ env.CHANGE_ID }}
+      - run: hx trace check ${{ env.CHANGE_ID }}</code></pre>
+    </section>
+
+    <!-- Roadmap -->
+    <section id="roadmap">
+      <h2>15. 实施路线图</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>阶段</th><th>交付物</th><th>覆盖 FR</th><th>验收标准</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>M1 — Foundation</strong></td>
+              <td>
+                <code>hx init</code>；Artifact Store；OpenSpec 兼容 delta；<code>spec-validate</code> sensor；
+                <code>/hx:propose</code>、<code>/hx:archive</code>
+              </td>
+              <td>FR-001~003, FR-009, FR-022</td>
+              <td>完成一个示例 change 从 propose 到 archive</td>
+            </tr>
+            <tr>
+              <td><strong>M2 — Gates & Apply</strong></td>
+              <td>
+                Gate Orchestrator；Guide Engine；<code>/hx:plan</code>、<code>/hx:apply</code>；
+                lint/typecheck sensor 集成
+              </td>
+              <td>FR-006~008, FR-020~021, FR-030</td>
+              <td>Apply 循环可自校正 lint 失败；tasks 可追踪</td>
+            </tr>
+            <tr>
+              <td><strong>M3 — Behaviour Harness</strong></td>
+              <td>
+                Traceability sensor；<code>/hx:verify</code>；Approved Fixtures；
+                <code>hx view</code> 仪表盘
+              </td>
+              <td>FR-023, FR-025, FR-008</td>
+              <td>每个 Scenario 可追溯到测试；verify gate 阻断未覆盖</td>
+            </tr>
+            <tr>
+              <td><strong>M4 — Architecture & Templates</strong></td>
+              <td>
+                Harness Templates（api-service）；ArchUnit sensor；性能预算 guide；
+                OpenSpec import
+              </td>
+              <td>FR-031, FR-004, NFR-004</td>
+              <td>模板初始化项目可运行 architecture sensors</td>
+            </tr>
+            <tr>
+              <td><strong>M5 — Steering Loop</strong></td>
+              <td>
+                Failure Catalog；补丁建议；Harness Coverage 报告；Inferential Review（可选）
+              </td>
+              <td>FR-040~042</td>
+              <td>重复失败模式可生成 harness 补丁 PR</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>15.1 技术栈建议</h3>
+      <ul>
+        <li><strong>语言：</strong>TypeScript（与 OpenSpec 生态一致，便于 npm 分发）</li>
+        <li><strong>CLI：</strong>Commander.js + zx（Sensor 脚本执行）</li>
+        <li><strong>Schema：</strong>Zod 校验制品；YAML 配置</li>
+        <li><strong>存储：</strong>文件系统一性源（Git）；可选 SQLite 索引加速 <code>hx view</code></li>
+        <li><strong>测试：</strong>Vitest +  golden files 测试 spec merge 逻辑</li>
+      </ul>
+    </section>
+
+    <!-- Metrics -->
+    <section id="metrics">
+      <h2>16. 度量与 Harness 质量评估</h2>
+
+      <p>Fowler 提出：需要类似 Code Coverage 的「Harness Coverage」概念。HarnessX 建议跟踪：</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>指标</th><th>定义</th><th>目标</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>First-Attempt Pass Rate</td>
+              <td>Apply 阶段 task 首次 Sensor 通过率</td>
+              <td>&gt; 70%（成熟 harness）</td>
+            </tr>
+            <tr>
+              <td>Spec Traceability Coverage</td>
+              <td>有测试映射的 Scenario 占比</td>
+              <td>100% P0 requirements</td>
+            </tr>
+            <tr>
+              <td>Gate Rework Count</td>
+              <td>Change 在各阶段被退回次数</td>
+              <td>下降趋势</td>
+            </tr>
+            <tr>
+              <td>Failure Pattern Recurrence</td>
+              <td>相同 Failure Catalog 条目重复率</td>
+              <td>Steering 后 &lt; 10%</td>
+            </tr>
+            <tr>
+              <td>Human Review Minutes</td>
+              <td>人工审查 proposal/spec 时长</td>
+              <td>相对无 harness 基线下降 40%+</td>
+            </tr>
+            <tr>
+              <td>Token Efficiency</td>
+              <td>完成 change 的总 token / 成功归档 change 数</td>
+              <td>随 harness 成熟下降</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Appendix -->
+    <section id="appendix">
+      <h2>17. 附录</h2>
+
+      <h3>17.1 术语表</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>术语</th><th>定义</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Outer Harness</td><td>用户/团队为 Coding Agent 构建的外部控制与反馈系统</td></tr>
+            <tr><td>Guide</td><td>前馈控制，行动前引导 Agent</td></tr>
+            <tr><td>Sensor</td><td>反馈控制，行动后检测并驱动自校正</td></tr>
+            <tr><td>Delta Spec</td><td>相对主 spec 的新增/修改/删除需求描述</td></tr>
+            <tr><td>Quality Gate</td><td>阶段转换必须通过的 Sensor 检查集合</td></tr>
+            <tr><td>Steering Loop</td><td>基于失败模式持续改进 Harness 的闭环</td></tr>
+            <tr><td>Approved Fixtures</td><td>人工预先批准的行为期望数据，Agent 不可篡改</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>17.2 参考资料</h3>
+      <ul>
+        <li><a href="https://martinfowler.com/articles/harness-engineering.html" target="_blank" rel="noopener">Martin Fowler — Harness engineering for coding agent users</a></li>
+        <li><a href="https://github.com/Fission-AI/OpenSpec" target="_blank" rel="noopener">Fission-AI/OpenSpec — Spec-Driven Development</a></li>
+        <li><a href="https://openspec.dev/" target="_blank" rel="noopener">OpenSpec 官方文档</a></li>
+        <li>Building Evolutionary Architectures — Fitness Functions 概念</li>
+        <li>Ashby's Law — 控制复杂度需匹配系统多样性（Fowler 文内 Sidebar）</li>
+      </ul>
+
+      <h3>17.3 开放问题（来自 Fowler + HarnessX 扩展）</h3>
+      <ul>
+        <li>Guides 与 Sensors 矛盾时，Agent 如何仲裁？需要优先级语义（<code>harness.yaml priority</code>）。</li>
+        <li>Sensor 从不触发 — 检测不足还是质量真的好？需引入 Mutation / 混沌探测。</li>
+        <li>Behaviour Harness 在 UI/UX 域的 Approved Fixtures 如何规模化？</li>
+        <li>Harness Template 版本分叉与上游同步机制如何设计？</li>
+        <li>Inferential Sensor 的非确定性如何影响 Gate 可信度？建议仅作 warn，block 仅限 computational。</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>HarnessX Design Document v0.1 — 生成于 2026-07-03</p>
+      <p>本文档为自适应 HTML，支持浏览器预览、打印导出 PDF、一键下载。</p>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+  // Mobile sidebar toggle
+  const menuToggle = document.getElementById('menuToggle');
+  const sidebar = document.getElementById('sidebar');
+  menuToggle?.addEventListener('click', () => sidebar.classList.toggle('open'));
+
+  // Download current HTML
+  document.getElementById('downloadBtn')?.addEventListener('click', () => {
+    const blob = new Blob([document.documentElement.outerHTML], { type: 'text/html;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'harnessX-delivery-system-design.html';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  // Active nav highlight on scroll
+  const sections = document.querySelectorAll('section[id], div.hero[id]');
+  const navLinks = document.querySelectorAll('.sidebar a');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(link => {
+          link.classList.toggle('active', link.getAttribute('href') === '#' + entry.target.id);
+        });
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+
+  // Close sidebar on link click (mobile)
+  navLinks.forEach(link => {
+    link.addEventListener('click', () => sidebar.classList.remove('open'));
+  });
+</script>
+
+</body>
+</html>
