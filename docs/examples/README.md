@@ -20,6 +20,21 @@
 - 已按仓库根目录 `README.md` 完成 `npm install`；示例中以 `hx` 代指 `node bin/hx.js`（或全局安装后的 `hx`）。
 - 示例中的人名（王工、李工、张架构师等）与业务（订单、支付、库存）均为虚构，用于说明角色分工：**谁写规格、谁批准、谁实现、谁审核**。
 
+## 两类操作入口
+
+示例中的操作分两类，注意区分：
+
+1. **终端命令**（`$ hx ...` 的 console 代码块）：直接在 shell 里执行，通常是仓库管理、gate 推进、人工批准这类"管控面"动作。
+2. **Cursor 对话框操作**（标注为 `Cursor ▸` 的代码块）：在 Cursor 的 Agent 对话框里输入，驱动 agent 干活。前提是已跑过 `hx adapter sync`（场景 01），此时：
+   - 输入 `/` 可以看到 `hx-explore`、`hx-propose` … `hx-archive` 八个斜杠命令，**每个命令的正文是该阶段的完整工作流提示词**（步骤、护栏、完成标准），agent 会照着执行并自己调用 `hx` CLI 自检；
+   - `.cursor/rules/harnessx.mdc`（`alwaysApply: true`）让 agent 在**每一次**对话中都带着宪法与 HarnessX 纪律（不许手改 meta.yaml/fixtures、失败先读 fix_hint 等）；
+   - `.cursor/skills/*/SKILL.md`（编码规范、EARS 规格写作等）由 Cursor 按相关性自动挂载；
+   - `.cursor/hooks.json` 在提交提示前自动跑 `hx gate hook-check`、在编辑 fixtures/meta.yaml 后自动跑 `hx fixture verify`（L2 强制）。
+
+  其他工具（Trae/Qoder/Claude Code）的等价入口见场景 09；本目录默认以 Cursor 为例。
+
+一条常用的经验法则：**agent 能自己做的（写提案、写规格、写代码、修失败）走 Cursor 对话框；只有人才能做的（批准、豁免、发布评审）走终端命令**——后者也是审计留痕的落点。
+
 ## 核心心智模型（1 分钟版）
 
 1. 一切行为改动都在 **change 工作区**（`harnessX/changes/<id>/`）内进行，通过 delta spec 描述"规格的增量"。

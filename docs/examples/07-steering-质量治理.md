@@ -49,6 +49,14 @@ distilled-flaky-time-dependent-assertion-in-file → trial
 
 从此 apply 阶段的 Context Pack 自动携带这条 Skill——**问题从"反馈拦截"前移到"前馈预防"**。
 
+别忘了最后一步：重跑 `hx adapter sync`，新 Skill 才会编译进 `.cursor/skills/distilled-.../SKILL.md`（以及 Claude/Trae/Qoder 的对应位置）。此后 Cursor 用户不需要做任何事——agent 在 apply 阶段写测试时，这条"注入 Clock、不比较绝对时间戳"的规范会作为 Skill 自动出现在其上下文里。验证方法很直接，在 Cursor 里问一句：
+
+```text
+Cursor ▸ 给优惠券过期逻辑写个测试
+Agent  ▸ （按 Skill 使用 FixedClock 注入而非 new Date()，断言 expiresInSeconds
+          而非绝对时间戳）
+```
+
 ### 3. 收割人工 review 意见 → Rubric 规则（反馈：机器替人盯）
 
 导出最近 30 天 PR review 意见（`gh api` 拼一个 `[{pr, author, body}]` 的 JSON），交给收割器聚类：

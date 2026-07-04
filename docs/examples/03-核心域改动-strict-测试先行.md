@@ -42,19 +42,20 @@ hx: profile "standard" is below the recommended "strict" — provide --override-
 
 ### 2. explore：只读探索
 
-strict profile 的第一个阶段是 explore。周工让 agent 先读代码、不许写：
+strict profile 的第一个阶段是 explore。周工在 Cursor 里驱动：
 
-```console
-$ hx explore pre-auth --topic "现有扣款状态机与幂等键设计"
-Wrote harnessX/changes/pre-auth/explore.md
-Read-only phase: do not modify code. Gate check will flag staged code edits.
+```text
+Cursor ▸ /hx-explore pre-auth
+         主题：现有扣款状态机与幂等键设计
 ```
 
-`hx guide pack pre-auth --phase explore` 组装的 Context Pack 中权限声明是 **READ-ONLY**——这是喂给 agent 的第一条指令。探索结论（"现有状态机有 CREATED→CHARGED 两态，需插入 FROZEN 态；幂等键可复用"）写入 explore.md，成为 design 阶段的输入。
+`/hx-explore` 的提示词把本阶段定义为**严格只读**：agent 先跑 `hx explore pre-auth --topic "现有扣款状态机与幂等键设计"` 生成笔记脚手架，然后按提示词的调查顺序工作——先读 `harnessX/specs/` 里的相关主规格（规格是事实源，先于代码），再看要动的模块与测试，最后搜 `harnessX/archive/` 里动过同一 capability 的历史 change。发现全部写入 explore.md 的 Questions / Findings / Recommendation 三节，**每条结论必须带文件路径引证**；Guardrails 明确"本阶段产出是理解不是方案"，Recommendation 只列带权衡的选项。
+
+双保险：`hx guide pack pre-auth --phase explore` 组装的 Context Pack 中权限声明也是 **READ-ONLY**，且 gate check 会标记暂存区里的代码改动——agent 忘了纪律也会被抓。探索结论（"现有状态机有 CREATED→CHARGED 两态，需插入 FROZEN 态；幂等键可复用"）成为 design 阶段的输入。
 
 ### 3. propose / design / spec / 批准（同场景 02，略）
 
-delta spec 写好、`hx gate advance` 逐阶段推进、张架构师 `hx gate approve pre-auth --gate spec --approver zhang.arch`。
+周工在 Cursor 里依次 `/hx-propose pre-auth`、`/hx-design pre-auth`、`/hx-spec pre-auth`（delta spec 由 agent 起草、周工审改），终端里 `hx gate advance` 逐阶段推进。注意 `/hx-spec` 提示词的最后一步是**要求 agent 停下来请人批准**——它被明确告知不许自己跑 `hx gate approve`（那是人类专用命令）。张架构师 review 后在终端执行 `hx gate approve pre-auth --gate spec --approver zhang.arch`。
 
 ### 4. 测试先行：生成 → 人工评审 → 批准锁定
 
@@ -82,9 +83,9 @@ approved test files recorded in meta.yaml (hash-locked)
 
 ### 5. 独立会话实现：agent 改不动已批准的断言
 
-`hx plan` + `hx apply` 后，周工换一个**全新的 agent 会话**做实现（测试先行的核心：写测试的会话和写实现的会话隔离，避免 agent "顺手"把测试改成能过的样子）。
+`hx plan` 之后，周工在 Cursor 里**新开一个 Agent 会话**（不是在写测试桩的那个会话里继续），输入 `/hx-apply pre-auth` 做实现——测试先行的核心：写测试的会话和写实现的会话隔离，避免 agent "顺手"把测试改成能过的样子。新会话没有前一个会话的上下文，它对测试的全部认知来自被哈希锁定的测试文件本身。
 
-某次迭代中 agent 觉得一个断言"太严格"，直接改了期望值。verification-strict 套件里的 `approved-tests` 传感器当场拦截：
+某次迭代中 agent 觉得一个断言"太严格"，直接改了期望值。第一道防线在编辑器内就响了——`.cursor/rules/harnessx.mdc` 与 `/hx-apply` 提示词都写着"绝不为过检而弱化测试"，但 L1 靠自觉，真正兜底的是 verification-strict 套件里的 `approved-tests` 传感器当场拦截：
 
 ```console
 $ hx verify pre-auth

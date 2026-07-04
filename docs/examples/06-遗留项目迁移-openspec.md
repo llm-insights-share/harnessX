@@ -57,10 +57,18 @@ $ hx sync
 
 ```console
 $ hx change create backfill-vip-renewal --domains member-benefits
-$ hx propose backfill-vip-renewal --title "回写 VIP 自动续费既有行为"
 ```
 
-delta 里用 EARS 把**现状**写成规格（从代码和测试里"考古"出来的行为，含边界条件）：
+"考古"（从代码和测试里挖出既有行为、含边界条件）正是 agent 擅长的活。刘工在 Cursor 里下达任务，明确这是"回写现状"而非"设计新行为"：
+
+```text
+Cursor ▸ /hx-propose backfill-vip-renewal
+         这是一条规格回写 change：把 @src/benefits/autoRenewal.ts 和
+         @tests/benefits/autoRenewal.test.ts 中的既有行为原样写成 EARS 规格。
+         不许改任何代码；发现行为可疑也只记录在 proposal 的 open questions 里。
+```
+
+agent 读完代码产出的 delta（刘工重点核对"写的是现状而不是 agent 以为的应然"）：
 
 ```markdown
 ## ADDED Requirements

@@ -65,7 +65,7 @@ $ hx lock verify
 LOCK asset "clock-injection" content changed since lock (supply-chain check) — review and re-lock
 ```
 
-把它注册进 `harness.yaml` 的 guides（source 指向 hub-cache 路径），apply 阶段的 Context Pack 就会带上这条全公司统一的时钟注入规范。
+把它注册进 `harness.yaml` 的 guides（source 指向 hub-cache 路径），apply 阶段的 Context Pack 就会带上这条全公司统一的时钟注入规范；再跑一次 `hx adapter sync`，它同时落进 `.cursor/skills/`（及其他工具的对应位置）——营销团队的 Cursor 用户从下一次会话起就自动带上这条规范，无需任何个人配置。
 
 ### 4. 升级与本地定制的三方对账
 
