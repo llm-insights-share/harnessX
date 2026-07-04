@@ -1,0 +1,112 @@
+version: "1.0"
+constitution: constitution.md
+
+profiles:
+  lite:
+    phases: [propose, apply, archive]
+    suites:
+      apply: fast-lite
+  standard:
+    phases: [propose, design, spec, plan, apply, verify, archive]
+    suites:
+      spec: fast
+      apply: fast
+      verify: verification
+  strict:
+    phases: [explore, propose, design, spec, plan, apply, verify, archive]
+    suites:
+      spec: fast
+      apply: fast
+      verify: verification-strict
+
+suites:
+  fast-lite: [spec-validate]
+  fast: [spec-validate]
+  verification: [spec-validate, spec-trace]
+  verification-strict: [spec-validate, spec-trace, ai-spec-review]
+
+guides:
+  - id: proposal-template
+    kind: guide.template
+    execution: computational
+    phase: [propose]
+    source: assets/guides/proposal-template/template.md
+  - id: coding-conventions
+    kind: guide.skill
+    execution: inferential
+    phase: [apply]
+    source: assets/guides/coding-conventions/SKILL.md
+  - id: spec-writing
+    kind: guide.skill
+    execution: inferential
+    phase: [propose, spec]
+    source: assets/guides/spec-writing/SKILL.md
+  - id: cmd-explore
+    kind: guide.command
+    execution: inferential
+    phase: [explore]
+    source: assets/commands/explore.md
+  - id: cmd-propose
+    kind: guide.command
+    execution: inferential
+    phase: [propose]
+    source: assets/commands/propose.md
+  - id: cmd-design
+    kind: guide.command
+    execution: inferential
+    phase: [design]
+    source: assets/commands/design.md
+  - id: cmd-spec
+    kind: guide.command
+    execution: inferential
+    phase: [spec]
+    source: assets/commands/spec.md
+  - id: cmd-plan
+    kind: guide.command
+    execution: inferential
+    phase: [plan]
+    source: assets/commands/plan.md
+  - id: cmd-apply
+    kind: guide.command
+    execution: inferential
+    phase: [apply]
+    source: assets/commands/apply.md
+  - id: cmd-verify
+    kind: guide.command
+    execution: inferential
+    phase: [verify]
+    source: assets/commands/verify.md
+  - id: cmd-archive
+    kind: guide.command
+    execution: inferential
+    phase: [archive]
+    source: assets/commands/archive.md
+
+sensors:
+  - id: spec-validate
+    kind: sensor.script
+    execution: computational
+    phase: [propose, spec, verify, archive]
+    builtin: spec-validate
+    on_fail: block
+    fix_hint: "Fix delta spec format; ensure each Requirement has >=1 Scenario and EARS-style requirement text"
+  - id: spec-trace
+    kind: sensor.script
+    execution: computational
+    phase: [verify]
+    builtin: spec-trace
+    on_fail: block
+  - id: ai-spec-review
+    kind: sensor.rubric
+    execution: inferential
+    phase: [verify]
+    builtin: rubric
+    on_fail: warn
+    budget_tokens: 8000
+  - id: fixture-guard
+    kind: sensor.fixture
+    execution: computational
+    trigger: file-save
+    scope: ["tests/fixtures/**"]
+    builtin: fixture-hash
+    on_fail: block

@@ -1,0 +1,29 @@
+id: api-service
+description: Topology bundle for backend API services (layered architecture + performance budgets)
+guides:
+  - id: api-design
+    kind: guide.skill
+    execution: inferential
+    phase: [design, apply]
+    source: assets/bundles/api-service/skills/api-design.md
+  - id: layering-rules
+    kind: guide.constraint
+    execution: computational
+    phase: [apply, verify]
+    source: assets/bundles/api-service/constraints/layering.yaml
+sensors:
+  - id: arch-boundary
+    kind: sensor.arch
+    execution: computational
+    phase: [verify]
+    builtin: arch-boundary
+    on_fail: block
+    fix_hint: "Move the import so dependencies point inward: routes -> services -> repositories"
+  - id: perf-budget
+    kind: sensor.budget
+    execution: computational
+    phase: [verify]
+    builtin: budget
+    on_fail: warn
+suites:
+  verification: [spec-validate, spec-trace, arch-boundary, perf-budget]

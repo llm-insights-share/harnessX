@@ -1,0 +1,10 @@
+id: spec-writing
+kind: guide.skill
+category: behaviour
+phase: [propose, spec]
+version: 1.0.0
+origin: builtin
+status: enforced
+execution: inferential
+provenance: []
+metrics: {}

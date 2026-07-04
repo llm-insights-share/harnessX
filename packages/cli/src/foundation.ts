@@ -1,0 +1,105 @@
+import { Command } from "commander";
+import path from "node:path";
+import {
+  Workspace,
+  initWorkspace,
+  listBundles,
+  createChange,
+  scaffoldProposal,
+  scaffoldExplore,
+  importOpenspec,
+  archiveChange
+} from "@harnessx/core";
+
+export const ws = () => Workspace.locate(process.cwd());
+
+export function registerFoundationCommands(program: Command): void {
+  program
+    .command("init")
+    .description("Initialize harnessX/ in the current repository")
+    .option("--bundle <id>", "apply a topology bundle (e.g. api-service)")
+    .action((opts: { bundle?: string }) => {
+      const res = initWorkspace(process.cwd(), { bundle: opts.bundle });
+      console.log(`Initialized ${res.ws.base}`);
+      for (const c of res.created) console.log(`  + ${c}`);
+      console.log("\nNext steps:");
+      for (const s of res.nextSteps) console.log(`  ${s}`);
+    });
+
+  program
+    .command("bundle")
+    .argument("<action>", "list")
+    .description("Manage topology bundles")
+    .action((action: string) => {
+      if (action === "list") {
+        for (const b of listBundles()) console.log(`${b.id}\t${b.description}`);
+      } else {
+        throw new Error(`unknown bundle action: ${action}`);
+      }
+    });
+
+  const change = program.command("change").description("Manage change workspaces");
+  change
+    .command("create <id>")
+    .requiredOption("--domains <list>", "comma-separated touched domains (FR-011)")
+    .option("--profile <name>", "workflow profile override")
+    .action((id: string, opts: { domains: string; profile?: string }) => {
+      const domains = opts.domains.split(",").map((s) => s.trim()).filter(Boolean);
+      const res = createChange(ws(), id, domains, opts.profile);
+      console.log(`Created change "${id}" (profile: ${res.meta.profile}, domains: ${domains.join(", ")})`);
+      for (const w of res.warnings)
+        console.warn(`WARNING: overlaps with active change "${w.otherChange}" on domains: ${w.domains.join(", ")}`);
+    });
+  change.command("list").action(() => {
+    const w = ws();
+    for (const id of w.listChanges()) {
+      const meta = w.readMetaRaw(id);
+      console.log(`${id}\t${meta.status}\t${meta.profile}\t[${meta.touchedDomains.join(",")}]`);
+    }
+  });
+
+  program
+    .command("propose <change>")
+    .description("Scaffold proposal.md and an initial delta spec (FR-003)")
+    .option("--title <title>", "proposal title", "Untitled")
+    .action((changeId: string, opts: { title: string }) => {
+      const res = scaffoldProposal(ws(), changeId, opts.title);
+      console.log(`Wrote ${res.proposalFile}`);
+      console.log(`Wrote ${res.deltaFile}`);
+    });
+
+  program
+    .command("explore <change>")
+    .description("Read-only exploration notes (FR-002)")
+    .option("--topic <topic>", "exploration topic", "unscoped")
+    .action((changeId: string, opts: { topic: string }) => {
+      console.log(`Wrote ${scaffoldExplore(ws(), changeId, opts.topic)}`);
+      console.log("Read-only phase: do not modify code. Gate check will flag staged code edits.");
+    });
+
+  program
+    .command("archive <change>")
+    .description("Merge delta specs into main specs and archive the change (FR-009)")
+    .option("--force", "skip verified-state requirement (lite profile)")
+    .action((changeId: string, opts: { force?: boolean }) => {
+      const res = archiveChange(ws(), changeId, { force: opts.force });
+      if (!res.ok) {
+        for (const p of res.problems) console.error(`BLOCKED: ${p}`);
+        process.exit(1);
+      }
+      console.log(`Archived to ${res.archivedTo}`);
+      console.log(`Merged capabilities: ${res.capabilities.join(", ")}`);
+    });
+
+  const openspec = program.command("openspec").description("OpenSpec interoperability (NFR-004)");
+  openspec
+    .command("import")
+    .option("--from <dir>", "openspec directory", "openspec")
+    .action((opts: { from: string }) => {
+      const w = new Workspace(process.cwd());
+      const res = importOpenspec(process.cwd(), path.resolve(process.cwd(), opts.from), w);
+      console.log(`Imported specs: ${res.specs.join(", ") || "(none)"}`);
+      console.log(`Imported changes: ${res.changes.join(", ") || "(none)"}`);
+      for (const n of res.notes) console.log(`  note: ${n}`);
+    });
+}

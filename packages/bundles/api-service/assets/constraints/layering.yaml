@@ -1,0 +1,25 @@
+id: layering-rules
+description: Layered architecture constraints for API services (paired with arch-boundary sensor)
+layers:
+  - name: routes
+    path: src/routes
+    mayImport: [services, shared]
+  - name: services
+    path: src/services
+    mayImport: [repositories, shared]
+  - name: repositories
+    path: src/repositories
+    mayImport: [shared]
+  - name: shared
+    path: src/shared
+    mayImport: []
+forbidden:
+  - from: src/repositories
+    to: src/routes
+    hint: "Repositories must not depend on the HTTP layer"
+  - from: src/services
+    to: src/routes
+    hint: "Services must not depend on the HTTP layer"
+budgets:
+  maxFileLines: 400
+  maxBundleKB: 512

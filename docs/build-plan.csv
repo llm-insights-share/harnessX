@@ -1,0 +1,61 @@
+id,milestone,priority,title,description,covers,depends_on,status
+T-000,M0-脚手架,P0,"Monorepo 工程脚手架","初始化 packages/(cli|core|sensors|adapters|bundles) 结构；TypeScript + Vitest + Zod + Commander.js；CI 基础流水线；插件 API SemVer 策略","NFR-008",,done
+T-001,M0-脚手架,P0,"制品 Schema 定义","用 Zod 定义并校验 meta.yaml / harness.yaml / config.yaml / asset.yaml / traceability.yaml / harness.lock 的 schema；含 kind+execution 双维度字段","FR-024(schema),NFR-008","T-000",done
+T-002,M0-脚手架,P1,"运行遥测写入器","Gate/Sensor 执行日志以 JSON Lines 持久化至 harnessX/runs/ 与 changes/*/runs/；日志哈希计算","NFR-005","T-000",done
+T-100,M1-Foundation,P0,"hx init 命令","生成 harnessX/ 目录（constitution.md 初始化、config.yaml、harness.yaml、assets/ 骨架）；--bundle 选项；5 分钟内完成首次 propose 的引导输出","FR-034(init),NFR-007","T-001",done
+T-101,M1-Foundation,P0,"Artifact Store 核心","制品读写；delta spec 解析（ADDED/MODIFIED/REMOVED）；合并引擎（golden files 测试）；archive 移动","FR-001,FR-009(merge)","T-001",done
+T-102,M1-Foundation,P0,"hx change create","创建 change 工作区（proposal/design/tasks/specs/meta/traces/runs）；要求声明 touched domains 并检测与进行中 change 的重叠告警","FR-001,FR-011(声明+告警)","T-101",done
+T-103,M1-Foundation,P0,"/hx:propose 命令与模板资产","proposal.md 生成流程；guide.template 资产 proposal-template（含填写指引注释与 examples/）；初始 delta specs 草稿","FR-003","T-102",done
+T-104,M1-Foundation,P0,"/hx:explore 命令","只读探索模式；输出 explore.md；只读 Sensor 确认未修改代码","FR-002","T-102",done
+T-105,M1-Foundation,P0,"spec-validate Sensor","OpenSpec 兼容 delta 格式校验；每 Requirement ≥1 Scenario；EARS 五种句式完整性校验（触发/响应齐备、可测性）；LLM-Optimized 报告输出","FR-022","T-101",done
+T-106,M1-Foundation,P0,"/hx:archive 命令","delta 合并入主 specs/；change 移入 archive/；Retro 摘要生成（Steering 输入桩）","FR-009","T-101,T-105",done
+T-107,M1-Foundation,P1,"OpenSpec 互操作","hx openspec import（openspec/ 映射为 harnessX/ 保留 git 历史）；compat_mode: openspec 直接使用 openspec/ 路径","NFR-004","T-101",done
+T-108,M1-Foundation,P0,"M1 验收","E2E：一个示例 change 从 propose 到 archive 全程通过；spec-validate 拦截坏格式","M1 验收标准","T-100..T-107",done
+T-200,M2-Gates,P0,"Gate Orchestrator 状态机","8 阶段状态机（含 phase/state/command 三名映射）；advance 仅当 blockers 为空；fail-closed：异常/超时/不可解析一律阻断","FR-020,FR-053","T-001,T-002",done
+T-201,M2-Gates,P0,"Sensor Runner 与 Suite","Sensor Suite 定义与执行（并行/串行）；结构化报告（fix_hint/agent_instruction/fix_command 字段）；shell 型自定义 Sensor（run: 命令）；fail-closed 处理","FR-021,FR-024(shell),FR-053","T-200",done
+T-202,M2-Gates,P0,"Guide Engine Context Pack","按阶段组装 Context Pack（含排除规则、persona+权限声明）；组装时间 <2s；hx guide pack CLI","FR-030,NFR-002","T-001",done
+T-203,M2-Gates,P0,"/hx:plan 命令","从 specs+design 生成 tasks.md 双轨清单（实现轨+测试轨）；每 task 标注关联 Requirement ID；缺测试 task 需 waiver","FR-006","T-202",done
+T-204,M2-Gates,P0,"/hx:apply 循环","逐 task 驱动编码；每 task 后运行 Fast Sensor Suite；失败自校正循环（上限 N 次）；task 完成同步 traceability","FR-007","T-201,T-202,T-203",done
+T-205,M2-Gates,P0,"Fast Suite 集成与相关性启发式","lint/typecheck/unit-changed 集成；按 diff 依赖图启发式选择相关子集；<60s 预算","NFR-001","T-201",done
+T-206,M2-Gates,P0,"meta.yaml 独占写入与校验","状态转换仅 hx CLI 可写；gate 结果绑定 sensor 日志哈希；hx meta verify 供 CI 校验一致性","FR-050","T-002,T-200",done
+T-207,M2-Gates,P0,"git hooks 安装","pre-commit/pre-push 运行 hx gate check；hx init 时安装；绕过检测提示","FR-051(本地)","T-200",done
+T-208,M2-Gates,P0,"CI 重放工作流","harness-verify.yml 模板（gate check 重放 + trace check + meta verify）；branch protection 与 CODEOWNERS 配置文档","FR-051","T-206",done
+T-209,M2-Gates,P0,"/hx:design 与 /hx:spec 命令","design.md 生成（ADR 条目+架构约束）；delta specs 细化；design 需 proposal Gate 通过","FR-004,FR-005","T-200,T-202",done
+T-210,M2-Gates,P0,"人工批准门","spec→plan 转换需人工批准；CODEOWNERS 指向 specs/；approver/时间/制品哈希由 hx gate advance 写入 meta.yaml","FR-012","T-206,T-208",done
+T-211,M2-Gates,P0,"M2 验收","Apply 循环可自校正 lint 失败；绕过本地检查的提交被 CI 阻断；Sensor 崩溃时 Gate 阻断（fail-closed 测试）","M2 验收标准","T-200..T-210",done
+T-300,M3-Behaviour,P0,"Traceability Sensor","traceability.yaml 维护；每 Scenario 映射测试用例或显式 waiver；hx trace check；covered/partial/waived 状态","FR-023","T-201",done
+T-301,M3-Behaviour,P0,"/hx:verify 命令","Verification Suite 执行（spec-validate/spec-trace/unit-all/arch-boundary，strict 加 mutation/ai-review）；P0 Sensor 全过才可推进","FR-008","T-201,T-300",done
+T-302,M3-Behaviour,P0,"Approved Fixtures 与写保护","fixtures 目录约定；fixture-hash Sensor（file-save 触发）；L2 平台只读配置 + L3 CI 哈希对比","FR-025,FR-052","T-201",done
+T-303,M3-Behaviour,P0,"测试先行流程（strict）","Scenario→测试生成→人工评审门→独立 session 实现；已批准断言修改检测（waiver 除外）","FR-026","T-204,T-302",done
+T-304,M3-Behaviour,P1,"/hx:sync 漂移检测","代码与 specs 漂移检测；提示回写 specs 或修正代码","FR-010","T-101,T-300",done
+T-305,M3-Behaviour,P1,"hx view 仪表盘","本地 Web 仪表盘：change 阶段/Gate 状态/traceability 可视化；可选 SQLite 索引","支撑能力","T-206",done
+T-306,M3-Behaviour,P1,"Waiver 流程","申请人/审批人/理由/过期时间记入 meta.yaml；过期自动失效；janitor 提醒接口","FR-028","T-206",done
+T-307,M3-Behaviour,P0,"M3 验收","每个 Scenario 可追溯到测试；verify gate 阻断未覆盖；篡改 fixture 被 CI 检出","M3 验收标准","T-300..T-306",done
+T-400,M4-Bundles,P1,"拓扑 Bundle 模型","assets/bundles/ 结构；bundle 内 harness.yaml 组合；hx init --bundle api-service 可用；内置 api-service Bundle","FR-031","T-100,T-202",done
+T-401,M4-Bundles,P1,"arch-boundary Sensor","dependency-cruiser/ArchUnit 封装；与 guide.constraint 成对；违规输出 fix_hint","架构域支撑","T-201",done
+T-402,M4-Bundles,P1,"性能预算 Guide+Sensor","sensor.budget（响应时间/体积/内存阈值）；性能预算 Skill；Architecture Fitness 量化基准","架构域支撑","T-201",done
+T-403,M4-Bundles,P0,"Constitution 优先级链与 harness lint","constitution > profile > bundle > 资产 的解析裁决；hx harness lint 静态检测 scope 重叠且指令矛盾的资产对；CI 集成","FR-034","T-202,T-400",done
+T-404,M4-Bundles,P1,"并发 change 冲突完整实现","archive 前 delta rebase 检查；冲突报告与解决指引","FR-011(rebase)","T-102,T-106",done
+T-405,M4-Bundles,P1,"Scale-Adaptive Profile 推荐","按 touched domains/预估 diff/核心域自动推荐 profile；人工降级记录理由入 meta.yaml","FR-013","T-102,T-403",done
+T-406,M4-Bundles,P1,"M4 验收","Bundle 初始化的项目可运行 architecture sensors；harness lint 检出植入的矛盾资产","M4 验收标准","T-400..T-405",done
+T-500,M5-Steering,P1,"Failure Catalog","Sensor 失败与人工干预记录聚合；模式条目（orch.pattern）结构；≥3 次模式识别","FR-040","T-002,T-201",done
+T-501,M5-Steering,P1,"hx steer report/distill","Failure Catalog 报告；三源信号蒸馏为 draft 资产（Agent 辅助生成 Skill 条目/Rubric 规则/lint 脚手架）；provenance 证据链","FR-041","T-500",done
+T-502,M5-Steering,P1,"hx steer harvest-pr","收集 PR 人工 Review 意见；聚类转化为 Rubric 规则草稿","FR-041(来源)","T-501",done
+T-503,M5-Steering,P2,"Harness Coverage 报告","已注册 Controls vs 历史 Failure Mode 覆盖矩阵；§18 度量指标采集（首次通过率/返工次数/复发率）","FR-042","T-500",done
+T-504,M5-Steering,P1,"AI Review Sensor（Rubric Runner）","sensor.rubric 执行器；逐条评估输出结构化 findings；budget_tokens；Redaction 中间件与本地 Judge 选项","FR-024(inferential),NFR-006","T-201",done
+T-505,M5-Steering,P1,"hx rubric add 自然语言入口","口语化检查项生成 draft 规则；进入 trial 生命周期；误报率统计钩子","规则沉淀支撑","T-504",done
+T-506,M5-Steering,P1,"hx janitor run","定时巡检：死代码/spec-code 漂移/过期 waiver；自动开清理 PR；CI cron 集成","FR-027(schedule)","T-304,T-306",done
+T-507,M5-Steering,P1,"M5 验收","重复失败模式可生成 harness 补丁 PR；蒸馏资产带证据链且可追溯","M5 验收标准","T-500..T-506",done
+T-600,M6-Assets,P1,"控制资产模型完整实现","asset.yaml manifest（kind/execution/status/provenance/metrics）；生命周期 draft→trial→enforced→deprecated；metrics 自动回填","§11 资产模型","T-001",done
+T-601,M6-Assets,P1,"分层解析与 harness.lock","change>本地>团队>Hub>内置 五层解析；overrides 显式声明+原因；lock 锁定精确版本与内容哈希","§11.2","T-600",done
+T-602,M6-Assets,P1,"hx hub 命令族","hub add/sync/promote；三方合并（上游 vs 本地 override vs 基线）；Hub 仓库结构与 CI 模板（golden repos/rubric eval sets）","§11.5","T-601",done
+T-603,M6-Assets,P1,"资产供应链安全","lock 内容哈希校验；Hub 发布强制 review 流程；guide 内容注入扫描（拒绝指令劫持文本）","NFR-009","T-601",done
+T-604,M6-Assets,P1,"Adapter 单源编译引擎","assets 单源→多目标编译框架；能力声明模型（hooks/rules/agent/MCP/权限）；Tier 分级；生成文件版本标注与手改检测；Skills 输出（FR-032）","FR-032,FR-033,NFR-003","T-600",done
+T-605,M6-Assets,P1,"Cursor Adapter","输出 .cursor/commands|skills|rules；Hooks 集成（fixtures 保护/meta.yaml 拦截）；命令白名单","NFR-003(Tier1)","T-604",done
+T-606,M6-Assets,P1,"Trae Adapter","输出 .trae/rules/project_rules.md；规划型/执行型自定义 Agent 配置；MCP 接入 hx CLI","NFR-003(Tier1)","T-604",done
+T-607,M6-Assets,P1,"Qoder Adapter","输出 .qoder/ rules|skills；Quest Spec 对接（delta spec+tasks 作为 Quest 输入）；Worktree 环境映射 apply 隔离；MCP 接入","NFR-003(Tier1)","T-604",done
+T-608,M6-Assets,P1,"Claude Code Adapter 与通用兜底","输出 CLAUDE.md/.claude/commands + Hooks/permission；AGENTS.md 通用兜底（Tier 2/0：Codex/Copilot/Windsurf 等）","NFR-003(Tier2/0)","T-604",done
+T-609,M6-Assets,P1,"事件驱动触发器","trigger: file-save 文件监听执行 Sensor；trigger: schedule 定时调度；与 janitor 复用调度器","FR-027","T-201",done
+T-610,M6-Assets,P1,"自定义 Sensor 插件 API","Node/Python 插件协议（shell 已在 T-201）；kind/execution 标注；插件 API SemVer 化并向后兼容一个 Major","FR-024,NFR-008","T-201",done
+T-611,M6-Assets,P1,"hx fix 修复回环","基于 Sensor 报告 fix_command 启动带上下文修复会话（findings+spec 片段+代码位置 Context Pack）","反馈闭环支撑","T-201,T-202",done
+T-612,M6-Assets,P1,"M6 验收","资产可从仓库沉淀晋级到 Hub 并被其他仓库消费；同一命令集编译到 Cursor/Trae/Qoder/Claude Code 行为一致；注入扫描拦截恶意资产","M6 验收标准","T-600..T-611",done
