@@ -7,7 +7,7 @@ that continuously improves the harness itself.
 
 Design document: [`docs/harness-delivery-system-design.html`](docs/harness-delivery-system-design.html)
 · Build plan & status: [`docs/build-plan.csv`](docs/build-plan.csv)
-· **Usage scenario examples**: [`docs/examples/en/`](docs/examples/en/README.md) (English) · [`docs/examples/`](docs/examples/README.md) (中文) — 10 end-to-end scenarios (new project onboarding, standard development flow, strict test-first, concurrent conflicts, emergency hotfix, legacy migration, Steering governance, Hub sharing, multi-tool collaboration, custom sensors)
+· **Usage scenario examples**: [`docs/examples/en/`](docs/examples/en/README.md) (English) · [`docs/examples/`](docs/examples/README.md) (中文) — 12 end-to-end scenarios (new project onboarding, standard development flow, strict test-first, concurrent conflicts, emergency hotfix, legacy migration, Steering governance, Hub sharing, multi-tool collaboration, custom sensors, custom requirements template, custom design template)
 
 ## Advanced Features & Differentiation
 
