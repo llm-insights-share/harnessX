@@ -7,7 +7,7 @@ that continuously improves the harness itself.
 
 Design document: [`docs/harness-delivery-system-design.html`](docs/harness-delivery-system-design.html)
 · Build plan & status: [`docs/build-plan.csv`](docs/build-plan.csv)
-· **使用场景示例（中文）**: [`docs/examples/`](docs/examples/README.md) — 10 个贴近实际工作的端到端场景（新项目接入、标准开发全流程、strict 测试先行、并发冲突、紧急修复、遗留迁移、Steering 治理、Hub 共享、多工具协作、自定义传感器）
+· **Usage scenario examples**: [`docs/examples/en/`](docs/examples/en/README.md) (English) · [`docs/examples/`](docs/examples/README.md) (中文) — 10 end-to-end scenarios (new project onboarding, standard development flow, strict test-first, concurrent conflicts, emergency hotfix, legacy migration, Steering governance, Hub sharing, multi-tool collaboration, custom sensors)
 
 ## Quick start
 
