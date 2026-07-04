@@ -14,6 +14,8 @@ This directory collects end-to-end scenarios that mirror real work. Each scenari
 | [08](08-hub-asset-sharing-supply-chain.md) | Platform team distributes normative assets to business repos via Hub | hub promote/review/add/sync / lock / injection scan |
 | [09](09-multi-tool-collaboration-ci-enforcement.md) | Team members use Cursor/Trae/Qoder/Claude Code | adapter single-source compile / manual-edit drift detection / Quest export / CI blocks hook bypass |
 | [10](10-custom-sensors-triggers.md) | Security team integrates custom scanner + event/schedule triggers | plugin API (Node/command protocol) / file-save trigger / schedule / `hx fix` |
+| [11](11-custom-requirements-output-template.md) | Customize proposal template and delta spec norms before delivery | `guide.template` / spec-writing Skill / Gate mandatory sections / `overrides` |
+| [12](12-custom-design-output-template.md) | Customize design.md structure and design-phase command before delivery | design-template asset / customized `/hx-design` / api-design Skill / Context Pack |
 
 **中文**: [docs/examples/](../README.md)
 

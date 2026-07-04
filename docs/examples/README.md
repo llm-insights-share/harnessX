@@ -16,6 +16,8 @@
 | [08](08-hub-资产共享与供应链.md) | 平台团队通过 Hub 向业务仓库分发规范资产 | hub promote/review/add/sync / lock / 注入扫描 |
 | [09](09-多工具协作与CI强制.md) | 团队成员分别使用 Cursor/Trae/Qoder/Claude Code | adapter 单源编译 / 手改漂移检测 / Quest 导出 / 绕过 hooks 被 CI 拦截 |
 | [10](10-自定义传感器与触发器.md) | 安全团队接入自研扫描器 + 事件/定时触发 | 插件 API（Node/命令协议）/ file-save 触发 / schedule / `hx fix` |
+| [11](11-自定义需求产出模板.md) | 开工前定制 proposal 模板与 delta spec 写作规范 | `guide.template` / spec-writing Skill / Gate 强制节 / `overrides` |
+| [12](12-自定义概要设计产出模板.md) | 开工前定制 design.md 结构与 design 阶段命令 | design-template 资产 / 定制 `/hx-design` / api-design Skill / Context Pack |
 
 ## 阅读前提
 
