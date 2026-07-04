@@ -46,16 +46,16 @@ T-504,M5-Steering,P1,"AI Review Sensor（Rubric Runner）","sensor.rubric 执行
 T-505,M5-Steering,P1,"hx rubric add 自然语言入口","口语化检查项生成 draft 规则；进入 trial 生命周期；误报率统计钩子","规则沉淀支撑","T-504",done
 T-506,M5-Steering,P1,"hx janitor run","定时巡检：死代码/spec-code 漂移/过期 waiver；自动开清理 PR；CI cron 集成","FR-027(schedule)","T-304,T-306",done
 T-507,M5-Steering,P1,"M5 验收","重复失败模式可生成 harness 补丁 PR；蒸馏资产带证据链且可追溯","M5 验收标准","T-500..T-506",done
-T-600,M6-Assets,P1,"控制资产模型完整实现","asset.yaml manifest（kind/execution/status/provenance/metrics）；生命周期 draft→trial→enforced→deprecated；metrics 自动回填","§11 资产模型","T-001",todo
-T-601,M6-Assets,P1,"分层解析与 harness.lock","change>本地>团队>Hub>内置 五层解析；overrides 显式声明+原因；lock 锁定精确版本与内容哈希","§11.2","T-600",todo
-T-602,M6-Assets,P1,"hx hub 命令族","hub add/sync/promote；三方合并（上游 vs 本地 override vs 基线）；Hub 仓库结构与 CI 模板（golden repos/rubric eval sets）","§11.5","T-601",todo
-T-603,M6-Assets,P1,"资产供应链安全","lock 内容哈希校验；Hub 发布强制 review 流程；guide 内容注入扫描（拒绝指令劫持文本）","NFR-009","T-601",todo
-T-604,M6-Assets,P1,"Adapter 单源编译引擎","assets 单源→多目标编译框架；能力声明模型（hooks/rules/agent/MCP/权限）；Tier 分级；生成文件版本标注与手改检测；Skills 输出（FR-032）","FR-032,FR-033,NFR-003","T-600",todo
-T-605,M6-Assets,P1,"Cursor Adapter","输出 .cursor/commands|skills|rules；Hooks 集成（fixtures 保护/meta.yaml 拦截）；命令白名单","NFR-003(Tier1)","T-604",todo
-T-606,M6-Assets,P1,"Trae Adapter","输出 .trae/rules/project_rules.md；规划型/执行型自定义 Agent 配置；MCP 接入 hx CLI","NFR-003(Tier1)","T-604",todo
-T-607,M6-Assets,P1,"Qoder Adapter","输出 .qoder/ rules|skills；Quest Spec 对接（delta spec+tasks 作为 Quest 输入）；Worktree 环境映射 apply 隔离；MCP 接入","NFR-003(Tier1)","T-604",todo
-T-608,M6-Assets,P1,"Claude Code Adapter 与通用兜底","输出 CLAUDE.md/.claude/commands + Hooks/permission；AGENTS.md 通用兜底（Tier 2/0：Codex/Copilot/Windsurf 等）","NFR-003(Tier2/0)","T-604",todo
-T-609,M6-Assets,P1,"事件驱动触发器","trigger: file-save 文件监听执行 Sensor；trigger: schedule 定时调度；与 janitor 复用调度器","FR-027","T-201",todo
-T-610,M6-Assets,P1,"自定义 Sensor 插件 API","Node/Python 插件协议（shell 已在 T-201）；kind/execution 标注；插件 API SemVer 化并向后兼容一个 Major","FR-024,NFR-008","T-201",todo
-T-611,M6-Assets,P1,"hx fix 修复回环","基于 Sensor 报告 fix_command 启动带上下文修复会话（findings+spec 片段+代码位置 Context Pack）","反馈闭环支撑","T-201,T-202",todo
-T-612,M6-Assets,P1,"M6 验收","资产可从仓库沉淀晋级到 Hub 并被其他仓库消费；同一命令集编译到 Cursor/Trae/Qoder/Claude Code 行为一致；注入扫描拦截恶意资产","M6 验收标准","T-600..T-611",todo
+T-600,M6-Assets,P1,"控制资产模型完整实现","asset.yaml manifest（kind/execution/status/provenance/metrics）；生命周期 draft→trial→enforced→deprecated；metrics 自动回填","§11 资产模型","T-001",done
+T-601,M6-Assets,P1,"分层解析与 harness.lock","change>本地>团队>Hub>内置 五层解析；overrides 显式声明+原因；lock 锁定精确版本与内容哈希","§11.2","T-600",done
+T-602,M6-Assets,P1,"hx hub 命令族","hub add/sync/promote；三方合并（上游 vs 本地 override vs 基线）；Hub 仓库结构与 CI 模板（golden repos/rubric eval sets）","§11.5","T-601",done
+T-603,M6-Assets,P1,"资产供应链安全","lock 内容哈希校验；Hub 发布强制 review 流程；guide 内容注入扫描（拒绝指令劫持文本）","NFR-009","T-601",done
+T-604,M6-Assets,P1,"Adapter 单源编译引擎","assets 单源→多目标编译框架；能力声明模型（hooks/rules/agent/MCP/权限）；Tier 分级；生成文件版本标注与手改检测；Skills 输出（FR-032）","FR-032,FR-033,NFR-003","T-600",done
+T-605,M6-Assets,P1,"Cursor Adapter","输出 .cursor/commands|skills|rules；Hooks 集成（fixtures 保护/meta.yaml 拦截）；命令白名单","NFR-003(Tier1)","T-604",done
+T-606,M6-Assets,P1,"Trae Adapter","输出 .trae/rules/project_rules.md；规划型/执行型自定义 Agent 配置；MCP 接入 hx CLI","NFR-003(Tier1)","T-604",done
+T-607,M6-Assets,P1,"Qoder Adapter","输出 .qoder/ rules|skills；Quest Spec 对接（delta spec+tasks 作为 Quest 输入）；Worktree 环境映射 apply 隔离；MCP 接入","NFR-003(Tier1)","T-604",done
+T-608,M6-Assets,P1,"Claude Code Adapter 与通用兜底","输出 CLAUDE.md/.claude/commands + Hooks/permission；AGENTS.md 通用兜底（Tier 2/0：Codex/Copilot/Windsurf 等）","NFR-003(Tier2/0)","T-604",done
+T-609,M6-Assets,P1,"事件驱动触发器","trigger: file-save 文件监听执行 Sensor；trigger: schedule 定时调度；与 janitor 复用调度器","FR-027","T-201",done
+T-610,M6-Assets,P1,"自定义 Sensor 插件 API","Node/Python 插件协议（shell 已在 T-201）；kind/execution 标注；插件 API SemVer 化并向后兼容一个 Major","FR-024,NFR-008","T-201",done
+T-611,M6-Assets,P1,"hx fix 修复回环","基于 Sensor 报告 fix_command 启动带上下文修复会话（findings+spec 片段+代码位置 Context Pack）","反馈闭环支撑","T-201,T-202",done
+T-612,M6-Assets,P1,"M6 验收","资产可从仓库沉淀晋级到 Hub 并被其他仓库消费；同一命令集编译到 Cursor/Trae/Qoder/Claude Code 行为一致；注入扫描拦截恶意资产","M6 验收标准","T-600..T-611",done

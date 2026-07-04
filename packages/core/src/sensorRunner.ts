@@ -34,7 +34,14 @@ export async function runSensor(
     report = await runOnce(ws, def, change, opts);
     if (report.status === "pass") break;
   }
-  appendRun(ws, { kind: "sensor", change, name: def.id, status: report.status, detail: { summary: report.summary } });
+  // full report is persisted on failure so `hx fix` can rebuild context (T-611)
+  appendRun(ws, {
+    kind: "sensor",
+    change,
+    name: def.id,
+    status: report.status,
+    detail: report.status === "pass" ? { summary: report.summary } : report
+  });
   if (report.status !== "pass") recordFailure(ws, { sensor: def.id, change, report });
   return report;
 }

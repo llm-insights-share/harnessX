@@ -28,3 +28,8 @@ export * from "./rebase.js";
 export * from "./steering.js";
 export * from "./rubric.js";
 export * from "./janitor.js";
+export * from "./assets.js";
+export * from "./hub.js";
+export * from "./supplyChain.js";
+export * from "./triggers.js";
+export * from "./fix.js";
