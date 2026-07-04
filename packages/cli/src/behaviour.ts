@@ -14,6 +14,10 @@ import {
   addWaiver,
   readMeta,
   gitChangedFiles,
+  lintHarness,
+  rebaseCheck,
+  recommendProfile,
+  applyProfileChoice,
   type RunnerOptions,
   type WaiverRecord
 } from "@harnessx/core";
@@ -142,4 +146,55 @@ export function registerBehaviourCommands(program: Command): void {
       console.log(`${w.id}\t${w.target}\t${expired ? "EXPIRED" : "active"}\tby ${w.approvedBy}\t${w.reason}`);
     }
   });
+
+  const harness = program.command("harness").description("Harness self-checks (FR-034)");
+  harness.command("lint").action(() => {
+    const conflicts = lintHarness(ws());
+    if (!conflicts.length) {
+      console.log("no conflicting guide directives found");
+      return;
+    }
+    for (const c of conflicts) {
+      console.error(`CONFLICT between "${c.a.guideId}" (${c.a.layer}) and "${c.b.guideId}" (${c.b.layer}):`);
+      console.error(`  A: ${c.a.text}`);
+      console.error(`  B: ${c.b.text}`);
+      console.error(`  → ${c.resolution}`);
+    }
+    process.exit(1);
+  });
+
+  const rebase = program.command("rebase").description("Concurrent-change rebase check (FR-011)");
+  rebase.command("check <change>").action((change: string) => {
+    const res = rebaseCheck(ws(), change);
+    if (res.clean) {
+      console.log("deltas apply cleanly against current specs");
+      return;
+    }
+    for (const c of res.conflicts) {
+      console.error(`CONFLICT ${c.capability}/"${c.requirement}" (${c.op}): ${c.reason}`);
+      console.error(`  → ${c.guidance}`);
+    }
+    process.exit(1);
+  });
+
+  const profile = program.command("profile").description("Scale-adaptive profile recommendation (FR-013)");
+  profile
+    .command("recommend <change>")
+    .option("--diff-lines <n>", "estimated diff size in lines")
+    .option("--choose <profile>", "record the chosen profile")
+    .option("--override-reason <reason>", "required when choosing below the recommendation")
+    .action((change: string, opts: { diffLines?: string; choose?: string; overrideReason?: string }) => {
+      const w = ws();
+      const meta = readMeta(w, change);
+      const rec = recommendProfile(w, {
+        domains: meta.touchedDomains,
+        estimatedDiffLines: opts.diffLines ? parseInt(opts.diffLines, 10) : undefined
+      });
+      console.log(`recommended: ${rec.recommended} (score ${rec.score})`);
+      for (const r of rec.reasons) console.log(`  - ${r}`);
+      if (opts.choose) {
+        applyProfileChoice(w, change, rec, opts.choose, opts.overrideReason);
+        console.log(`profile set to ${opts.choose}${opts.overrideReason ? ` (override: ${opts.overrideReason})` : ""}`);
+      }
+    });
 }

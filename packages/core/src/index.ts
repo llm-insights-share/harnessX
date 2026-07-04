@@ -22,3 +22,6 @@ export * from "./verify.js";
 export * from "./testFirst.js";
 export * from "./sync.js";
 export * from "./view.js";
+export * from "./harnessLint.js";
+export * from "./profileRecommend.js";
+export * from "./rebase.js";
