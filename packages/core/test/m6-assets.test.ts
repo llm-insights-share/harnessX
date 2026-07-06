@@ -216,7 +216,9 @@ describe("T-605..T-608 target emitters", () => {
     const cursorCmds = results[0].files.filter((f) => f.startsWith(".cursor/commands/"));
     expect(cursorCmds).toHaveLength(cmds.length);
     expect(fs.existsSync(path.join(ws.root, ".cursor/skills/coding-conventions/SKILL.md"))).toBe(true);
-    expect(fs.readFileSync(path.join(ws.root, ".cursor/hooks.json"), "utf8")).toContain("hx fixture verify");
+    expect(fs.readFileSync(path.join(ws.root, ".cursor/hooks.json"), "utf8")).toContain("fixture-verify.mjs");
+    expect(fs.readFileSync(path.join(ws.root, ".cursor/hooks.json"), "utf8")).toContain("postToolUse");
+    expect(fs.existsSync(path.join(ws.root, ".cursor/hooks/fixture-verify.mjs"))).toBe(true);
 
     // trae: rules + planner/executor agents
     const agents = fs.readFileSync(path.join(ws.root, ".trae/agents.yaml"), "utf8");

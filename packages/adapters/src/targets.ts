@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
-import { Workspace, readTasks, listDeltaFiles } from "@harnessx/core";
+import { Workspace, ensureDir, readTasks, listDeltaFiles } from "@harnessx/core";
 import { commandBody, type TargetEmitter } from "./compiler.js";
 
 /**
@@ -11,7 +11,88 @@ import { commandBody, type TargetEmitter } from "./compiler.js";
 
 /* ── T-605 Cursor: commands / skills / rules / hooks ── */
 
-export const cursorEmitter: TargetEmitter = (_ws, ctx) => {
+/** Cursor postToolUse hook: verify approved fixtures after Write and inject violations into agent context. */
+const CURSOR_FIXTURE_VERIFY_HOOK = `#!/usr/bin/env node
+/** HarnessX Cursor hook — run hx fixture verify after protected file writes. */
+import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+
+function readInput() {
+  try {
+    return JSON.parse(readFileSync(0, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function relativePath(filePath, roots) {
+  if (!filePath) return "";
+  const norm = filePath.replace(/\\\\/g, "/");
+  for (const root of roots ?? []) {
+    const r = root.replace(/\\\\/g, "/");
+    if (norm.startsWith(r + "/")) return norm.slice(r.length + 1);
+  }
+  return norm;
+}
+
+function isProtected(rel) {
+  if (!rel) return false;
+  if (rel.startsWith("tests/fixtures/")) return true;
+  return /^harnessX\\/changes\\/[^/]+\\/meta\\.yaml$/.test(rel);
+}
+
+function out(obj) {
+  process.stdout.write(JSON.stringify(obj) + "\\n");
+}
+
+function runFixtureVerify(cwd) {
+  const localHx = path.join(cwd, "node_modules", ".bin", "hx");
+  const cmd = existsSync(localHx) ? localHx : "hx";
+  return spawnSync(cmd, ["fixture", "verify"], { encoding: "utf8", cwd });
+}
+
+const input = readInput();
+const roots = input.workspace_roots ?? [];
+const cwd = roots[0] ?? process.cwd();
+let rel = "";
+
+if (input.file_path) {
+  rel = relativePath(input.file_path, roots);
+} else if (input.tool_name === "Write") {
+  rel = relativePath(input.tool_input?.file_path ?? input.tool_input?.path ?? "", roots);
+}
+
+if (!isProtected(rel)) {
+  out({});
+  process.exit(0);
+}
+
+const hx = runFixtureVerify(cwd);
+if (hx.error) {
+  const err = \`hx fixture verify failed to run (\${hx.error.code}): ensure hx is on PATH or installed in node_modules\`;
+  if (input.tool_name === "Write") out({ additional_context: \`[HarnessX fixture guard] \${err}\` });
+  else console.error(err);
+  process.exit(0);
+}
+if (hx.status === 0) {
+  out({});
+  process.exit(0);
+}
+
+const detail = (hx.stderr || hx.stdout || "fixture verify failed").trim();
+const ctx = \`[HarnessX fixture guard] \${detail}\\nRestore the fixture, or have a human re-approve: hx fixture approve \${rel} --by <name>\`;
+
+if (input.tool_name === "Write") {
+  out({ additional_context: ctx });
+} else {
+  console.error(ctx);
+  out({});
+}
+process.exit(0);
+`;
+
+export const cursorEmitter: TargetEmitter = (ws, ctx) => {
   const files: string[] = [];
   for (const c of ctx.commands) {
     files.push(ctx.write(`.cursor/commands/${c.name}.md`, commandBody(c)));
@@ -20,7 +101,12 @@ export const cursorEmitter: TargetEmitter = (_ws, ctx) => {
     files.push(ctx.write(`.cursor/skills/${s.id}/SKILL.md`, s.content));
   }
   files.push(ctx.write(`.cursor/rules/harnessx.mdc`, `---\ndescription: HarnessX ground rules\nalwaysApply: true\n---\n\n${ctx.rules}\n`));
-  // hooks: protect fixtures + meta.yaml on save/edit
+  const hookRel = ".cursor/hooks/fixture-verify.mjs";
+  const hookAbs = path.join(ws.root, hookRel);
+  ensureDir(path.dirname(hookAbs));
+  fs.writeFileSync(hookAbs, CURSOR_FIXTURE_VERIFY_HOOK);
+  files.push(hookRel);
+  // hooks: postToolUse feeds violations back to the agent; afterFileEdit is observational only
   files.push(
     ctx.write(
       `.cursor/hooks.json`,
@@ -29,7 +115,13 @@ export const cursorEmitter: TargetEmitter = (_ws, ctx) => {
           version: 1,
           hooks: {
             beforeSubmitPrompt: [{ command: "hx gate hook-check" }],
-            afterFileEdit: [{ command: "hx fixture verify", paths: ["tests/fixtures/**", "harnessX/changes/**/meta.yaml"] }]
+            postToolUse: [{ command: "node .cursor/hooks/fixture-verify.mjs", matcher: "Write" }],
+            afterFileEdit: [
+              {
+                command: "node .cursor/hooks/fixture-verify.mjs",
+                paths: ["tests/fixtures/**", "harnessX/changes/**/meta.yaml"]
+              }
+            ]
           }
         },
         null,
