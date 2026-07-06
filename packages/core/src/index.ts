@@ -40,3 +40,4 @@ export * from "./guideEval.js";
 export * from "./issueScaffold.js";
 export * from "./watch.js";
 export * from "./mcp.js";
+export * from "./remote.js";

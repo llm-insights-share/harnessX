@@ -157,6 +157,8 @@ hx archive add-refund        # 合并 delta 至主规格并归档
 | `hx gate check <id> [--phase <p>]` | 运行指定阶段 sensor 套件 |
 | `hx gate advance <id>` | 推进至下一阶段（须全绿 + 前置条件） |
 | `hx gate approve <id> --gate spec --approver <name>` | 记录人工规格批准 |
+| `hx remote pull [--change <id>]` | 拉取远程更新并校验 meta / rebase |
+| `hx remote push [--change <id>]` | 预检 meta、stage change 目录、提交并推送 |
 | `hx guide pack <id> --phase <p>` | 组装该阶段 Context Pack |
 | `hx harness lint` | 检测宪法与 Skill 冲突 |
 | `hx bundle list` | 列出拓扑包（`api-service`、`frontend-dashboard`、`frontend-2c`、`library-sdk`、`serverless-function`、`mobile-app`、`data-pipeline` 及 `*-cn`） |
