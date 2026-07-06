@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { Workspace } from "./paths.js";
 import { buildContextPack } from "./guideEngine.js";
+import { harnessxPackageRoot } from "./packageRoot.js";
 
 /**
  * v0.2 P2: Guide behavior eval harness — offline checks that Context Packs
@@ -32,10 +32,7 @@ export interface GuideEvalReport {
   results: GuideEvalResult[];
 }
 
-const bundledEvalsPath = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../evals/guide-behavior.json"
-);
+const bundledEvalsPath = path.join(harnessxPackageRoot(), "packages", "core", "evals", "guide-behavior.json");
 
 export function loadGuideEvalCases(customPath?: string): GuideEvalCase[] {
   const p = customPath ?? bundledEvalsPath;

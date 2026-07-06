@@ -70,8 +70,33 @@ The Guide Engine assembles context precisely per phase: the Propose phase does n
 
 ## Quick start
 
+### Install (end users)
+
+Requires **Node.js 20+**.
+
+```bash
+# Global install — use `hx` anywhere
+npm install -g harnessx
+
+# Or run without installing
+npx harnessx init --bundle api-service
+```
+
+After install, initialize HarnessX in your project:
+
+```bash
+cd your-project
+hx init --bundle api-service
+hx change create add-auth --domains auth
+hx propose add-auth --title "Session expiry"
+# … see workflow below
+```
+
+### From source (contributors)
+
 ```bash
 npm install
+npm run build          # compile dist/cli.mjs for production-like runs
 node bin/hx.js init --bundle api-service   # scaffold harnessX/ in your repo
 node bin/hx.js change create add-auth --domains auth
 node bin/hx.js propose add-auth --title "Session expiry"
@@ -88,6 +113,20 @@ node bin/hx.js verify add-auth             # verification suite + traceability
 node bin/hx.js archive add-auth            # merge delta specs into main specs
 node bin/hx.js adapter sync                # compile to .cursor/ .trae/ .qoder/ CLAUDE.md AGENTS.md
 ```
+
+### 中文：用户安装
+
+需要 **Node.js 20+**。
+
+```bash
+# 全局安装，任意目录使用 hx
+npm install -g harnessx
+
+# 或不安装，直接运行
+npx harnessx init --bundle api-service
+```
+
+在项目中初始化后，按下方命令走完整交付流程即可。场景示例见 [`docs/examples/`](docs/examples/README.md)。
 
 ## Repository layout
 

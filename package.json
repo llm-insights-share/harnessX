@@ -10,12 +10,22 @@
   "bin": {
     "hx": "./bin/hx.js"
   },
+  "files": [
+    "bin",
+    "dist",
+    "packages/bundles",
+    "packages/core/evals",
+    "README.md"
+  ],
   "scripts": {
+    "build": "node scripts/build.mjs",
     "hx": "tsx packages/cli/src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "verify": "npm run typecheck && npm run test"
+    "verify": "npm run typecheck && npm run test",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run verify"
   },
   "dependencies": {
     "commander": "^12.1.0",
@@ -24,6 +34,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.5.0",
+    "esbuild": "^0.25.0",
     "tsx": "^4.19.0",
     "typescript": "^5.5.4",
     "vitest": "^2.0.5"
