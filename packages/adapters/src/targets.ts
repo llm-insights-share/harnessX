@@ -171,7 +171,8 @@ export const cursorEmitter: TargetEmitter = (ws, ctx) => {
         },
         null,
         2
-      )
+      ),
+      "raw"
     )
   );
   return { files: [], skipped: [] };
@@ -213,7 +214,8 @@ export const qoderEmitter: TargetEmitter = (_ws, ctx) => {
   for (const c of ctx.commands) ctx.write(`.qoder/commands/${c.name}.md`, commandBody(c));
   ctx.write(
     `.qoder/mcp.json`,
-    JSON.stringify({ mcpServers: { harnessx: { command: "hx", args: ["mcp"] } } }, null, 2)
+    JSON.stringify({ mcpServers: { harnessx: { command: "hx", args: ["mcp"] } } }, null, 2),
+    "raw"
   );
   return { files: [], skipped: [] };
 };
@@ -272,7 +274,8 @@ export const claudeEmitter: TargetEmitter = (_ws, ctx) => {
       },
       null,
       2
-    )
+    ),
+    "raw"
   );
   return { files: [], skipped: [] };
 };

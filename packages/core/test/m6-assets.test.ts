@@ -223,6 +223,9 @@ describe("T-605..T-608 target emitters", () => {
     expect(fs.readFileSync(path.join(ws.root, ".cursor/hooks.json"), "utf8")).toContain("preToolUse");
     expect(fs.readFileSync(path.join(ws.root, ".cursor/hooks.json"), "utf8")).toContain("Write|StrReplace|Apply_patch");
     expect(fs.existsSync(path.join(ws.root, ".cursor/hooks/fixture-verify.mjs"))).toBe(true);
+    const hooksJson = fs.readFileSync(path.join(ws.root, ".cursor/hooks.json"), "utf8");
+    expect(hooksJson).not.toContain("<!--");
+    expect(JSON.parse(hooksJson).version).toBe(1);
 
     // trae: rules + planner/executor agents
     const agents = fs.readFileSync(path.join(ws.root, ".trae/agents.yaml"), "utf8");
@@ -233,11 +236,17 @@ describe("T-605..T-608 target emitters", () => {
     // qoder: rules + skills + mcp
     expect(fs.existsSync(path.join(ws.root, ".qoder/rules/harnessx.md"))).toBe(true);
     expect(fs.readFileSync(path.join(ws.root, ".qoder/mcp.json"), "utf8")).toContain("harnessx");
+    const mcpJson = fs.readFileSync(path.join(ws.root, ".qoder/mcp.json"), "utf8");
+    expect(mcpJson).not.toContain("<!--");
+    expect(JSON.parse(mcpJson).mcpServers.harnessx).toBeDefined();
 
     // claude: CLAUDE.md + commands + deny permissions on meta/fixtures
     const claudeMd = fs.readFileSync(path.join(ws.root, "CLAUDE.md"), "utf8");
     for (const c of cmds) expect(claudeMd).toContain(c.name);
     expect(fs.readFileSync(path.join(ws.root, ".claude/settings.json"), "utf8")).toContain("meta.yaml");
+    const claudeSettings = fs.readFileSync(path.join(ws.root, ".claude/settings.json"), "utf8");
+    expect(claudeSettings).not.toContain("<!--");
+    expect(JSON.parse(claudeSettings).permissions.deny).toContain("Edit(tests/fixtures/**)");
 
     // generic fallback: AGENTS.md contains rules + every command
     const agentsMd = fs.readFileSync(path.join(ws.root, "AGENTS.md"), "utf8");
