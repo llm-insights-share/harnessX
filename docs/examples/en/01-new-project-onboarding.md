@@ -124,7 +124,22 @@ Agent  ▸ Cannot hand-edit meta.yaml — only hx CLI writes it with content has
          hand edits are flagged TAMPERED in CI meta verify. Use hx gate advance instead.
 ```
 
-**③ Hooks active.** Have the agent edit a file under `tests/fixtures/` and save — `.cursor/hooks.json` `afterFileEdit` triggers `hx fixture verify`; changes without `hx fixture approve` fail immediately.
+**③ Hooks active.** `hx fixture verify` only checks **approved** golden fixtures listed in `harnessX/fixtures.lock`. On a fresh project the lock is empty, so editing any file under `tests/fixtures/` passes silently (`all approved fixtures intact`) — no red failure. Seed an approved fixture first:
+
+```console
+$ mkdir -p tests/fixtures && echo '{"total": 42}' > tests/fixtures/expected.json
+$ hx fixture approve tests/fixtures/expected.json --by alice
+approved tests/fixtures/expected.json (a94b0e0dcfd4) by alice
+```
+
+Then have the agent edit that file and save (must be in local Cursor so `afterFileEdit` fires; Cloud Agent remote edits do not trigger editor hooks):
+
+```text
+Cursor ▸ Change total to 43 in tests/fixtures/expected.json and save
+Hook   ▸ afterFileEdit → hx fixture verify
+         VIOLATION approved fixture modified: tests/fixtures/expected.json
+         (hook exits non-zero; agent gets failure feedback; change cannot proceed without hx fixture approve)
+```
 
 All three passing means L1 (rules/commands) and L2 (editor hooks) are closed on the Cursor side. Trae/Claude Code users verify via their tool entry points in scenario 09.
 
