@@ -1,13 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 import { Workspace, ensureDir } from "./paths.js";
 import { HarnessYaml } from "./schemas.js";
+import { harnessxPackageRoot } from "./packageRoot.js";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
 /** Built-in bundle sources shipped with the harnessx package. */
-export const BUILTIN_BUNDLES_DIR = path.resolve(HERE, "../../bundles");
+export const BUILTIN_BUNDLES_DIR = path.join(harnessxPackageRoot(), "packages", "bundles");
 
 function copyDir(src: string, dest: string) {
   ensureDir(dest);
