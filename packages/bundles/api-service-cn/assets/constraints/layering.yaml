@@ -1,0 +1,25 @@
+id: layering-rules
+description: API 服务分层架构约束（与 arch-boundary sensor 配对）
+layers:
+  - name: routes
+    path: src/routes
+    mayImport: [services, shared]
+  - name: services
+    path: src/services
+    mayImport: [repositories, shared]
+  - name: repositories
+    path: src/repositories
+    mayImport: [shared]
+  - name: shared
+    path: src/shared
+    mayImport: []
+forbidden:
+  - from: src/repositories
+    to: src/routes
+    hint: "Repository 层不得依赖 HTTP 层"
+  - from: src/services
+    to: src/routes
+    hint: "Service 层不得依赖 HTTP 层"
+budgets:
+  maxFileLines: 400
+  maxBundleKB: 512

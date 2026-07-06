@@ -76,6 +76,20 @@ describe("T-100 hx init", () => {
     expect(harness.suites["verification"]).toContain("arch-boundary");
     expect(fs.existsSync(path.join(res.ws.bundlesDir, "api-service"))).toBe(true);
   });
+
+  it("--locale hx-cn seeds Chinese scaffold with design-template", () => {
+    const root = tmp();
+    const res = initWorkspace(root, { locale: "hx-cn", bundle: "api-service-cn" });
+    expect(res.ws.readConfig().locale).toBe("zh-CN");
+    const constitution = fs.readFileSync(res.ws.constitutionFile, "utf8");
+    expect(constitution).toContain("项目宪法");
+    const harness = res.ws.readHarness();
+    expect(harness.guides.map((g) => g.id)).toContain("design-template");
+    const proposeCmd = fs.readFileSync(path.join(res.ws.assetsDir, "commands/propose.md"), "utf8");
+    expect(proposeCmd).toContain("起草提案");
+    expect(res.nextSteps[0]).toContain("constitution.md");
+    expect(fs.existsSync(path.join(res.ws.bundlesDir, "api-service-cn/skills/api-design.md"))).toBe(true);
+  });
 });
 
 describe("T-101 artifact store: delta parse + merge", () => {

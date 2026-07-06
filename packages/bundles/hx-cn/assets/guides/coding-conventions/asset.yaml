@@ -1,0 +1,10 @@
+id: coding-conventions
+kind: guide.skill
+category: maintainability
+phase: [apply]
+version: 1.0.0
+origin: builtin
+status: enforced
+execution: inferential
+provenance: []
+metrics: {}

@@ -1,0 +1,30 @@
+id: api-service-cn
+description: 后端 API 服务拓扑包（分层架构 + 性能预算，中文版）
+guides:
+  - id: api-design
+    kind: guide.skill
+    execution: inferential
+    phase: [design, apply]
+    source: assets/bundles/api-service-cn/skills/api-design.md
+  - id: layering-rules
+    kind: guide.constraint
+    execution: computational
+    phase: [apply, verify]
+    source: assets/bundles/api-service-cn/constraints/layering.yaml
+sensors:
+  - id: arch-boundary
+    kind: sensor.arch
+    execution: computational
+    phase: [verify]
+    builtin: arch-boundary
+    on_fail: block
+    fix_hint: "调整 import，使依赖向内指向：routes → services → repositories"
+  - id: perf-budget
+    kind: sensor.budget
+    execution: computational
+    phase: [verify]
+    builtin: budget
+    on_fail: warn
+    fix_hint: "在 design.md 中记录性能影响，或优化热点路径以满足预算"
+suites:
+  verification: [spec-validate, spec-trace, arch-boundary, perf-budget]

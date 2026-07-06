@@ -141,6 +141,7 @@ export type HarnessYaml = z.infer<typeof HarnessYaml>;
 
 export const ConfigYaml = z.object({
   profile: z.string().default("standard"),
+  locale: z.enum(["en", "zh-CN"]).default("en"),
   compat_mode: z.enum(["openspec"]).optional(),
   hub: z.string().optional()
 });

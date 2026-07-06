@@ -1,0 +1,10 @@
+id: design-template
+kind: guide.template
+category: architecture
+phase: [design]
+version: 1.0.0
+origin: builtin
+status: enforced
+execution: computational
+provenance: []
+metrics: {}

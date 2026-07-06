@@ -1,6 +1,6 @@
 # HarnessX 使用场景示例
 
-**English**: [Usage scenario examples (English)](en/README.md)
+**English**: [Usage scenario examples (English)](en/README.md) · [Operation Guide (English)](../operation-guide.en.md)
 
 本目录收录一组贴近实际工作的端到端场景。每个场景包含：**背景与角色**、**逐步操作命令与期望输出**、**关键机制解析**。命令输出均与 `hx` CLI 实际行为一致，可以照着在真实仓库中复现。
 

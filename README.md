@@ -11,6 +11,7 @@ See [scenario 13](docs/examples/13-v0.2-编排与并行交付.md) for the full w
 
 Design document: [`docs/harness-delivery-system-design.html`](docs/harness-delivery-system-design.html)
 · Build plan & status: [`docs/build-plan.csv`](docs/build-plan.csv)
+· **Operation guides**: [`docs/operation-guide.en.md`](docs/operation-guide.en.md) (English) · [`docs/operation-guide.zh-CN.md`](docs/operation-guide.zh-CN.md) (中文)
 · **Usage scenario examples**: [`docs/examples/en/`](docs/examples/en/README.md) (English) · [`docs/examples/`](docs/examples/README.md) (中文) — 13 end-to-end scenarios (new project onboarding, standard development flow, strict test-first, concurrent conflicts, emergency hotfix, legacy migration, Steering governance, Hub sharing, multi-tool collaboration, custom sensors, custom requirements template, custom design template, **v0.2 orchestration**)
 
 ## Advanced Features & Differentiation
@@ -73,6 +74,7 @@ The Guide Engine assembles context precisely per phase: the Propose phase does n
 ```bash
 npm install
 node bin/hx.js init --bundle api-service   # scaffold harnessX/ in your repo
+node bin/hx.js init --locale hx-cn --bundle api-service-cn   # Chinese scaffold (hx-cn)
 node bin/hx.js change create add-auth --domains auth
 node bin/hx.js propose add-auth --title "Session expiry"
 node bin/hx.js gate advance add-auth       # gates advance only when sensors pass
@@ -97,7 +99,7 @@ node bin/hx.js adapter sync                # compile to .cursor/ .trae/ .qoder/ 
 | `packages/sensors` | Built-in sensors: spec-validate (EARS), spec-trace, fixture-hash, approved-tests, arch-boundary, budget, rubric |
 | `packages/adapters` | Single-source → multi-target compiler with capability tiers (Cursor / Trae / Qoder / Claude Code / generic `AGENTS.md`) |
 | `packages/cli` | `hx` command-line interface (Commander) |
-| `packages/bundles` | Built-in `base` scaffold and the `api-service` topology bundle |
+| `packages/bundles` | Built-in `base` scaffold, `hx-cn` Chinese scaffold, and topology bundles (`api-service`, `api-service-cn`) |
 | `docs/` | Design document (HTML) and build plan (CSV) |
 
 ## Key enforcement properties

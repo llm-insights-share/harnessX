@@ -48,12 +48,24 @@ function readTemplate(ws: Workspace, source: string): string {
   return fs.existsSync(f) ? fs.readFileSync(f, "utf8") : "";
 }
 
+function isZhCn(ws: Workspace): boolean {
+  try {
+    return ws.readConfig().locale === "zh-CN";
+  } catch {
+    return false;
+  }
+}
+
 /** FR-003: scaffold proposal.md from the guide.template asset + an initial delta spec draft. */
 export function scaffoldProposal(ws: Workspace, change: string, title: string): { proposalFile: string; deltaFile: string } {
   const meta = readMeta(ws, change);
   const harness = ws.readHarness();
   const tpl = harness.guides.find((g) => g.id === "proposal-template");
-  const raw = tpl ? readTemplate(ws, tpl.source) : "# Proposal: {{title}}\n\n## Why\n\n## What Changes\n\n## Impact\n";
+  const zh = isZhCn(ws);
+  const fallback = zh
+    ? "# Proposal: {{title}}\n\n## Why\n\n## What Changes\n\n## Impact\n"
+    : "# Proposal: {{title}}\n\n## Why\n\n## What Changes\n\n## Impact\n";
+  const raw = tpl ? readTemplate(ws, tpl.source) : fallback;
   const proposalFile = path.join(ws.changeDir(change), "proposal.md");
   fs.writeFileSync(proposalFile, raw.replaceAll("{{title}}", title), "utf8");
 
@@ -61,24 +73,36 @@ export function scaffoldProposal(ws: Workspace, change: string, title: string): 
   const deltaFile = path.join(ws.deltaSpecsDir(change), capability, "spec.md");
   if (!fs.existsSync(deltaFile)) {
     ensureDir(path.dirname(deltaFile));
-    fs.writeFileSync(
-      deltaFile,
-      [
-        `# Delta for ${capability}`,
-        "",
-        "## ADDED Requirements",
-        "",
-        `### Requirement: ${title}`,
-        `WHEN <trigger>, THE SYSTEM SHALL <measurable response>`,
-        "",
-        "#### Scenario: happy path",
-        "- GIVEN ...",
-        "- WHEN ...",
-        "- THEN ...",
-        ""
-      ].join("\n"),
-      "utf8"
-    );
+    const deltaLines = zh
+      ? [
+          `# Delta for ${capability}`,
+          "",
+          "## ADDED Requirements",
+          "",
+          `### Requirement: ${title}`,
+          `WHEN <触发条件>, THE SYSTEM SHALL <可度量响应>`,
+          "",
+          "#### Scenario: happy path",
+          "- GIVEN ...",
+          "- WHEN ...",
+          "- THEN ...",
+          ""
+        ]
+      : [
+          `# Delta for ${capability}`,
+          "",
+          "## ADDED Requirements",
+          "",
+          `### Requirement: ${title}`,
+          `WHEN <trigger>, THE SYSTEM SHALL <measurable response>`,
+          "",
+          "#### Scenario: happy path",
+          "- GIVEN ...",
+          "- WHEN ...",
+          "- THEN ...",
+          ""
+        ];
+    fs.writeFileSync(deltaFile, deltaLines.join("\n"), "utf8");
   }
   return { proposalFile, deltaFile };
 }
@@ -86,38 +110,63 @@ export function scaffoldProposal(ws: Workspace, change: string, title: string): 
 /** FR-002: read-only exploration notes. Callers must not modify code during explore. */
 export function scaffoldExplore(ws: Workspace, change: string, topic: string): string {
   const f = path.join(ws.changeDir(change), "explore.md");
-  fs.writeFileSync(
-    f,
-    `# Exploration: ${topic}\n\n> Read-only phase (FR-002): record findings here; do not modify code.\n\n## Questions\n\n## Findings\n\n## Recommendation\n`,
-    "utf8"
-  );
+  const zh = isZhCn(ws);
+  const body = zh
+    ? `# Exploration: ${topic}\n\n> 只读阶段（FR-002）：在此记录发现；禁止修改代码。\n\n## Questions\n\n## Findings\n\n## Recommendation\n`
+    : `# Exploration: ${topic}\n\n> Read-only phase (FR-002): record findings here; do not modify code.\n\n## Questions\n\n## Findings\n\n## Recommendation\n`;
+  fs.writeFileSync(f, body, "utf8");
   return f;
 }
 
 /** FR-004: design doc with ADR entries and architecture constraints. */
 export function scaffoldDesign(ws: Workspace, change: string): string {
   const f = path.join(ws.changeDir(change), "design.md");
-  fs.writeFileSync(
-    f,
-    [
-      `# Design: ${change}`,
-      "",
-      "## Context",
-      "",
-      "## Decisions (ADR)",
-      "",
-      "### ADR-1: <decision title>",
-      "- Status: proposed",
-      "- Decision: ",
-      "- Consequences: ",
-      "",
-      "## Architecture Constraints",
-      "",
-      "- <constraint that arch-boundary sensors should enforce>",
-      ""
-    ].join("\n"),
-    "utf8"
-  );
+  const harness = ws.readHarness();
+  const tpl = harness.guides.find((g) => g.id === "design-template");
+  if (tpl) {
+    const raw = readTemplate(ws, tpl.source);
+    if (raw) {
+      fs.writeFileSync(f, raw.replaceAll("{{change}}", change), "utf8");
+      return f;
+    }
+  }
+  const zh = isZhCn(ws);
+  const lines = zh
+    ? [
+        `# Design: ${change}`,
+        "",
+        "## Context",
+        "",
+        "## Decisions (ADR)",
+        "",
+        "### ADR-1: <决策标题>",
+        "- Status: proposed",
+        "- Decision: ",
+        "- Consequences: ",
+        "",
+        "## Architecture Constraints",
+        "",
+        "- <arch-boundary 等传感器应检查的约束>",
+        ""
+      ]
+    : [
+        `# Design: ${change}`,
+        "",
+        "## Context",
+        "",
+        "## Decisions (ADR)",
+        "",
+        "### ADR-1: <decision title>",
+        "- Status: proposed",
+        "- Decision: ",
+        "- Consequences: ",
+        "",
+        "## Architecture Constraints",
+        "",
+        "- <constraint that arch-boundary sensors should enforce>",
+        ""
+      ];
+  fs.writeFileSync(f, lines.join("\n"), "utf8");
   return f;
 }
 

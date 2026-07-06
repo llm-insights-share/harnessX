@@ -18,7 +18,7 @@ This directory collects end-to-end scenarios that mirror real work. Each scenari
 | [12](12-custom-design-output-template.md) | Customize design.md structure and design-phase command before delivery | design-template asset / customized `/hx-design` / api-design Skill / Context Pack |
 | [13](13-v0.2-orchestration-parallel-delivery.md) | **v0.2** orchestration: parallel apply, best-of-N, diff annotations, issue onboarding | `--parallel` / `--fan-out` / `hx review` / `--from-issue` / `hx eval guides` / `hx notify` |
 
-**中文**: [docs/examples/](../README.md)
+**中文**: [docs/examples/](../README.md) · [操作说明](../operation-guide.zh-CN.md)
 
 ## Prerequisites
 

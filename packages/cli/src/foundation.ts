@@ -18,9 +18,10 @@ export function registerFoundationCommands(program: Command): void {
   program
     .command("init")
     .description("Initialize harnessX/ in the current repository")
-    .option("--bundle <id>", "apply a topology bundle (e.g. api-service)")
-    .action((opts: { bundle?: string }) => {
-      const res = initWorkspace(process.cwd(), { bundle: opts.bundle });
+    .option("--bundle <id>", "apply a topology bundle (e.g. api-service, api-service-cn)")
+    .option("--locale <id>", "scaffold locale: hx-cn for Chinese assets (default: English base)")
+    .action((opts: { bundle?: string; locale?: string }) => {
+      const res = initWorkspace(process.cwd(), { bundle: opts.bundle, locale: opts.locale });
       console.log(`Initialized ${res.ws.base}`);
       for (const c of res.created) console.log(`  + ${c}`);
       console.log("\nNext steps:");

@@ -22,6 +22,33 @@ function copyDir(src: string, dest: string) {
 export interface InitOptions {
   bundle?: string;
   bundlesDir?: string;
+  /** Built-in scaffold: `base` (English) or `hx-cn` (Chinese). */
+  locale?: string;
+}
+
+const NEXT_STEPS_EN = [
+  "1. Edit harnessX/constitution.md — write your project principles and core domains",
+  "2. Create your first change:  hx change create <name> --domains <d1,d2>",
+  "3. Draft the proposal:        hx propose <name> --title \"...\"",
+  "4. Validate as you go:        hx gate check <name>",
+  "5. Install enforcement:       hx hooks install && hx ci init"
+];
+
+const NEXT_STEPS_ZH = [
+  "1. 编辑 harnessX/constitution.md — 填写项目原则与核心域",
+  "2. 创建首个 change：           hx change create <name> --domains <d1,d2>",
+  "3. 起草提案：                  hx propose <name> --title \"...\"",
+  "4. 随时校验：                  hx gate check <name>",
+  "5. 安装强制机制：              hx hooks install && hx ci init"
+];
+
+function resolveScaffoldDir(bundlesDir: string, locale?: string): string {
+  if (locale === "hx-cn") {
+    const cn = path.join(bundlesDir, "hx-cn");
+    if (!fs.existsSync(cn)) throw new Error(`unknown locale scaffold: ${locale}`);
+    return cn;
+  }
+  return path.join(bundlesDir, "base");
 }
 
 export interface InitResult {
@@ -36,7 +63,7 @@ export function initWorkspace(root: string, opts: InitOptions = {}): InitResult 
   const ws = new Workspace(root);
   if (fs.existsSync(ws.harnessFile)) throw new Error(`harnessX already initialized at ${ws.base}`);
 
-  const baseDir = path.join(bundlesDir, "base");
+  const baseDir = resolveScaffoldDir(bundlesDir, opts.locale);
   ensureDir(ws.base);
   for (const f of ["constitution.md", "config.yaml", "harness.yaml"]) {
     fs.copyFileSync(path.join(baseDir, f), path.join(ws.base, f));
@@ -51,13 +78,7 @@ export function initWorkspace(root: string, opts: InitOptions = {}): InitResult 
     created.push(`assets/bundles/${opts.bundle}/`);
   }
 
-  const nextSteps = [
-    "1. Edit harnessX/constitution.md — write your project principles and core domains",
-    "2. Create your first change:  hx change create <name> --domains <d1,d2>",
-    "3. Draft the proposal:        hx propose <name> --title \"...\"",
-    "4. Validate as you go:        hx gate check <name>",
-    "5. Install enforcement:       hx hooks install && hx ci init"
-  ];
+  const nextSteps = opts.locale === "hx-cn" ? NEXT_STEPS_ZH : NEXT_STEPS_EN;
   return { ws, created, nextSteps };
 }
 
