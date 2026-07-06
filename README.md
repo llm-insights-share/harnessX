@@ -75,7 +75,7 @@ The Guide Engine assembles context precisely per phase: the Propose phase does n
 npm install
 node bin/hx.js init --bundle api-service   # scaffold harnessX/ in your repo
 node bin/hx.js init --locale hx-cn --bundle api-service-cn   # Chinese scaffold (hx-cn)
-node bin/hx.js bundle list                 # api-service | event-consumer | frontend-dashboard (+ *-cn)
+node bin/hx.js bundle list                 # api-service | frontend-2c | library-sdk | ...
 node bin/hx.js hub seed ./harness-hub       # golden Hub packages (api-conventions, common-review-rubrics)
 node bin/hx.js change create add-auth --domains auth
 node bin/hx.js propose add-auth --title "Session expiry"
@@ -101,7 +101,7 @@ node bin/hx.js adapter sync                # compile to .cursor/ .trae/ .qoder/ 
 | `packages/sensors` | Built-in sensors: spec-validate (EARS), spec-trace, fixture-hash, approved-tests, arch-boundary, budget, rubric |
 | `packages/adapters` | Single-source → multi-target compiler with capability tiers (Cursor / Trae / Qoder / Claude Code / generic `AGENTS.md`) |
 | `packages/cli` | `hx` command-line interface (Commander) |
-| `packages/bundles` | Built-in `base` scaffold, `hx-cn` Chinese scaffold, and topology bundles (`api-service`, `event-consumer`, `frontend-dashboard`, plus `*-cn` localized variants) |
+| `packages/bundles` | Built-in `base` / `hx-cn` scaffolds and topology bundles: `api-service`, `event-consumer`, `frontend-dashboard`, `frontend-2c`, `library-sdk`, `serverless-function`, `mobile-app`, `data-pipeline` (+ `*-cn` locales) |
 | `docs/` | Design document (HTML) and build plan (CSV) |
 
 ## Key enforcement properties

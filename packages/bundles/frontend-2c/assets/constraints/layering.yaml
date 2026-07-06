@@ -1,0 +1,30 @@
+id: layering-rules
+description: Consumer-facing website layering (marketing pages, official sites)
+sourceRoots:
+  - src
+layers:
+  - name: pages
+    path: src/pages
+    mayImport: [sections, components, shared]
+  - name: sections
+    path: src/sections
+    mayImport: [components, shared]
+  - name: components
+    path: src/components
+    mayImport: [shared]
+  - name: shared
+    path: src/shared
+    mayImport: []
+forbidden:
+  - from: src/shared
+    to: src/pages
+    hint: "Shared utilities must not import route pages"
+  - from: src/components
+    to: src/pages
+    hint: "Presentational components must not import pages"
+  - from: src/sections
+    to: src/pages
+    hint: "Page sections must not import sibling page modules"
+budgets:
+  maxFileLines: 280
+  maxBundleKB: 720

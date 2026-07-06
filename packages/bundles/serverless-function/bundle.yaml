@@ -1,0 +1,35 @@
+id: serverless-function
+description: Topology bundle for serverless functions (thin handlers, cold-start budgets, stateless)
+guides:
+  - id: serverless-design
+    kind: guide.skill
+    execution: inferential
+    phase: [design, apply]
+    source: assets/bundles/serverless-function/skills/serverless-design.md
+  - id: layering-rules
+    kind: guide.constraint
+    execution: computational
+    phase: [apply, verify]
+    source: assets/bundles/serverless-function/constraints/layering.yaml
+  - id: performance-budget
+    kind: guide.skill
+    execution: inferential
+    phase: [design, apply, verify]
+    source: assets/bundles/serverless-function/skills/performance-budget.md
+sensors:
+  - id: arch-boundary
+    kind: sensor.arch
+    execution: computational
+    phase: [verify]
+    builtin: arch-boundary
+    on_fail: block
+    fix_hint: "Keep handlers thin: handlers → services → shared"
+  - id: perf-budget
+    kind: sensor.budget
+    execution: computational
+    phase: [verify]
+    builtin: budget
+    on_fail: warn
+    fix_hint: "Reduce cold-start weight; move heavy imports into services with lazy init"
+suites:
+  verification: [spec-validate, spec-trace, arch-boundary, perf-budget]

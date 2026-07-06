@@ -19,7 +19,7 @@ export function registerFoundationCommands(program: Command): void {
   program
     .command("init")
     .description("Initialize harnessX/ in the current repository")
-    .option("--bundle <id>", "apply a topology bundle (e.g. api-service, event-consumer, frontend-dashboard)")
+    .option("--bundle <id>", "apply a topology bundle (api-service, frontend-2c, library-sdk, serverless-function, mobile-app, data-pipeline, …)")
     .option("--locale <id>", "scaffold locale: hx-cn for Chinese assets (default: English base)")
     .action((opts: { bundle?: string; locale?: string }) => {
       const res = initWorkspace(process.cwd(), { bundle: opts.bundle, locale: opts.locale });

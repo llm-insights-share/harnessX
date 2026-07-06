@@ -1,0 +1,30 @@
+id: layering-rules
+description: Data pipeline layering (orchestration vs transforms vs connectors)
+sourceRoots:
+  - src
+layers:
+  - name: jobs
+    path: src/jobs
+    mayImport: [transforms, sources, shared]
+  - name: transforms
+    path: src/transforms
+    mayImport: [sources, shared]
+  - name: sources
+    path: src/sources
+    mayImport: [shared]
+  - name: shared
+    path: src/shared
+    mayImport: []
+forbidden:
+  - from: src/sources
+    to: src/jobs
+    hint: "Connectors must not depend on job orchestration"
+  - from: src/transforms
+    to: src/jobs
+    hint: "Transforms must not import schedulers/drivers"
+  - from: src/shared
+    to: src/jobs
+    hint: "Shared schema helpers must not import job runners"
+budgets:
+  maxFileLines: 400
+  maxBundleKB: 600

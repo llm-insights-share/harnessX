@@ -37,11 +37,31 @@ WHEN a session is idle for 30 minutes, THE SYSTEM SHALL invalidate the token.
 describe("T-400 topology bundles", () => {
   it("lists builtin topology bundles including new product-library entries", () => {
     const ids = listBundles().map((b) => b.id);
-    expect(ids).toContain("api-service");
-    expect(ids).toContain("event-consumer");
-    expect(ids).toContain("frontend-dashboard");
-    expect(ids).toContain("api-service-cn");
-    expect(ids).toContain("event-consumer-cn");
+    for (const id of [
+      "api-service",
+      "api-service-cn",
+      "event-consumer",
+      "event-consumer-cn",
+      "frontend-dashboard",
+      "frontend-2c",
+      "library-sdk",
+      "serverless-function",
+      "mobile-app",
+      "data-pipeline"
+    ]) {
+      expect(ids).toContain(id);
+    }
+  });
+
+  it("applies extended topology bundles with constraint assets and sensors", () => {
+    for (const bundle of ["frontend-2c", "library-sdk", "serverless-function", "mobile-app", "data-pipeline"] as const) {
+      const ws = initWorkspace(tmp(), { bundle }).ws;
+      expect(fs.existsSync(path.join(ws.bundlesDir, bundle, "constraints/layering.yaml"))).toBe(true);
+      expect(resolveLayerRules(ws)?.source).toContain(bundle);
+      const harness = ws.readHarness();
+      expect(harness.guides.map((g) => g.id)).toContain("performance-budget");
+      expect(harness.suites.verification).toContain("arch-boundary");
+    }
   });
 
   it("applies api-service assets + registry entries", () => {

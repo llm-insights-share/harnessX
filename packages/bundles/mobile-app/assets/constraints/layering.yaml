@@ -1,0 +1,30 @@
+id: layering-rules
+description: Mobile app layering (UI screens vs feature/domain logic)
+sourceRoots:
+  - src
+layers:
+  - name: screens
+    path: src/screens
+    mayImport: [features, shared]
+  - name: features
+    path: src/features
+    mayImport: [domain, shared]
+  - name: domain
+    path: src/domain
+    mayImport: [shared]
+  - name: shared
+    path: src/shared
+    mayImport: []
+forbidden:
+  - from: src/domain
+    to: src/screens
+    hint: "Domain logic must not import UI screens"
+  - from: src/features
+    to: src/screens
+    hint: "Feature modules must not import screen navigation"
+  - from: src/shared
+    to: src/screens
+    hint: "Shared utilities must not import UI"
+budgets:
+  maxFileLines: 300
+  maxBundleKB: 900

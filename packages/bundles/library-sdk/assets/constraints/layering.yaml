@@ -1,0 +1,24 @@
+id: layering-rules
+description: SDK/library module boundaries (public API vs internal implementation)
+sourceRoots:
+  - src
+layers:
+  - name: public
+    path: src/public
+    mayImport: [internal, shared]
+  - name: internal
+    path: src/internal
+    mayImport: [shared]
+  - name: shared
+    path: src/shared
+    mayImport: []
+forbidden:
+  - from: src/shared
+    to: src/public
+    hint: "Shared primitives must not depend on public entrypoints"
+  - from: src/internal
+    to: src/public
+    hint: "Internal modules must not import the public barrel (cycle risk)"
+budgets:
+  maxFileLines: 320
+  maxBundleKB: 256

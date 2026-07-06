@@ -1,0 +1,24 @@
+id: layering-rules
+description: Serverless function layering (ingress adapters vs domain logic)
+sourceRoots:
+  - src
+layers:
+  - name: handlers
+    path: src/handlers
+    mayImport: [services, shared]
+  - name: services
+    path: src/services
+    mayImport: [shared]
+  - name: shared
+    path: src/shared
+    mayImport: []
+forbidden:
+  - from: src/services
+    to: src/handlers
+    hint: "Services must not depend on Lambda/API Gateway handler adapters"
+  - from: src/shared
+    to: src/handlers
+    hint: "Shared code must not import transport handlers"
+budgets:
+  maxFileLines: 200
+  maxBundleKB: 320
