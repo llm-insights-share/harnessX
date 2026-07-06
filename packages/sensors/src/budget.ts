@@ -1,20 +1,19 @@
 import fs from "node:fs";
 import path from "node:path";
-import { loadLayerRules } from "./archBoundary.js";
+import { resolveLayerRules, sourceRoots } from "./layerRules.js";
 import type { Finding, SensorReport } from "@harnessx/core/schemas.js";
 import type { SensorContext } from "./types.js";
 
 /**
  * T-402: sensor.budget — quantified architecture fitness checks.
- * Enforces maxFileLines and maxBundleKB (total src size) budgets declared in
- * the constraint asset; pairs with the performance-budget skill.
+ * Enforces budgets declared in the guide.constraint asset; pairs with performance-budget skill.
  */
 
 export const budget = (ctx: SensorContext): SensorReport => {
-  const rules = loadLayerRules(ctx.ws.base);
-  const budgets = rules?.budgets ?? {};
+  const resolved = resolveLayerRules(ctx.ws);
+  const budgets = resolved?.rules.budgets ?? {};
+  const roots = resolved ? sourceRoots(resolved.rules) : ["src"];
   const findings: Finding[] = [];
-  const srcDir = path.join(ctx.ws.root, "src");
   let totalBytes = 0;
 
   const visit = (dir: string) => {
@@ -39,15 +38,25 @@ export const budget = (ctx: SensorContext): SensorReport => {
       }
     }
   };
-  visit(srcDir);
+  for (const rel of roots) visit(path.join(ctx.ws.root, rel));
 
   if (budgets.maxBundleKB && totalBytes / 1024 > budgets.maxBundleKB) {
     findings.push({
       severity: "warn",
       rule: "budget:maxBundleKB",
-      message: `src totals ${(totalBytes / 1024).toFixed(1)}KB (budget ${budgets.maxBundleKB}KB)`
+      message: `source totals ${(totalBytes / 1024).toFixed(1)}KB (budget ${budgets.maxBundleKB}KB)`
     });
   }
+
+  if (!resolved) {
+    return {
+      sensor: ctx.def.id,
+      status: "error",
+      summary: "budget rules not found (guide.constraint missing) — fail-closed",
+      findings: [{ severity: "block", message: "register a guide.constraint with budgets in harness.yaml" }]
+    };
+  }
+
   return {
     sensor: ctx.def.id,
     status: findings.length ? "fail" : "pass",

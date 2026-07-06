@@ -1,5 +1,7 @@
 id: layering-rules
 description: Layered architecture constraints for API services (paired with arch-boundary sensor)
+sourceRoots:
+  - src
 layers:
   - name: routes
     path: src/routes

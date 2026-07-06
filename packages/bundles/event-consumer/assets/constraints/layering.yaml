@@ -1,0 +1,27 @@
+id: layering-rules
+description: Layered architecture for event consumers (paired with arch-boundary sensor)
+sourceRoots:
+  - src
+layers:
+  - name: handlers
+    path: src/handlers
+    mayImport: [processors, shared]
+  - name: processors
+    path: src/processors
+    mayImport: [domain, shared]
+  - name: domain
+    path: src/domain
+    mayImport: [shared]
+  - name: shared
+    path: src/shared
+    mayImport: []
+forbidden:
+  - from: src/domain
+    to: src/handlers
+    hint: "Domain logic must not depend on transport handlers"
+  - from: src/processors
+    to: src/handlers
+    hint: "Processors must not depend on message ingress adapters"
+budgets:
+  maxFileLines: 350
+  maxBundleKB: 480

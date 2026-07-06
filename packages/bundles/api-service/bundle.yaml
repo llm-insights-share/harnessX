@@ -11,6 +11,11 @@ guides:
     execution: computational
     phase: [apply, verify]
     source: assets/bundles/api-service/constraints/layering.yaml
+  - id: performance-budget
+    kind: guide.skill
+    execution: inferential
+    phase: [design, apply, verify]
+    source: assets/bundles/api-service/skills/performance-budget.md
 sensors:
   - id: arch-boundary
     kind: sensor.arch

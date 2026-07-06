@@ -159,7 +159,8 @@ hx archive add-refund        # merge deltas into main specs and archive
 | `hx gate approve <id> --gate spec --approver <name>` | Record human spec approval |
 | `hx guide pack <id> --phase <p>` | Assemble Context Pack for a phase |
 | `hx harness lint` | Detect constitution vs skill conflicts |
-| `hx bundle list` | List topology bundles (includes `api-service-cn`) |
+| `hx bundle list` | List topology bundles (`api-service`, `event-consumer`, `frontend-dashboard`, plus `*-cn` locales) |
+| `hx bundle add <id>` | Apply an additional topology bundle after init |
 | `hx waiver add <id> --sensor <s> --reason "..." --expires YYYY-MM-DD` | Time-boxed waiver |
 | `hx adapter sync` | Compile harnessX assets to AI tool directories |
 | `hx steer report` | Recurring failures → candidate new guides |

@@ -4,6 +4,7 @@ import {
   Workspace,
   initWorkspace,
   listBundles,
+  applyBundle,
   createChange,
   scaffoldProposal,
   scaffoldExplore,
@@ -18,7 +19,7 @@ export function registerFoundationCommands(program: Command): void {
   program
     .command("init")
     .description("Initialize harnessX/ in the current repository")
-    .option("--bundle <id>", "apply a topology bundle (e.g. api-service, api-service-cn)")
+    .option("--bundle <id>", "apply a topology bundle (e.g. api-service, event-consumer, frontend-dashboard)")
     .option("--locale <id>", "scaffold locale: hx-cn for Chinese assets (default: English base)")
     .action((opts: { bundle?: string; locale?: string }) => {
       const res = initWorkspace(process.cwd(), { bundle: opts.bundle, locale: opts.locale });
@@ -30,14 +31,22 @@ export function registerFoundationCommands(program: Command): void {
 
   program
     .command("bundle")
-    .argument("<action>", "list")
+    .argument("<action>", "list | add")
+    .argument("[bundleId]", "topology bundle id (required for add)")
     .description("Manage topology bundles")
-    .action((action: string) => {
+    .action((action: string, bundleId?: string) => {
       if (action === "list") {
         for (const b of listBundles()) console.log(`${b.id}\t${b.description}`);
-      } else {
-        throw new Error(`unknown bundle action: ${action}`);
+        return;
       }
+      if (action === "add") {
+        if (!bundleId) throw new Error("bundle id required: hx bundle add <id>");
+        const w = ws();
+        applyBundle(w, bundleId);
+        console.log(`Applied bundle "${bundleId}" — see harness.yaml and assets/bundles/${bundleId}/`);
+        return;
+      }
+      throw new Error(`unknown bundle action: ${action}`);
     });
 
   const change = program.command("change").description("Manage change workspaces");

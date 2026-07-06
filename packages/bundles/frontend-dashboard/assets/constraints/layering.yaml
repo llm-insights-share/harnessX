@@ -1,0 +1,30 @@
+id: layering-rules
+description: Frontend dashboard layering (paired with arch-boundary sensor)
+sourceRoots:
+  - src
+layers:
+  - name: pages
+    path: src/pages
+    mayImport: [components, hooks, shared]
+  - name: components
+    path: src/components
+    mayImport: [hooks, shared]
+  - name: hooks
+    path: src/hooks
+    mayImport: [shared]
+  - name: shared
+    path: src/shared
+    mayImport: []
+forbidden:
+  - from: src/shared
+    to: src/pages
+    hint: "Shared utilities must not import route pages"
+  - from: src/shared
+    to: src/components
+    hint: "Shared utilities must not import UI components"
+  - from: src/hooks
+    to: src/components
+    hint: "Hooks must not import presentational components"
+budgets:
+  maxFileLines: 300
+  maxBundleKB: 640

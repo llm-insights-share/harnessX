@@ -8,7 +8,17 @@ import { rubricSensor } from "./rubricSensor.js";
 export * from "./types.js";
 export { specValidate, checkEars } from "./specValidate.js";
 export { specTrace, fixtureHash, approvedTests } from "./builtins.js";
-export { archBoundary, checkArchBoundaries, loadLayerRules } from "./archBoundary.js";
+export {
+  archBoundary,
+  checkArchBoundaries,
+  collectSources,
+  loadLayerRules,
+  loadLayerRulesFromFile,
+  resolveLayerRules,
+  constraintSources,
+  sourceRoots
+} from "./archBoundary.js";
+export type { LayerRules, ResolvedLayerRules } from "./archBoundary.js";
 export { budget } from "./budget.js";
 export { rubricSensor } from "./rubricSensor.js";
 

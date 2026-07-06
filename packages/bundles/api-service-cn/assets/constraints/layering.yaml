@@ -1,5 +1,7 @@
 id: layering-rules
 description: API 服务分层架构约束（与 arch-boundary sensor 配对）
+sourceRoots:
+  - src
 layers:
   - name: routes
     path: src/routes

@@ -1,0 +1,27 @@
+id: layering-rules
+description: 事件消费者分层架构（与 arch-boundary 传感器配对）
+sourceRoots:
+  - src
+layers:
+  - name: handlers
+    path: src/handlers
+    mayImport: [processors, shared]
+  - name: processors
+    path: src/processors
+    mayImport: [domain, shared]
+  - name: domain
+    path: src/domain
+    mayImport: [shared]
+  - name: shared
+    path: src/shared
+    mayImport: []
+forbidden:
+  - from: src/domain
+    to: src/handlers
+    hint: "领域逻辑不得依赖消息入口适配层"
+  - from: src/processors
+    to: src/handlers
+    hint: "处理器不得依赖 handler 层"
+budgets:
+  maxFileLines: 350
+  maxBundleKB: 480

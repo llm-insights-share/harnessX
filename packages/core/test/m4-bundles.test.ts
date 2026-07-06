@@ -6,6 +6,7 @@ import {
   Workspace,
   initWorkspace,
   listBundles,
+  applyBundle,
   createChange,
   writeMainSpec,
   readMeta,
@@ -15,9 +16,10 @@ import {
   applyProfileChoice,
   rebaseCheck,
   runSuite,
+  callMcpTool,
   type RunnerOptions
 } from "@harnessx/core";
-import { builtinSensors, checkArchBoundaries, loadLayerRules } from "@harnessx/sensors";
+import { builtinSensors, checkArchBoundaries, loadLayerRules, resolveLayerRules } from "@harnessx/sensors";
 import YAML from "yaml";
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "hx-m4-"));
@@ -33,29 +35,53 @@ WHEN a session is idle for 30 minutes, THE SYSTEM SHALL invalidate the token.
 `;
 
 describe("T-400 topology bundles", () => {
-  it("lists builtin bundles and applies api-service assets + registry entries", () => {
-    const bundles = listBundles();
-    expect(bundles.map((b) => b.id)).toContain("api-service");
+  it("lists builtin topology bundles including new product-library entries", () => {
+    const ids = listBundles().map((b) => b.id);
+    expect(ids).toContain("api-service");
+    expect(ids).toContain("event-consumer");
+    expect(ids).toContain("frontend-dashboard");
+    expect(ids).toContain("api-service-cn");
+    expect(ids).toContain("event-consumer-cn");
+  });
 
+  it("applies api-service assets + registry entries", () => {
     const ws = initWorkspace(tmp(), { bundle: "api-service" }).ws;
     expect(fs.existsSync(path.join(ws.bundlesDir, "api-service/constraints/layering.yaml"))).toBe(true);
     expect(fs.existsSync(path.join(ws.bundlesDir, "api-service/skills/api-design.md"))).toBe(true);
     const harness = ws.readHarness();
+    expect(harness.guides.map((g) => g.id)).toContain("performance-budget");
     expect(harness.sensors.find((s) => s.id === "arch-boundary")?.kind).toBe("sensor.arch");
     expect(harness.suites["verification"]).toContain("perf-budget");
+  });
+
+  it("hx bundle add merges a second topology after init", () => {
+    const ws = initWorkspace(tmp(), { bundle: "api-service" }).ws;
+    applyBundle(ws, "event-consumer");
+    const harness = ws.readHarness();
+    expect(harness.guides.map((g) => g.id)).toContain("event-handling");
+    expect(fs.existsSync(path.join(ws.bundlesDir, "event-consumer/constraints/layering.yaml"))).toBe(true);
+  });
+
+  it("resolves layering rules from guide.constraint for api-service-cn", async () => {
+    const ws = initWorkspace(tmp(), { locale: "hx-cn", bundle: "api-service-cn" }).ws;
+    const resolved = resolveLayerRules(ws);
+    expect(resolved).not.toBeNull();
+    expect(resolved!.source).toContain("api-service-cn");
+    expect(ws.readHarness().guides.map((g) => g.id)).toContain("performance-budget");
+    const report = await builtinSensors["arch-boundary"]({ ws, def: { id: "arch-boundary" } as never });
+    expect(report.status).not.toBe("error");
   });
 });
 
 describe("T-401 arch-boundary sensor", () => {
-  function repoWithViolation() {
-    const ws = initWorkspace(tmp(), { bundle: "api-service" }).ws;
+  function repoWithViolation(bundle = "api-service") {
+    const ws = initWorkspace(tmp(), { bundle }).ws;
     for (const d of ["src/routes", "src/services", "src/repositories", "src/shared"]) {
       fs.mkdirSync(path.join(ws.root, d), { recursive: true });
     }
     fs.writeFileSync(path.join(ws.root, "src/shared/util.ts"), "export const u = 1;\n");
     fs.writeFileSync(path.join(ws.root, "src/routes/users.ts"), "import { list } from '../services/users.js';\nexport const r = list;\n");
     fs.writeFileSync(path.join(ws.root, "src/services/users.ts"), "import { u } from '../shared/util.js';\nexport const list = () => u;\n");
-    // violation: repository imports the HTTP layer
     fs.writeFileSync(path.join(ws.root, "src/repositories/users.ts"), "import { r } from '../routes/users.js';\nexport const q = r;\n");
     return ws;
   }
@@ -80,6 +106,22 @@ describe("T-401 arch-boundary sensor", () => {
     res = await runSuite(ws, harness, "verification", "c1", opts());
     expect(res.reports.find((r) => r.sensor === "arch-boundary")?.status).toBe("pass");
   });
+
+  it("enforces event-consumer handler layering", () => {
+    const ws = initWorkspace(tmp(), { bundle: "event-consumer" }).ws;
+    for (const d of ["src/handlers", "src/processors", "src/domain", "src/shared"]) {
+      fs.mkdirSync(path.join(ws.root, d), { recursive: true });
+    }
+    fs.writeFileSync(path.join(ws.root, "src/shared/id.ts"), "export const id = 1;\n");
+    fs.writeFileSync(path.join(ws.root, "src/domain/order.ts"), "import { id } from '../shared/id.js';\nexport const o = id;\n");
+    fs.writeFileSync(path.join(ws.root, "src/processors/fulfill.ts"), "import { o } from '../domain/order.js';\nexport const f = o;\n");
+    fs.writeFileSync(path.join(ws.root, "src/handlers/on-order.ts"), "import { f } from '../processors/fulfill.js';\nexport const h = f;\n");
+    // violation: domain imports handler
+    fs.writeFileSync(path.join(ws.root, "src/domain/bad.ts"), "import { h } from '../handlers/on-order.js';\nexport const bad = h;\n");
+    const rules = resolveLayerRules(ws)!.rules;
+    const findings = checkArchBoundaries(ws.root, rules);
+    expect(findings.some((f) => f.rule?.startsWith("forbidden:src/domain"))).toBe(true);
+  });
 });
 
 describe("T-402 budget sensor", () => {
@@ -97,7 +139,6 @@ describe("T-402 budget sensor", () => {
 describe("T-403 constitution chain + harness lint", () => {
   it("detects contradicting directives across guides and resolves by precedence", () => {
     const ws = initWorkspace(tmp()).ws;
-    // plant a conflicting skill: constitution says fixtures need waiver; skill says freely edit
     const dir = path.join(ws.assetsDir, "guides/rogue");
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(
@@ -129,13 +170,11 @@ describe("T-404 concurrent change rebase check", () => {
     fs.mkdirSync(path.join(ws.deltaSpecsDir("c-a"), "auth"), { recursive: true });
     fs.writeFileSync(path.join(ws.deltaSpecsDir("c-a"), "auth/spec.md"), `## MODIFIED Requirements\n\n### Requirement: Login\nTHE SYSTEM SHALL allow login with MFA.\n\n#### Scenario: mfa\n- THEN mfa\n`);
 
-    // main spec has no "Login" (concurrent change removed/renamed it)
     writeMainSpec(ws, { capability: "auth", preamble: "# auth", requirements: [] });
     const res = rebaseCheck(ws, "c-a");
     expect(res.clean).toBe(false);
     expect(res.conflicts[0].guidance).toMatch(/concurrent change/);
 
-    // after rebasing (base now has Login) it's clean
     writeMainSpec(ws, {
       capability: "auth",
       preamble: "# auth",
@@ -168,9 +207,7 @@ describe("T-405 scale-adaptive profile recommendation", () => {
 describe("T-406 M4 acceptance", () => {
   it("bundle-initialized project runs architecture sensors; lint catches planted conflict", () => {
     const ws = initWorkspace(tmp(), { bundle: "api-service" }).ws;
-    // arch sensor is runnable (rules load from the bundle)
-    expect(loadLayerRules(ws.base)).not.toBeNull();
-    // plant conflict and detect
+    expect(resolveLayerRules(ws)).not.toBeNull();
     const dir = path.join(ws.assetsDir, "guides/contradictory");
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, "SKILL.md"), "# X\n\n- Never paginated list endpoint responses with limit and cursor parameters.\n");
@@ -179,5 +216,23 @@ describe("T-406 M4 acceptance", () => {
     fs.writeFileSync(ws.harnessFile, YAML.stringify(harness));
     const conflicts = lintHarness(ws);
     expect(conflicts.some((c) => [c.a.guideId, c.b.guideId].includes("contradictory"))).toBe(true);
+  });
+});
+
+describe("hx mcp tool bridge", () => {
+  it("exposes change_status and trace_check via callMcpTool", async () => {
+    const ws = initWorkspace(tmp(), { bundle: "api-service" }).ws;
+    createChange(ws, "mcp-demo", ["auth"]);
+    fs.mkdirSync(path.join(ws.deltaSpecsDir("mcp-demo"), "auth"), { recursive: true });
+    fs.writeFileSync(
+      path.join(ws.deltaSpecsDir("mcp-demo"), "auth/spec.md"),
+      "## ADDED Requirements\n\n### Requirement: R1\nTHE SYSTEM SHALL r1.\n\n#### Scenario: s1\n- THEN ok\n"
+    );
+
+    const rows = (await callMcpTool(ws, "change_status", {}, opts())) as { change: string }[];
+    expect(rows.some((r) => r.change === "mcp-demo")).toBe(true);
+
+    const trace = (await callMcpTool(ws, "trace_check", { change: "mcp-demo" }, opts())) as { passed: boolean };
+    expect(trace.passed).toBe(false);
   });
 });

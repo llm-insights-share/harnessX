@@ -159,7 +159,8 @@ hx archive add-refund        # 合并 delta 至主规格并归档
 | `hx gate approve <id> --gate spec --approver <name>` | 记录人工规格批准 |
 | `hx guide pack <id> --phase <p>` | 组装该阶段 Context Pack |
 | `hx harness lint` | 检测宪法与 Skill 冲突 |
-| `hx bundle list` | 列出拓扑包（含 `api-service-cn`） |
+| `hx bundle list` | 列出拓扑包（`api-service`、`event-consumer`、`frontend-dashboard` 及 `*-cn` 中文版） |
+| `hx bundle add <id>` | 初始化后追加拓扑包 |
 | `hx waiver add <id> --sensor <s> --reason "..." --expires YYYY-MM-DD` | 记录有时限豁免 |
 | `hx adapter sync` | 将 harnessX 资产编译到各 AI 工具目录 |
 | `hx steer report` | 查看反复失败，候选新 Guide |
