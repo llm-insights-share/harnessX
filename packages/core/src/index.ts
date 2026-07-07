@@ -47,3 +47,8 @@ export * from "./guideEval.js";
 export * from "./issueScaffold.js";
 export * from "./watch.js";
 export * from "./mcp.js";
+export * from "./l1Contract.js";
+export * from "./harnessCompose.js";
+export * as orchestration from "./boundaries/orchestration.js";
+export * as hub from "./boundaries/hub.js";
+export * as adaptersBoundary from "./boundaries/adapters.js";

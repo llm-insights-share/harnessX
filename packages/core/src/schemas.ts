@@ -129,6 +129,8 @@ export const OverrideDef = z.object({
 export const HarnessYaml = z.object({
   version: z.string().default("1.0"),
   constitution: z.string().optional(),
+  /** Topology bundle refs expanded at read time, e.g. api-service@1.0.0 */
+  imports: z.array(z.string()).default([]),
   profiles: z.record(ProfileDef),
   suites: z.record(z.array(z.string())).default({}),
   guides: z.array(GuideDef).default([]),

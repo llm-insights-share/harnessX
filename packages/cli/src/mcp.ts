@@ -6,7 +6,7 @@ import { builtinSensors } from "@harnessx/sensors";
 export function registerMcpCommand(program: Command): void {
   program
     .command("mcp")
-    .description("MCP stdio server — exposes gate_check, guide_pack, change_status, trace_check (Trae/Qoder bridge)")
+    .description("MCP stdio server — gate_check, guide_pack, change_status, trace_check, apply_task, fix_session, drift_check")
     .action(() => {
       const ws = Workspace.locate(process.cwd());
       if (!fs.existsSync(ws.harnessFile)) {

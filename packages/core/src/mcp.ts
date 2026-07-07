@@ -1,12 +1,16 @@
 import { createInterface } from "node:readline";
 import { Workspace } from "./paths.js";
 import { gateCheck, nextPhase } from "./gate.js";
-import { buildContextPack, renderContextPack } from "./guideEngine.js";
+import { buildContextPack, buildTaskPack, renderContextPack, writeTaskPack } from "./guideEngine.js";
 import { traceCheck } from "./traceability.js";
 import { collectStatus } from "./view.js";
 import { readMeta } from "./metaStore.js";
 import { phaseByState } from "./schemas.js";
 import type { RunnerOptions } from "./sensorRunner.js";
+import { runSensor } from "./sensorRunner.js";
+import { findTask } from "./plan.js";
+import { buildFixPack } from "./fix.js";
+import { buildApplyTaskEnv, buildFixSessionEnv, L1_AGENT_ENV_SCHEMA_ID } from "./l1Contract.js";
 import { VERSION } from "./version.js";
 
 export const MCP_PROTOCOL_VERSION = "2024-11-05";
@@ -55,6 +59,39 @@ export const MCP_TOOLS: McpTool[] = [
       properties: { change: { type: "string" } },
       required: ["change"]
     }
+  },
+  {
+    name: "apply_task",
+    description: "Build task-scoped apply handoff (context pack + L1 HX_TASK_* env contract)",
+    inputSchema: {
+      type: "object",
+      properties: {
+        change: { type: "string" },
+        task: { type: "string", description: "Task id (e.g. 01b)" }
+      },
+      required: ["change", "task"]
+    }
+  },
+  {
+    name: "fix_session",
+    description: "Build fix-session handoff for a failing sensor (HX_FIX_PACK env contract)",
+    inputSchema: {
+      type: "object",
+      properties: {
+        change: { type: "string" },
+        sensor: { type: "string", description: "Sensor id" }
+      },
+      required: ["change", "sensor"]
+    }
+  },
+  {
+    name: "drift_check",
+    description: "Run unified drift sensor (spec↔code, design↔code, adapter drift)",
+    inputSchema: {
+      type: "object",
+      properties: { change: { type: "string" } },
+      required: ["change"]
+    }
   }
 ];
 
@@ -87,6 +124,52 @@ export async function callMcpTool(
       const change = String(args.change ?? "");
       if (!change) throw new Error("trace_check requires change");
       return traceCheck(ws, change);
+    }
+    case "apply_task": {
+      const change = String(args.change ?? "");
+      const taskId = String(args.task ?? "");
+      if (!change || !taskId) throw new Error("apply_task requires change and task");
+      const task = findTask(ws, change, taskId);
+      if (!task) throw new Error(`task ${taskId} not found in change ${change}`);
+      const { file, pack } = writeTaskPack(ws, change, taskId);
+      const env = buildApplyTaskEnv(change, task, file);
+      return {
+        task: taskId,
+        markdown: renderContextPack(pack),
+        packFile: file,
+        env,
+        contractSchema: L1_AGENT_ENV_SCHEMA_ID
+      };
+    }
+    case "fix_session": {
+      const change = String(args.change ?? "");
+      const sensor = String(args.sensor ?? "");
+      if (!change || !sensor) throw new Error("fix_session requires change and sensor");
+      const fixPack = buildFixPack(ws, change, sensor);
+      const env = buildFixSessionEnv(change, sensor, fixPack.file);
+      return {
+        sensor,
+        packFile: fixPack.file,
+        findings: fixPack.findings,
+        env,
+        contractSchema: L1_AGENT_ENV_SCHEMA_ID
+      };
+    }
+    case "drift_check": {
+      const change = String(args.change ?? "");
+      if (!change) throw new Error("drift_check requires change");
+      const harness = ws.readHarness();
+      const def = harness.sensors.find((s) => s.id === "drift") ?? {
+        id: "drift",
+        kind: "sensor.drift" as const,
+        execution: "computational" as const,
+        trigger: "phase" as const,
+        builtin: "drift",
+        on_fail: "block" as const,
+        max_retries: 0,
+        timeout_ms: 120000
+      };
+      return runSensor(ws, def, change, runnerOpts);
     }
     default:
       throw new Error(`unknown tool: ${name}`);

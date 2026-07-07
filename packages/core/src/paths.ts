@@ -2,6 +2,7 @@ import path from "node:path";
 import fs from "node:fs";
 import YAML from "yaml";
 import { ConfigYaml, HarnessYaml, type MetaYaml, MetaYaml as MetaSchema } from "./schemas.js";
+import { expandHarnessImports } from "./harnessCompose.js";
 
 /** Resolves harnessX layout inside a repository root, honoring compat_mode: openspec. */
 export class Workspace {
@@ -92,7 +93,14 @@ export class Workspace {
     return ConfigYaml.parse(YAML.parse(fs.readFileSync(this.configFile, "utf8")) ?? {});
   }
   readHarness(): HarnessYaml {
-    return HarnessYaml.parse(YAML.parse(fs.readFileSync(this.harnessFile, "utf8")) ?? {});
+    const raw = HarnessYaml.parse(YAML.parse(fs.readFileSync(this.harnessFile, "utf8")) ?? {});
+    let hubRoot: string | undefined;
+    try {
+      hubRoot = this.readConfig().hub;
+    } catch {
+      hubRoot = undefined;
+    }
+    return expandHarnessImports(raw, this, hubRoot);
   }
   readMetaRaw(id: string): MetaYaml {
     return MetaSchema.parse(YAML.parse(fs.readFileSync(this.metaFile(id), "utf8")));

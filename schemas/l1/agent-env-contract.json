@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harnessx.dev/schemas/l1/agent-env-contract.json",
+  "title": "HarnessX L1 Agent Environment Contract",
+  "description": "Standard environment variables passed to apply/fix runners (Tier-1 IDE agents via MCP or hx apply --runner).",
+  "type": "object",
+  "properties": {
+    "HX_CHANGE": {
+      "type": "string",
+      "description": "Active change id"
+    },
+    "HX_PHASE": {
+      "type": "string",
+      "enum": ["explore", "propose", "design", "spec", "plan", "apply", "verify", "archive"],
+      "description": "Current phase command"
+    },
+    "HX_TASK_ID": {
+      "type": "string",
+      "description": "Task id during apply (e.g. T-01b)"
+    },
+    "HX_TASK_TRACK": {
+      "type": "string",
+      "enum": ["test", "impl"],
+      "description": "Dual-track task kind"
+    },
+    "HX_TASK_TITLE": {
+      "type": "string",
+      "description": "Human-readable task title for runner prompts"
+    },
+    "HX_TASK_REQUIREMENT": {
+      "type": "string",
+      "description": "Requirement key the task implements"
+    },
+    "HX_TASK_PACK": {
+      "type": "string",
+      "description": "Absolute path to task-scoped context pack markdown"
+    },
+    "HX_FIX_HINTS": {
+      "type": "string",
+      "description": "Newline-separated self-correction hints from sensors and review annotations"
+    },
+    "HX_FIX_PACK": {
+      "type": "string",
+      "description": "Absolute path to fix-session context pack (hx fix)"
+    },
+    "HX_FIX_SENSOR": {
+      "type": "string",
+      "description": "Sensor id that triggered the fix session"
+    }
+  },
+  "additionalProperties": true
+}
