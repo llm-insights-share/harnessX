@@ -157,6 +157,8 @@ hx archive add-refund        # merge deltas into main specs and archive
 | `hx gate check <id> [--phase <p>]` | Run sensor suite for a phase |
 | `hx gate advance <id>` | Advance to next phase (sensors green + preconditions) |
 | `hx gate approve <id> --gate spec --approver <name>` | Record human spec approval |
+| `hx remote pull [--change <id>]` | Pull remote updates; verify meta and rebase checks |
+| `hx remote push [--change <id>]` | Preflight meta verify, stage change dir, commit, push |
 | `hx guide pack <id> --phase <p>` | Assemble Context Pack for a phase |
 | `hx guide task-pack <id> <taskId>` | Assemble single-task handoff pack for apply (`HX_TASK_PACK`) |
 | `hx harness lint` | Detect constitution vs skill conflicts |
