@@ -15,7 +15,8 @@ export {
   type HubSyncApplyResult
 } from "../hub.js";
 export { applyBlueprint, applyHubBlueprint, readBlueprint, parseHubDep } from "../blueprint.js";
-export { searchHubCatalog, indexHubCatalog, type HubCatalogEntry } from "../hubSearch.js";
+export { searchHubCatalog, indexHubCatalog } from "../hubSearch.js";
+export { type HubCatalogEntry } from "../hubCatalog.js";
 export { hubEvalPackage } from "../hubEval.js";
 export {
   resolveAssets,

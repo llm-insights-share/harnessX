@@ -4,8 +4,6 @@ import { buildHubCatalog, queryHubCatalog, writeHubCatalog, type HubCatalogEntry
  * Hub asset search & catalog index (v0.4).
  */
 
-export type HubCatalogEntry = CatalogEntry;
-
 export interface HubSearchOptions {
   kind?: string;
   phase?: string;
@@ -14,11 +12,11 @@ export interface HubSearchOptions {
 }
 
 /** Indexes all hub assets across packages/, bundles/, blueprints/. */
-export function indexHubCatalog(hubRoot: string): HubCatalogEntry[] {
+export function indexHubCatalog(hubRoot: string): CatalogEntry[] {
   return buildHubCatalog(hubRoot);
 }
 
-export function searchHubCatalog(hubRoot: string, opts: HubSearchOptions = {}): HubCatalogEntry[] {
+export function searchHubCatalog(hubRoot: string, opts: HubSearchOptions = {}): CatalogEntry[] {
   return queryHubCatalog(hubRoot, opts);
 }
 
