@@ -80,8 +80,8 @@ function out(obj) {
 
 function runFixtureVerify(cwd) {
   const localHx = path.join(cwd, "node_modules", ".bin", "hx");
-  const cmd = existsSync(localHx) ? localHx : "hx";
-  return spawnSync(cmd, ["fixture", "verify"], { encoding: "utf8", cwd });
+  if (existsSync(localHx)) return spawnSync(localHx, ["fixture", "verify"], { encoding: "utf8", cwd });
+  return spawnSync("npx", ["hx", "fixture", "verify"], { encoding: "utf8", cwd });
 }
 
 const input = readInput();

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import {
   Workspace,
   initWorkspace,
@@ -41,6 +42,7 @@ import { compileAdapters, adapterDrift, checkGeneratedFile, computeTier, TARGETS
 import YAML from "yaml";
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "hx-m6-"));
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const opts = () => ({ builtins: builtinSensors });
 
 function makeAsset(dir: string, id: string, over: Record<string, unknown> = {}, content = `# Skill: ${id}\n\n- Be excellent.\n`) {
@@ -265,7 +267,7 @@ describe("T-605..T-608 target emitters", () => {
     const hook = path.join(ws.root, ".cursor/hooks/fixture-verify.mjs");
     const hxBin = path.join(ws.root, "node_modules", ".bin");
     fs.mkdirSync(hxBin, { recursive: true });
-    fs.symlinkSync(path.resolve("/workspace/bin/hx.js"), path.join(hxBin, "hx"));
+    fs.symlinkSync(path.join(repoRoot, "bin", "hx.js"), path.join(hxBin, "hx"));
     const fx = path.join(ws.root, "tests/fixtures/expected.json");
     fs.mkdirSync(path.dirname(fx), { recursive: true });
     fs.writeFileSync(fx, '{"total": 42}');

@@ -54,6 +54,13 @@ interface SeedSubmitOptions {
   message: string;
 }
 
+function gitConfigValue(cwd: string, key: string): string | null {
+  const r = spawnSync("git", ["config", "--get", key], { cwd, encoding: "utf8" });
+  if ((r.status ?? 1) !== 0) return null;
+  const value = (r.stdout ?? "").trim();
+  return value || null;
+}
+
 function runGitOrThrow(cwd: string, args: string[], action: string): string {
   const r = spawnSync("git", args, { cwd, encoding: "utf8" });
   const out = `${r.stdout ?? ""}${r.stderr ?? ""}`.trim();
@@ -79,7 +86,12 @@ function submitSeededHub(target: string, opts: SeedSubmitOptions): void {
   }
 
   runGitOrThrow(target, ["add", "."], "stage seeded hub files");
-  const commit = spawnSync("git", ["commit", "-m", opts.message], { cwd: target, encoding: "utf8" });
+  const gitName = gitConfigValue(target, "user.name");
+  const gitEmail = gitConfigValue(target, "user.email");
+  const commitArgs = ["commit", "-m", opts.message];
+  if (!gitName) commitArgs.unshift("-c", "user.name=HarnessX Seed Bot");
+  if (!gitEmail) commitArgs.unshift("-c", "user.email=harnessx-seed-bot@local");
+  const commit = spawnSync("git", commitArgs, { cwd: target, encoding: "utf8" });
   if ((commit.status ?? 1) !== 0) {
     const out = `${commit.stdout ?? ""}${commit.stderr ?? ""}`;
     if (!/nothing to commit|no changes added/i.test(out)) {
