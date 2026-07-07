@@ -1,12 +1,12 @@
-# Skill: Design Tokens
+# Skill: 设计令牌（Design Tokens）
 
-## Source of truth
+## 单一事实来源
 
-- Shared tokens: `packages/design-tokens/` or `src/shared/tokens/`
-- CSS variables: `var(--color-*)`, `var(--spacing-*)`
+- 共享令牌：`packages/design-tokens/` 或 `src/shared/tokens/`
+- CSS 变量：`var(--color-*)`、`var(--spacing-*)`
 
-## Rules
+## 规则
 
-- No hardcoded hex colors or magic pixel spacing in components.
-- New tokens for a change must be listed in `design/overview.md` ## Design Tokens table.
-- Map Figma variables to token names in `docs/design/token-mapping.md` when applicable.
+- 组件中禁止硬编码十六进制颜色或魔法像素间距。
+- 本 change 新增令牌须列在 `design/overview.md` 的 **## Design Tokens** 表中。
+- 有 Figma 时，在 `docs/design/token-mapping.md` 将变量名映射到令牌名。

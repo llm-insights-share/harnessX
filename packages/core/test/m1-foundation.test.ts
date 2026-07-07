@@ -92,6 +92,30 @@ describe("T-100 hx init", () => {
     expect(res.nextSteps[0]).toContain("constitution.md");
     expect(fs.existsSync(path.join(res.ws.bundlesDir, "api-service-cn/skills/api-design.md"))).toBe(true);
   });
+
+  it("hx-cn enterprise guides and templates are localized", () => {
+    const root = tmp();
+    const res = initWorkspace(root, { locale: "hx-cn", bundle: "api-service-cn" });
+    const assets = res.ws.assetsDir;
+    const prdSkill = fs.readFileSync(path.join(assets, "guides/prd-writing/SKILL.md"), "utf8");
+    expect(prdSkill).toContain("PRD 蒸馏");
+    expect(prdSkill).not.toContain("Do not invent");
+    const feLayout = fs.readFileSync(path.join(assets, "guides/fe-layout/SKILL.md"), "utf8");
+    expect(feLayout).toContain("壳组件");
+    const tokensSkill = fs.readFileSync(path.join(assets, "guides/design-tokens/SKILL.md"), "utf8");
+    expect(tokensSkill).toContain("设计令牌");
+    const proposalTpl = fs.readFileSync(path.join(assets, "guides/proposal-template/template.md"), "utf8");
+    expect(proposalTpl).toContain("## PRD Reference");
+    const designTpl = fs.readFileSync(path.join(assets, "guides/design-template/template.md"), "utf8");
+    expect(designTpl).toContain("## UI Layout");
+    expect(designTpl).toContain("## Design Tokens");
+    createChange(res.ws, "points", ["points"]);
+    scaffoldProposal(res.ws, "points", "会员积分");
+    const prdSummary = fs.readFileSync(path.join(res.ws.requirementsDir("points"), "prd-summary.md"), "utf8");
+    expect(prdSummary).toContain("PRD 摘要");
+    const userStories = fs.readFileSync(path.join(res.ws.requirementsDir("points"), "user-stories.md"), "utf8");
+    expect(userStories).toContain("## 用户故事");
+  });
 });
 
 describe("T-101 artifact store: delta parse + merge", () => {
