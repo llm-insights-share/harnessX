@@ -245,173 +245,211 @@ phases:
 
 ---
 
-## 4. 双入口操作模型
+## 4. 四阶段操作模型（本手册主轴）
+
+> 你要求按阶段组织：**需求阶段 → 设计阶段 → 开发编码阶段 → 测试阶段**。本章及下一章按此结构展开。
+
+### 4.1 操作入口
 
 | 入口 | 适用场景 | 示例 |
 | --- | --- | --- |
-| **终端** | 人工批准、门禁推进、豁免、归档 | `hx gate approve`、`hx gate advance` |
-| **Cursor 对话框** | agent 写提案、规格、代码、自校正 | `/hx-propose`、`hx-apply` |
+| **终端命令** | gate 推进、人工批准、归档、Hub/CI 管控 | `hx gate approve`、`hx archive` |
+| **Cursor 对话框** | 写提案、写设计、写代码、自校正 | `/hx-propose`、`/hx-design`、`/hx-apply` |
 
-经验法则：**agent 能自己做的走 Cursor；只有人才能做的走终端**。
+经验法则：**agent 能自己完成的走 Cursor；必须人工背书的走终端**。
 
-使用斜杠命令前须 `hx adapter sync`。输入 `/` 可见 `hx-explore` … `hx-archive` 八个命令。
+### 4.2 阶段总览
+
+| 阶段 | 目标 | 关键命令 |
+| --- | --- | --- |
+| 需求阶段 | 明确业务变更、形成可验证规格 | `change create`、`propose`、`gate check --phase spec`、`gate approve` |
+| 设计阶段 | 形成可落地技术方案 | `design`、`guide pack --phase design`、`gate advance` |
+| 开发编码阶段 | 按任务实现并持续自校正 | `plan`、`apply`、`guide task-pack`、`fix` |
+| 测试阶段 | 完整验证、可追溯、归档发布 | `verify`、`trace check`、`fixture verify`、`archive` |
 
 ---
 
-## 5. 标准交付循环
+## 5. 需求阶段（Requirements）
 
-以 `standard` profile 为例：
+### 5.1 目标与产物
 
-```
-explore → propose → design → spec → [人工批准] → plan → apply → verify → archive
-```
+- `harnessX/changes/<id>/proposal.md`
+- `harnessX/changes/<id>/specs/**`（delta spec）
+- `meta.yaml` 中的状态与审批记录
 
-### 5.1 创建 change — `hx change create`
-
-```bash
-hx change create <id> [选项]
-```
-
-| 选项 | 必填 | 含义 |
-| --- | --- | --- |
-| `--domains <list>` | 是* | 逗号分隔的触及域（如 `orders,payments`） |
-| `--profile <name>` | 否 | 覆盖默认 profile |
-| `--from-issue <url>` | 否 | 从 GitHub Issue URL 脚手架（域可从 label 推断） |
-
-\* 使用 `--from-issue` 时可省略 `--domains`。
+### 5.2 推荐流程
 
 ```bash
 hx change create add-refund --domains orders,payments
-hx change list    # 列出活跃 change：id、状态、profile、域
-```
-
-### 5.2 Propose — `hx propose` / `/hx-propose`
-
-```bash
-hx propose <change> [--title <title>]
-```
-
-| 选项 | 默认 | 含义 |
-| --- | --- | --- |
-| `--title` | `Untitled` | 写入 `proposal.md` 的标题 |
-
-```bash
+hx propose add-refund --title "支持部分退款"
 hx gate check add-refund --phase spec
-```
-
-### 5.3 Design — `hx design`
-
-```bash
-hx design <change>    # 无额外选项；内部先跑 design 门禁再写 design 脚手架
+hx gate approve add-refund --gate spec --approver zhangsan
 hx gate advance add-refund
 ```
 
-### 5.4 Spec — 人工批准
+### 5.3 本阶段命令与全部选项
 
-```bash
-hx gate approve <change> --gate <gate> --approver <name>
-hx gate advance <change>
-```
-
-| `gate approve` 选项 | 必填 | 含义 |
+| 命令 | 选项 | 含义 |
 | --- | --- | --- |
-| `--gate` | 是 | 被批准的门禁名，通常为 `spec` |
-| `--approver` | 是 | 批准人姓名（审计留痕） |
+| `change create <id>` | `--domains <list>` | 触及域列表（逗号分隔） |
+|  | `--profile <name>` | 覆盖默认 profile |
+|  | `--from-issue <url>` | 从 GitHub issue 脚手架（可推断域） |
+| `change list` | — | 查看活跃 change |
+| `propose <change>` | `--title <title>` | proposal 标题（默认 `Untitled`） |
+| `gate check <change>` | `--phase <cmd>` | 检查指定阶段（不填则默认下一阶段） |
+| `gate approve <change>` | `--gate <gate>` | 必填，通常 `spec` |
+|  | `--approver <name>` | 必填，审批人 |
+| `gate advance <change>` | — | 在当前阶段全绿时推进 |
 
-### 5.5 Plan — `hx plan`
+### 5.4 需求阶段配置建议
 
-```bash
-hx plan <change>    # 从 delta spec 生成双轨 tasks.md，无选项
+1. `config.yaml`：确保 `profile` 与团队风险等级一致（`standard` / `strict` / `enterprise`）。
+2. `harness.yaml`：确保 `spec` 阶段套件存在（如 `fast`）。
+3. 高合规团队建议启用：
+
+```yaml
+compensation:
+  enabled: true
+  escalate_warn_to_block: true
 ```
-
-### 5.6 Apply — `hx apply`
-
-```bash
-hx apply <change> [选项]
-```
-
-| 选项 | 默认 | 含义 |
-| --- | --- | --- |
-| `--runner <cmd>` | — | 每任务执行的 shell 命令；注入 `HX_TASK_*`、`HX_FIX_HINTS`、`HX_TASK_PACK` |
-| `--max-retries <n>` | `3` | 每任务 fast 套件失败后的自校正轮数 |
-| `--limit <n>` | — | 最多处理 N 个任务后停止 |
-| `--parallel <n>` | `1` | 同一 `@group=` 内最大并发任务数 |
-| `--fan-out <n>` | — | 在 N 个隔离 worktree 中并行 apply+verify，选最优结果 |
-
-```bash
-hx apply add-refund --runner 'cursor-agent --task "$HX_TASK_TITLE"'
-hx apply add-refund --parallel 2 --runner '<agent>'
-hx apply add-refund --fan-out 3 --runner '<agent>'
-```
-
-弱 IDE（Codex/OpenCode）：`hx adapter sync --targets codex,generic` → Tier 2 自动加强门禁。
-
-### 5.7 Verify — `hx verify` / `hx fix`
-
-```bash
-hx verify <change>
-hx fix --change <change> --sensor <sensorId> [--runner <cmd>]
-```
-
-| `fix` 选项 | 必填 | 含义 |
-| --- | --- | --- |
-| `--change` | 是 | change id |
-| `--sensor` | 是 | 失败 sensor id |
-| `--runner` | 否 | 启动修复会话；设置环境变量 `HX_FIX_PACK` |
-
-### 5.8 Archive — `hx archive` / `hx rebase check`
-
-```bash
-hx rebase check <change>
-hx archive <change> [--force]
-```
-
-| 选项 | 含义 |
-| --- | --- |
-| `--force` | 跳过须处于 `verified` 状态的要求（仅 `lite` profile 等场景） |
 
 ---
 
-## 6. 命令完整参考
+## 6. 设计阶段（Design）
 
-以下按命令族列出**全部选项**。未列出的子命令无额外选项。
+### 6.1 目标与产物
 
-### 6.1 门禁与指南 — `hx gate` / `hx guide`
+- `design.md` 或 `design/overview.md`
+-（enterprise）`design/ui/pages.md`、LLD 文件
+- 设计阶段 gate 记录（如 prototype-complete）
 
-| 命令 | 选项 | 含义 |
-| --- | --- | --- |
-| `gate check <change>` | `--phase <cmd>` | 检查指定阶段；默认下一待推进阶段 |
-| `gate advance <change>` | — | 推进至下一阶段（须传感器全绿 + 前置条件） |
-| `gate approve <change>` | `--gate`, `--approver` | 记录人工批准（必填） |
-| `gate hook-check` | — | git hook 用：对 implementing 状态 change 跑 apply 门禁 |
-| `gate replay` | — | CI 回放所有活跃 change 的下一阶段的门禁 |
-| `guide pack <change>` | `--phase`（必填）, `--out <file>` | 组装阶段 Context Pack |
-| `guide task-pack <change> <taskId>` | `--out <file>` | 单任务交接包（默认 `tasks/<id>-pack.md`） |
+### 6.2 推荐流程
 
-### 6.2 探索与归档
+```bash
+hx design add-refund
+hx guide pack add-refund --phase design --out /tmp/design-pack.md
+hx gate check add-refund --phase design
+hx gate advance add-refund
+```
 
-| 命令 | 选项 | 含义 |
-| --- | --- | --- |
-| `explore <change>` | `--topic <topic>` | 只读探索笔记主题，默认 `unscoped` |
-| `archive <change>` | `--force` | 合并 delta 并归档 |
-| `openspec import` | `--from <dir>` | OpenSpec 目录，默认 `openspec` |
-
-### 6.3 验证与豁免
+### 6.3 本阶段命令与全部选项
 
 | 命令 | 选项 | 含义 |
 | --- | --- | --- |
-| `verify <change>` | — | 完整验证套件 + 可追溯性 |
-| `trace check [change]` | `--all` | 检查场景→测试覆盖 |
+| `design <change>` | — | 先检查 design gate，再生成设计脚手架 |
+| `guide pack <change>` | `--phase <cmd>` | 必填，通常 `design` |
+|  | `--out <file>` | 输出到文件 |
+| `gate check <change>` | `--phase design` | 检查设计阶段套件 |
+| `gate advance <change>` | — | 设计阶段通过后推进 |
+
+### 6.4 设计阶段配置建议
+
+- 在 `blueprint.yaml` 中声明 design 所需 guides/sensors，自动收口到 `harness.yaml`：
+
+```yaml
+phases:
+  design:
+    guides: [prototype-wireframe]
+```
+
+- 若团队有统一设计模板，将其注册为 `guide.template` 并在 `guides` 中绑定 `phase: [design]`。
+
+---
+
+## 7. 开发编码阶段（Implementation）
+
+### 7.1 目标与产物
+
+- `tasks.md`（双轨 test/impl）
+- 每任务 task-pack（`tasks/<taskId>-pack.md`）
+- 代码实现与 apply 阶段 gate 记录
+
+### 7.2 推荐流程
+
+```bash
+hx plan add-refund
+hx apply add-refund --runner "<agent-cmd>"
+hx guide task-pack add-refund 01b
+```
+
+### 7.3 本阶段命令与全部选项
+
+| 命令 | 选项 | 含义 |
+| --- | --- | --- |
+| `plan <change>` | — | 从 delta spec 生成双轨任务 |
+| `apply <change>` | `--runner <cmd>` | 每任务执行命令；注入 `HX_TASK_*` / `HX_FIX_HINTS` / `HX_TASK_PACK` |
+|  | `--max-retries <n>` | 失败后自校正重试次数（默认 `3`） |
+|  | `--limit <n>` | 最多处理 N 个任务 |
+|  | `--parallel <n>` | 同一并行组并发数（默认 `1`） |
+|  | `--fan-out <n>` | N 个 worktree 并行执行，选最优结果 |
+| `guide task-pack <change> <taskId>` | `--out <file>` | 输出任务交接包 |
+| `fix` | `--change <id>` | 必填，change id |
+|  | `--sensor <id>` | 必填，失败 sensor |
+|  | `--runner <cmd>` | 可选，带 `HX_FIX_PACK` 拉起修复会话 |
+| `runtime worktree <action> [change]` | `--slot <id>` / `--path <path>` | v0.2 隔离执行 |
+
+### 7.4 编码阶段配置建议
+
+- 无 Cursor / 弱 IDE（Codex/OpenCode）建议：
+
+```bash
+hx adapter sync --targets codex,generic
+```
+
+- 对应 `config.yaml` 可设：
+
+```yaml
+adapter:
+  target: codex
+compensation:
+  enabled: true
+```
+
+---
+
+## 8. 测试阶段（Testing & Verification）
+
+### 8.1 目标与产物
+
+- verify 套件全绿
+- 场景→测试可追溯
+- fixture / meta 完整性校验
+- 归档后的主规格更新
+
+### 8.2 推荐流程
+
+```bash
+hx verify add-refund
+hx trace check add-refund
+hx fixture verify
+hx rebase check add-refund
+hx archive add-refund
+```
+
+### 8.3 本阶段命令与全部选项
+
+| 命令 | 选项 | 含义 |
+| --- | --- | --- |
+| `verify <change>` | — | 跑完整验证套件与状态推进 |
+| `trace check [change]` | `--all` | 检查可追溯覆盖 |
 | `sync` | — | spec↔code 漂移检测 |
-| `view` | `--out <file>` | HTML 仪表盘，默认 `harnessx-dashboard.html` |
-| `status` | — | 活跃 change 表格 |
-| `waiver add <change>` | `--target`, `--reason`, `--requested-by`, `--approved-by`（均必填）, `--expires <iso>` | 有时限豁免；`--target` 可为 sensor id、`scenario:…`、`tests:…` |
-| `waiver list <change>` | — | 列出豁免及是否过期 |
-| `harness lint` | — | 宪法与 Skill 冲突检测 |
-| `rebase check <change>` | — | 与其他 change 的 delta 冲突预检 |
-| `profile recommend <change>` | `--diff-lines <n>`, `--choose <profile>`, `--override-reason <reason>` | 推荐/记录 profile 选择 |
+| `fixture approve <file>` | `--by <name>` | 批准 fixture 快照 |
+| `fixture verify` | — | 校验批准 fixture 未漂移 |
+| `testfirst generate <change>` | — | strict 测试桩生成 |
+| `testfirst approve <change>` | `--files <list>`, `--by <name>` | 批准测试基线 |
+| `waiver add <change>` | `--target <target>` | 必填（sensor / `scenario:` / `tests:`） |
+|  | `--reason <reason>` | 必填，豁免原因 |
+|  | `--requested-by <name>` | 必填，申请人 |
+|  | `--approved-by <name>` | 必填，批准人 |
+|  | `--expires <iso>` | 过期时间（默认 +14 天） |
+| `waiver list <change>` | — | 查看豁免与过期状态 |
+| `archive <change>` | `--force` | 跳过 verified 要求（谨慎） |
+| `rebase check <change>` | — | 归档前冲突预检 |
+| `meta verify [change]` | `--all` | 防篡改校验 |
 
-**豁免配置样例：**
+### 8.4 测试阶段配置样例
+
+常见豁免（有时限）：
 
 ```bash
 hx waiver add add-refund \
@@ -422,100 +460,29 @@ hx waiver add add-refund \
   --expires 2026-04-01T00:00:00Z
 ```
 
-### 6.4 测试优先与夹具
-
-| 命令 | 选项 | 含义 |
-| --- | --- | --- |
-| `testfirst generate <change>` | — | 为 strict profile 生成测试桩 |
-| `testfirst approve <change>` | `--files <list>`, `--by <name>` | 哈希锁定已批准测试文件 |
-| `fixture approve <file>` | `--by <name>` | 批准夹具快照 |
-| `fixture verify` | — | 验证已批准夹具未被篡改 |
-
-### 6.5 资产与 Hub
-
-| 命令 | 选项 | 含义 |
-| --- | --- | --- |
-| `asset list` | `--change <id>` | 分层解析后的资产列表 |
-| `asset promote <dir>` | `--to trial\|enforced\|deprecated` | 提升资产生命周期 |
-| `asset backfill <dir>` | — | 从 runs 回填 metrics |
-| `asset scan <dir>` | — | 指南内容注入扫描 |
-| `lock write` / `lock verify` | — | 写/校验 `harness.lock` |
-| `hub golden` | — | 列出内置黄金 Hub 包 |
-| `hub seed [path]` | — | 创建 Hub 目录，默认 `harness-hub` |
-| `hub add <id>@<ver>` | `--hub <path>`（必填） | 安装到 `.hub-cache/` |
-| `hub sync` | `--hub`（必填）, `--apply`, `--force`, `--only <ids>` | 对账/三方合并上游更新 |
-| `hub promote <dir>` | `--hub`, `--by`（必填）, `--evidence <ref>` | 发布本地资产到 Hub |
-| `hub approve <id>@<ver>` | `--hub`, `--reviewer`（必填） | 批准 Hub 包评审 |
-| `hub eval <id>@<ver>` | `--hub`（必填）, `--local <dir>`, `--golden <name>` | 发布前验收 |
-| `hub search [q]` | `--hub`（必填）, `--kind`, `--phase`, `--category package\|bundle\|blueprint`, `--index` | 检索 Hub 目录 |
-| `bundle list` | `--hub <path>` | 列出内置或 Hub Bundle |
-
-**Hub 配置工作流：**
+CI 侧建议固定执行：
 
 ```bash
-# 平台组：创建 Hub
-hx hub seed ./harness-hub
-cd harness-hub && git init && git add . && git commit -m "seed hub"
-
-# 业务仓库 config.yaml
-# hub: ../harness-hub
-
-hx hub add prd-writing@1.0.0 --hub ./harness-hub
-hx hub sync --hub ./harness-hub          # 查看更新
-hx hub sync --hub ./harness-hub --apply  # 合并上游
-hx lock write
+hx gate replay
+hx trace check --all
+hx fixture verify
+hx meta verify --all
 ```
-
-### 6.6 适配器
-
-| 命令 | 选项 | 含义 |
-| --- | --- | --- |
-| `adapter sync` | `--targets <list>` | 编译目标，默认 `cursor,trae,qoder,claude,generic` |
-| `adapter targets` | — | 列出目标及 Tier/能力 |
-| `adapter drift` | `--targets <list>` | 检测 IDE 输出文件是否被手改 |
-| `adapter quest <change>` | — | 导出 Qoder Quest 规格 |
-
-### 6.7 编排与评审（v0.2+）
-
-| 命令 | 选项 | 含义 |
-| --- | --- | --- |
-| `runtime worktree <action> [change]` | `--slot`, `--path` | `create` / `list` / `remove` 隔离 worktree |
-| `review import <change> <file>` | — | 导入 diff 行级评审 JSON/YAML |
-| `review list <change>` | — | 列出评审标注 |
-| `review resolve <change> <id>` | — | 标记标注已解决 |
-| `eval guides <change>` | `--cases <file>` | 指南行为评测 |
-| `notify <change>` | `--interval <ms>`, `--webhook <url>`, `--once` | 轮询变更状态；可用 `HX_WATCH_WEBHOOK` 环境变量 |
-
-### 6.8 Steering 与 Rubric
-
-| 命令 | 选项 | 含义 |
-| --- | --- | --- |
-| `steer report` | `--threshold <n>` | 失败模式聚合阈值，默认 `3` |
-| `steer distill <signature>` | `--kind guide.skill\|sensor.rubric` | 从失败模式蒸馏草稿资产 |
-| `steer harvest-pr` | `--from <file>` | 从 PR 评论 JSON 收获 rubric 规则 |
-| `steer coverage` | `--aggregate <dir>` | 本仓或跨仓覆盖率聚合 |
-| `steer publish <dir>` | `--hub`, `--by`（必填）, `--evidence`, `--skip-eval` | 指标→eval→Hub 闭环 |
-| `rubric add <text>` | `--pattern <regex>`, `--severity block\|warn\|info` | 添加 AI 评审规则 |
-| `rubric feedback <file> <ruleId>` | `--false-positive` | 记录误报反馈 |
-| `janitor run` | — | 过期豁免、漂移、死资产扫描 |
-
-### 6.9 触发器与 MCP
-
-| 命令 | 选项 | 含义 |
-| --- | --- | --- |
-| `watch` | — | 前台守护 `trigger: file-save` 的 sensor |
-| `schedule run` | — | 执行 `trigger: schedule` 的 sensor（CI cron 入口） |
-| `mcp` | — | stdio MCP 服务：`gate_check`, `guide_pack`, `change_status`, `trace_check`, `apply_task`, `fix_session`, `drift_check` |
-
-### 6.10 元数据完整性
-
-| 命令 | 选项 | 含义 |
-| --- | --- | --- |
-| `meta verify [change]` | `--all` | 校验 `meta.yaml` 未被篡改 |
 
 ---
 
-## 7. 核心心智模型
+## 9. 跨阶段平台能力（可选但推荐）
+
+| 能力 | 关键命令 | 用途 |
+| --- | --- | --- |
+| Hub 资产治理 | `hub seed/add/sync/promote/eval/search` | 组织级资产分发与回收 |
+| Steering 质量闭环 | `steer report/distill/publish` | 从失败中沉淀新规则 |
+| 仪表盘与覆盖聚合 | `view` / `steer coverage --aggregate` | 项目与组织视角治理 |
+| MCP 工具桥接 | `mcp` | 给 IDE/Agent 暴露 `apply_task`、`fix_session` 等工具 |
+
+---
+
+## 10. 核心心智模型
 
 1. 行为改动在 **change 工作区**（`harnessX/changes/<id>/`），用 delta spec 描述增量。
 2. **Gate**：`hx gate advance` 仅当 sensor 全绿且满足前置条件（如人工批准）；sensor 崩溃视为阻断（fail-closed）。
@@ -523,7 +490,7 @@ hx lock write
 4. `hx archive` 将 delta 合并进主规格。
 5. 反复失败经 **Steering** 蒸馏为新 Guide，经 **Hub** 共享。
 
-## 8. v0.3 / v0.4 / v0.5 分层架构速览
+## 11. v0.3 / v0.4 / v0.5 分层架构速览
 
 | 层级 | 能力 | 典型命令 / 配置 |
 | --- | --- | --- |
@@ -533,7 +500,7 @@ hx lock write
 
 enterprise profile 含 `prototype-complete`、`uat-complete`、统一 `drift` sensor。概念词表见 [glossary.md](glossary.zh-CN.md)。
 
-## 9. 进一步阅读
+## 12. 进一步阅读
 
 - [使用场景示例（18 个，按旅程组织）](examples/README.md)
 - [概念词表](glossary.zh-CN.md)
