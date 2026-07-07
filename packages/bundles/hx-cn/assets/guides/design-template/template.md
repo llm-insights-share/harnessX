@@ -38,3 +38,19 @@
 ## Rollback Plan
 
 <!-- 功能开关、迁移回滚、数据修复步骤 -->
+
+## UI Layout & Information Architecture
+
+<!-- 页面清单见 design/ui/pages.md；壳组件见 fe-layout Skill -->
+
+| Page | Route | Layout shell | Notes |
+|------|-------|--------------|-------|
+| | | | |
+
+## Design Tokens
+
+<!-- 本 change 涉及的令牌变更；见 design-tokens Skill 与 packages/design-tokens -->
+
+| Token | Value / role | Usage in this change |
+|-------|--------------|----------------------|
+| | | |

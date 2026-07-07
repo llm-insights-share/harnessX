@@ -123,24 +123,34 @@ export function scaffoldRequirements(ws: Workspace, change: string): string[] {
   const files: Record<string, string> = {};
   if (tpl) {
     const raw = readTemplate(ws, tpl.source);
-    if (raw.includes("## User Stories")) {
-      files["prd-summary.md"] = raw.split("## User Stories")[0]!.trim() + "\n";
-      const rest = raw.split("## User Stories")[1] ?? "";
-      if (rest.includes("## Non-Functional")) {
-        files["user-stories.md"] = "## User Stories\n" + rest.split("## Non-Functional")[0]!.trim() + "\n";
-        files["nfr.md"] = "## Non-Functional Requirements\n" + rest.split("## Non-Functional")[1]!.trim() + "\n";
+    const userStoriesMarker = raw.includes("## 用户故事") ? "## 用户故事" : "## User Stories";
+    const nfrMarker = raw.includes("## 非功能需求")
+      ? "## 非功能需求"
+      : raw.includes("## Non-Functional Requirements")
+        ? "## Non-Functional Requirements"
+        : null;
+    if (raw.includes(userStoriesMarker)) {
+      files["prd-summary.md"] = raw.split(userStoriesMarker)[0]!.trim() + "\n";
+      const rest = raw.split(userStoriesMarker)[1] ?? "";
+      if (nfrMarker && rest.includes(nfrMarker)) {
+        files["user-stories.md"] = zh
+          ? `## 用户故事\n${rest.split(nfrMarker)[0]!.trim()}\n`
+          : `## User Stories\n${rest.split(nfrMarker)[0]!.trim()}\n`;
+        files["nfr.md"] = zh
+          ? `## 非功能需求\n${rest.split(nfrMarker)[1]!.trim()}\n`
+          : `## Non-Functional Requirements\n${rest.split(nfrMarker)[1]!.trim()}\n`;
       }
     }
   }
   if (!files["prd-summary.md"]) {
     files["prd-summary.md"] = zh
-      ? `# PRD Summary: ${change}\n\n> 从组织 PRD（docs/prd/）蒸馏；链接源文档。\n\n## Source\n\n- PRD: docs/prd/\n\n## Goals\n\n## In Scope\n\n## Out of Scope\n`
+      ? `# PRD 摘要：${change}\n\n> 从组织 PRD（docs/prd/）蒸馏；链接源文档。\n\n## Source\n\n- PRD: docs/prd/\n\n## Goals\n\n## In Scope\n\n## Out of Scope\n`
       : `# PRD Summary: ${change}\n\n> Distilled from org PRD (docs/prd/); link the source doc.\n\n## Source\n\n- PRD: docs/prd/\n\n## Goals\n\n## In Scope\n\n## Out of Scope\n`;
     files["user-stories.md"] = zh
-      ? `# User Stories: ${change}\n\n## Stories\n\n| ID | As a | I want | So that | AC ref |\n|----|------|--------|---------|--------|\n`
+      ? `# 用户故事：${change}\n\n## 用户故事\n\n| ID | 作为 | 我希望 | 以便 | AC 编号 |\n|----|------|--------|------|---------|\n`
       : `# User Stories: ${change}\n\n## Stories\n\n| ID | As a | I want | So that | AC ref |\n|----|------|--------|---------|--------|\n`;
     files["nfr.md"] = zh
-      ? `# NFR: ${change}\n\n## Performance\n\n## Security\n\n## Availability\n`
+      ? `# 非功能需求：${change}\n\n## 性能\n\n## 安全\n\n## 可用性\n`
       : `# NFR: ${change}\n\n## Performance\n\n## Security\n\n## Availability\n`;
   }
 
@@ -183,7 +193,7 @@ export function scaffoldDesign(ws: Workspace, change: string): string {
     fs.writeFileSync(
       pagesFile,
       zh
-        ? `# UI Pages: ${change}\n\n| Page | Route | Layout shell | Notes |\n|------|-------|--------------|-------|\n`
+        ? `# UI 页面清单：${change}\n\n| Page | Route | Layout shell | Notes |\n|------|-------|--------------|-------|\n`
         : `# UI Pages: ${change}\n\n| Page | Route | Layout shell | Notes |\n|------|-------|--------------|-------|\n`
     );
   }

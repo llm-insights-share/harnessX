@@ -1,34 +1,34 @@
-# PRD Summary: {{change}}
+# PRD 摘要：{{change}}
 
-> Distilled from org PRD (`docs/prd/`). Link the source document.
+> 从组织 PRD（`docs/prd/`）蒸馏；链接源文档。
 
-## Source
+## Source（来源）
 
-- PRD: docs/prd/{{change}}.md
-- Last reviewed:
+- PRD：docs/prd/{{change}}.md
+- 最近审阅：
 
-## Goals
+## Goals（目标）
 
-<!-- 1–3 bullets: business outcomes -->
+<!-- 1–3 条：业务成果 -->
 
-## In Scope
+## In Scope（范围内）
 
-<!-- Maps to proposal What Changes -->
+<!-- 对应 proposal What Changes -->
 
-## Out of Scope
+## Out of Scope（范围外）
 
-<!-- Maps to proposal Out of Scope -->
+<!-- 对应 proposal Out of Scope -->
 
-## User Stories
+## 用户故事
 
-| ID | As a | I want | So that | AC ref |
-|----|------|--------|---------|--------|
+| ID | 作为 | 我希望 | 以便 | AC 编号 |
+|----|------|--------|------|---------|
 | US-1 | | | | AC-1 |
 
-## Non-Functional Requirements
+## 非功能需求
 
-### Performance
+### Performance（性能）
 
-### Security
+### Security（安全）
 
-### Availability
+### Availability（可用性）
