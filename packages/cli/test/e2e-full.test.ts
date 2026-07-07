@@ -43,6 +43,41 @@ WHEN a session is idle for 30 minutes, THE SYSTEM SHALL invalidate the session t
 `;
 
 describe("overall verification: full delivery cycle through the CLI", () => {
+  it("can seed and directly submit a hub repository", () => {
+    const repo = makeRepo();
+    const remote = fs.mkdtempSync(path.join(os.tmpdir(), "hx-hub-remote-"));
+    execFileSync("git", ["init", "--bare", "-q"], { cwd: remote });
+
+    const out = hx(repo, [
+      "hub",
+      "seed",
+      "./harness-hub",
+      "--submit",
+      "--remote",
+      remote,
+      "--branch",
+      "main",
+      "--message",
+      "seeded via cli"
+    ]);
+    expect(out).toContain("Seeded");
+    expect(out).toContain("Submitted");
+
+    const hubDir = path.join(repo, "harness-hub");
+    const latest = execFileSync("git", ["log", "-1", "--pretty=%s"], { cwd: hubDir, encoding: "utf8" }).trim();
+    expect(latest).toBe("seeded via cli");
+    const remoteOrigin = execFileSync("git", ["remote", "get-url", "origin"], { cwd: hubDir, encoding: "utf8" }).trim();
+    expect(remoteOrigin).toBe(remote);
+    const remoteHeads = execFileSync("git", ["ls-remote", "--heads", "origin", "main"], { cwd: hubDir, encoding: "utf8" }).trim();
+    expect(remoteHeads).toContain("refs/heads/main");
+  });
+
+  it("fails seed submit when remote is missing", () => {
+    const repo = makeRepo();
+    const out = hx(repo, ["hub", "seed", "./harness-hub", "--submit"], { expectFail: true });
+    expect(out).toContain("--remote <git-url> is required when --submit is enabled");
+  });
+
   it("runs init → propose → gates → plan → apply → verify → archive end-to-end", () => {
     const repo = makeRepo();
     const hxDir = path.join(repo, "harnessX");

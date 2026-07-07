@@ -62,6 +62,18 @@ hx init --from-hub enterprise-delivery@1.0.0 --hub ./harness-hub --adapter curso
 hx init --locale hx-cn --from-hub api-service@1.0.0 --hub ./harness-hub
 ```
 
+**示例 — 一条命令 seed 后直接提交并推送到 GitHub：**
+
+```bash
+hx hub seed ./harness-hub \
+  --submit \
+  --remote git@github.com:your-org/hx-hub.git \
+  --branch main \
+  --message "seed hub packages"
+```
+
+`--submit` 未开启时，`hx hub seed` 仅写本地目录；开启后会在目标目录执行 `git init/add/commit/push`。
+
 初始化后建议执行：
 
 ```bash

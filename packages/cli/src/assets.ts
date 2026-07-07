@@ -47,6 +47,50 @@ import { compileAdapters, adapterDrift, availableTargets, exportQoderQuest, TARG
 const ws = () => Workspace.locate(process.cwd());
 const runnerOpts = () => ({ builtins: builtinSensors });
 
+interface SeedSubmitOptions {
+  submit?: boolean;
+  remote?: string;
+  branch: string;
+  message: string;
+}
+
+function runGitOrThrow(cwd: string, args: string[], action: string): string {
+  const r = spawnSync("git", args, { cwd, encoding: "utf8" });
+  const out = `${r.stdout ?? ""}${r.stderr ?? ""}`.trim();
+  if ((r.status ?? 1) !== 0) throw new Error(`failed to ${action}: git ${args.join(" ")}${out ? `\n${out}` : ""}`);
+  return out;
+}
+
+function submitSeededHub(target: string, opts: SeedSubmitOptions): void {
+  if (!opts.submit) return;
+  if (!opts.remote) throw new Error("--remote <git-url> is required when --submit is enabled");
+
+  const gitDir = path.join(target, ".git");
+  if (!fs.existsSync(gitDir)) runGitOrThrow(target, ["init"], "initialize git repository");
+
+  const remoteExists = spawnSync("git", ["remote", "get-url", "origin"], { cwd: target, encoding: "utf8" });
+  if ((remoteExists.status ?? 1) === 0) {
+    const existing = (remoteExists.stdout ?? "").trim();
+    if (existing !== opts.remote) {
+      throw new Error(`origin already exists with a different URL (${existing}); expected ${opts.remote}`);
+    }
+  } else {
+    runGitOrThrow(target, ["remote", "add", "origin", opts.remote], "add origin remote");
+  }
+
+  runGitOrThrow(target, ["add", "."], "stage seeded hub files");
+  const commit = spawnSync("git", ["commit", "-m", opts.message], { cwd: target, encoding: "utf8" });
+  if ((commit.status ?? 1) !== 0) {
+    const out = `${commit.stdout ?? ""}${commit.stderr ?? ""}`;
+    if (!/nothing to commit|no changes added/i.test(out)) {
+      throw new Error(`failed to create commit${out.trim() ? `\n${out.trim()}` : ""}`);
+    }
+  }
+
+  runGitOrThrow(target, ["branch", "-M", opts.branch], "set default branch");
+  runGitOrThrow(target, ["push", "-u", "origin", opts.branch], "push branch to origin");
+}
+
 export function registerAssetCommands(program: Command): void {
   const asset = program.command("asset").description("Control asset model (§11)");
   asset.command("list").option("--change <id>").action((opts: { change?: string }) => {
@@ -96,12 +140,18 @@ export function registerAssetCommands(program: Command): void {
   hub
     .command("seed [path]")
     .description("Create a hub repo from built-in golden packages (pre-approved)")
-    .action((hubPath?: string) => {
+    .option("--submit", "commit and push seeded hub to a git remote")
+    .option("--remote <git-url>", "remote repository URL used with --submit")
+    .option("--branch <name>", "remote branch name (default: main)", "main")
+    .option("--message <text>", "commit message used with --submit", "seed hub packages")
+    .action((hubPath: string | undefined, opts: SeedSubmitOptions) => {
       const target = path.resolve(hubPath ?? "harness-hub");
       ensureDir(target);
       const pkgs = seedGoldenHub(target);
       console.log(`Seeded ${target} with ${pkgs.length} package(s):`);
       for (const p of pkgs) console.log(`  ${p.id}@${p.version}`);
+      submitSeededHub(target, opts);
+      if (opts.submit) console.log(`Submitted ${target} to ${opts.remote} (${opts.branch})`);
     });
   hub
     .command("add <pkg>")
