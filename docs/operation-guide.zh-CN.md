@@ -473,9 +473,137 @@ hx meta verify --all
 
 ## 9. 跨阶段平台能力（可选但推荐）
 
+### 9.1 Hub 资产管理命令（本次升级新增）
+
+当你把 Hub 作为组织级资产仓时，建议使用以下命令完成生命周期、评审、策略与完整性治理。
+
+#### `hx hub sync`
+
+```bash
+hx hub sync --hub <path-or-git-url> [--apply] [--force] [--only <ids>] [--offline] [--refresh]
+```
+
+| 选项 | 必填 | 含义 |
+| --- | --- | --- |
+| `--hub <path>` | 是 | Hub 来源（本地路径或 GitHub URL） |
+| `--apply` | 否 | 将上游变更应用到本地 `.hub-cache` |
+| `--force` | 否 | 有冲突也继续写入（带冲突标记） |
+| `--only <ids>` | 否 | 仅同步这些包 id（逗号分隔） |
+| `--offline` | 否 | 离线模式，不拉远端，仅用本地镜像缓存 |
+| `--refresh` | 否 | 同步前强制刷新远端镜像 |
+
+#### `hx hub promote`
+
+```bash
+hx hub promote <dir> --hub <path-or-git-url> --by <name> [--evidence <ref>] [--skip-policy]
+```
+
+| 选项 | 必填 | 含义 |
+| --- | --- | --- |
+| `--hub <path>` | 是 | Hub 来源 |
+| `--by <name>` | 是 | 发布人（写入评审元数据） |
+| `--evidence <ref>` | 否 | 价值/评估证据引用（报告链接、CI run 等） |
+| `--skip-policy` | 否 | 跳过发布前 `hub policy check`（不建议） |
+
+#### `hx hub eval`
+
+```bash
+hx hub eval <id@version> --hub <path-or-git-url> [--local <dir>] [--golden <name>] [--out <file>]
+```
+
+| 选项 | 必填 | 含义 |
+| --- | --- | --- |
+| `--hub <path>` | 是 | Hub 来源 |
+| `--local <dir>` | 否 | 评估本地资产目录（不走 hub package） |
+| `--golden <name>` | 否 | 评估 `hub/evals/golden-repos/<name>` 检查集 |
+| `--out <file>` | 否 | 输出结构化 JSON 报告 |
+
+#### `hx hub search` 与 catalog
+
+```bash
+hx hub search [query] --hub <path-or-git-url> [--kind <kind>] [--phase <phase>] [--category <cat>] [--index]
+hx hub catalog rebuild --hub <path-or-git-url>
+```
+
+| 选项 | 必填 | 含义 |
+| --- | --- | --- |
+| `query` | 否 | 按 id/version/kind/description 模糊匹配 |
+| `--hub <path>` | 是 | Hub 来源 |
+| `--kind <kind>` | 否 | 按资产类型过滤（如 `guide.skill`） |
+| `--phase <phase>` | 否 | 按阶段过滤（`propose/design/apply/verify` 等） |
+| `--category <cat>` | 否 | `package` \| `bundle` \| `blueprint` |
+| `--index` | 否 | 重建 `index.json` 后退出 |
+
+#### `hx hub asset`
+
+```bash
+hx hub asset info <id@version> --hub <path-or-git-url>
+hx hub asset promote <id@version> --hub <path-or-git-url> --to <status>
+hx hub asset deprecate <id@version> --hub <path-or-git-url> --reason <text>
+```
+
+| 子命令 | 选项 | 含义 |
+| --- | --- | --- |
+| `asset info` | `--hub` | 输出分类/元数据/评审状态（JSON） |
+| `asset promote` | `--hub`, `--to <status>` | 变更生命周期状态（`draft/trial/enforced/deprecated/archived`） |
+| `asset deprecate` | `--hub`, `--reason <text>` | 标记废弃并记录原因 |
+
+#### `hx hub review`
+
+```bash
+hx hub review request <id@version> --hub <path-or-git-url> --by <name>
+hx hub review approve <id@version> --hub <path-or-git-url> --reviewer <name>
+hx hub review reject <id@version> --hub <path-or-git-url> --reviewer <name> --reason <text>
+```
+
+| 子命令 | 选项 | 含义 |
+| --- | --- | --- |
+| `review request` | `--hub`, `--by` | 创建/重置待评审请求 |
+| `review approve` | `--hub`, `--reviewer` | 通过评审 |
+| `review reject` | `--hub`, `--reviewer`, `--reason` | 拒绝并记录原因 |
+
+#### `hx hub policy` 与缓存治理
+
+```bash
+hx hub policy check --hub <path-or-git-url> [--strict]
+hx hub cache gc [--older-than-days <n>]
+```
+
+| 命令 | 选项 | 含义 |
+| --- | --- | --- |
+| `policy check` | `--hub` | 运行治理策略校验（审批/owner/hash 等） |
+|  | `--strict` | 将 warning 也视为失败（默认仅 error 失败） |
+| `cache gc` | `--older-than-days <n>` | 清理过期远端镜像缓存（默认 `30` 天） |
+
+#### 端到端示例：发布 -> 评审 -> enforce -> 检索 -> 校验
+
+```bash
+# 1) 将本地资产发布到 Hub，并附带证据
+hx hub promote ./harnessX/assets/guides/secure-api \
+  --hub git@github.com:your-org/hx-hub.git \
+  --by zhangsan \
+  --evidence "ci://runs/1820"
+
+# 2) 发起并通过评审
+hx hub review request secure-api@1.2.0 --hub git@github.com:your-org/hx-hub.git --by zhangsan
+hx hub review approve secure-api@1.2.0 --hub git@github.com:your-org/hx-hub.git --reviewer lisi
+
+# 3) 生命周期推进到 enforced
+hx hub asset promote secure-api@1.2.0 --hub git@github.com:your-org/hx-hub.git --to enforced
+
+# 4) 策略检查 + 评估报告
+hx hub policy check --hub git@github.com:your-org/hx-hub.git --strict
+hx hub eval secure-api@1.2.0 --hub git@github.com:your-org/hx-hub.git --out /tmp/secure-api-eval.json
+
+# 5) 检索/重建索引/缓存回收
+hx hub search secure --hub git@github.com:your-org/hx-hub.git --kind guide.skill --phase apply
+hx hub catalog rebuild --hub git@github.com:your-org/hx-hub.git
+hx hub cache gc --older-than-days 14
+```
+
 | 能力 | 关键命令 | 用途 |
 | --- | --- | --- |
-| Hub 资产治理 | `hub seed/add/sync/promote/eval/search` | 组织级资产分发与回收 |
+| Hub 资产治理 | `hub seed/add/sync/promote/eval/search/catalog/asset/review/policy/cache` | 组织级资产分发与回收 |
 | Steering 质量闭环 | `steer report/distill/publish` | 从失败中沉淀新规则 |
 | 仪表盘与覆盖聚合 | `view` / `steer coverage --aggregate` | 项目与组织视角治理 |
 | MCP 工具桥接 | `mcp` | 给 IDE/Agent 暴露 `apply_task`、`fix_session` 等工具 |

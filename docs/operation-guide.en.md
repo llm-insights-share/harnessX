@@ -471,9 +471,137 @@ hx meta verify --all
 
 ## 9. Cross-Stage Platform Capabilities (optional)
 
+### 9.1 Hub asset management commands (new in this upgrade)
+
+Use these commands when you run a shared Hub with lifecycle/review/policy/integrity controls.
+
+#### `hx hub sync`
+
+```bash
+hx hub sync --hub <path-or-git-url> [--apply] [--force] [--only <ids>] [--offline] [--refresh]
+```
+
+| Option | Required | Meaning |
+| --- | --- | --- |
+| `--hub <path>` | Yes | Hub source (local path or GitHub URL) |
+| `--apply` | No | Apply upstream changes into local `.hub-cache` |
+| `--force` | No | Keep applying when merge conflicts occur (writes conflict markers) |
+| `--only <ids>` | No | Comma-separated package ids to sync |
+| `--offline` | No | Do not fetch remote; use local mirror cache only |
+| `--refresh` | No | Force refresh remote mirror before sync |
+
+#### `hx hub promote`
+
+```bash
+hx hub promote <dir> --hub <path-or-git-url> --by <name> [--evidence <ref>] [--skip-policy]
+```
+
+| Option | Required | Meaning |
+| --- | --- | --- |
+| `--hub <path>` | Yes | Hub source (local path or GitHub URL) |
+| `--by <name>` | Yes | Publisher identity (recorded in review metadata) |
+| `--evidence <ref>` | No | Optional value/eval evidence link/reference |
+| `--skip-policy` | No | Skip `hub policy check` before publish (not recommended) |
+
+#### `hx hub eval`
+
+```bash
+hx hub eval <id@version> --hub <path-or-git-url> [--local <dir>] [--golden <name>] [--out <file>]
+```
+
+| Option | Required | Meaning |
+| --- | --- | --- |
+| `--hub <path>` | Yes | Hub source |
+| `--local <dir>` | No | Evaluate a local asset directory (instead of hub package) |
+| `--golden <name>` | No | Evaluate a golden repo check set under `hub/evals/golden-repos/<name>` |
+| `--out <file>` | No | Write structured JSON report to file |
+
+#### `hx hub search` and catalog
+
+```bash
+hx hub search [query] --hub <path-or-git-url> [--kind <kind>] [--phase <phase>] [--category <cat>] [--index]
+hx hub catalog rebuild --hub <path-or-git-url>
+```
+
+| Option | Required | Meaning |
+| --- | --- | --- |
+| `query` | No | Fuzzy text query against id/version/kind/description |
+| `--hub <path>` | Yes | Hub source |
+| `--kind <kind>` | No | Filter by asset kind (`guide.skill`, `sensor.script`, etc.) |
+| `--phase <phase>` | No | Filter by phase (`propose`, `design`, `apply`, `verify`, ...) |
+| `--category <cat>` | No | `package` \| `bundle` \| `blueprint` |
+| `--index` | No | Rebuild `index.json` and exit |
+
+#### `hx hub asset`
+
+```bash
+hx hub asset info <id@version> --hub <path-or-git-url>
+hx hub asset promote <id@version> --hub <path-or-git-url> --to <status>
+hx hub asset deprecate <id@version> --hub <path-or-git-url> --reason <text>
+```
+
+| Subcommand | Options | Meaning |
+| --- | --- | --- |
+| `asset info` | `--hub` | Print category/metadata/review state as JSON |
+| `asset promote` | `--hub`, `--to <status>` | Move lifecycle status (`draft/trial/enforced/deprecated/archived`) |
+| `asset deprecate` | `--hub`, `--reason <text>` | Mark asset deprecated with explicit reason |
+
+#### `hx hub review`
+
+```bash
+hx hub review request <id@version> --hub <path-or-git-url> --by <name>
+hx hub review approve <id@version> --hub <path-or-git-url> --reviewer <name>
+hx hub review reject <id@version> --hub <path-or-git-url> --reviewer <name> --reason <text>
+```
+
+| Subcommand | Options | Meaning |
+| --- | --- | --- |
+| `review request` | `--hub`, `--by` | Create/reset a pending review request |
+| `review approve` | `--hub`, `--reviewer` | Approve review |
+| `review reject` | `--hub`, `--reviewer`, `--reason` | Reject review with reason |
+
+#### `hx hub policy` and cache GC
+
+```bash
+hx hub policy check --hub <path-or-git-url> [--strict]
+hx hub cache gc [--older-than-days <n>]
+```
+
+| Command | Options | Meaning |
+| --- | --- | --- |
+| `policy check` | `--hub` | Run governance checks (approval/owner/hash, etc.) |
+|  | `--strict` | Fail on warnings (default fails only on errors) |
+| `cache gc` | `--older-than-days <n>` | Remove stale remote mirror cache entries (default `30`) |
+
+#### End-to-end example: publish -> review -> enforce -> query -> verify
+
+```bash
+# 1) publish a local asset into Hub with evidence
+hx hub promote ./harnessX/assets/guides/secure-api \
+  --hub git@github.com:your-org/hx-hub.git \
+  --by alice \
+  --evidence "ci://runs/1820"
+
+# 2) request + approve review
+hx hub review request secure-api@1.2.0 --hub git@github.com:your-org/hx-hub.git --by alice
+hx hub review approve secure-api@1.2.0 --hub git@github.com:your-org/hx-hub.git --reviewer bob
+
+# 3) move lifecycle to enforced
+hx hub asset promote secure-api@1.2.0 --hub git@github.com:your-org/hx-hub.git --to enforced
+
+# 4) check governance and eval output
+hx hub policy check --hub git@github.com:your-org/hx-hub.git --strict
+hx hub eval secure-api@1.2.0 --hub git@github.com:your-org/hx-hub.git --out /tmp/secure-api-eval.json
+
+# 5) search/index maintenance and cache gc
+hx hub search secure --hub git@github.com:your-org/hx-hub.git --kind guide.skill --phase apply
+hx hub catalog rebuild --hub git@github.com:your-org/hx-hub.git
+hx hub cache gc --older-than-days 14
+```
+
 | Capability | Commands | Purpose |
 | --- | --- | --- |
-| Hub governance | `hub seed/add/sync/promote/eval/search` | shared asset supply chain |
+| Hub governance | `hub seed/add/sync/promote/eval/search/catalog/asset/review/policy/cache` | shared asset supply chain |
 | Steering | `steer report/distill/publish` | recurrent failure → reusable controls |
 | Dashboard/coverage | `view`, `steer coverage --aggregate` | project/org governance |
 | MCP bridge | `mcp` | expose `apply_task`, `fix_session`, etc. to IDEs |
