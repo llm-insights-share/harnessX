@@ -4,7 +4,7 @@
 
 本目录按**使用者旅程**组织端到端场景（非按版本号堆砌）。每个场景含：**背景与角色**、**逐步命令与期望输出**、**关键机制**。
 
-> 命令与配置细节见 [操作说明](../operation-guide.zh-CN.md)；概念词表见 [glossary](../glossary.zh-CN.md)。
+> 按主题系统入门见 [使用说明](../usage-guide.zh-CN.md)；命令与配置细节见 [操作说明](../operation-guide.zh-CN.md)；概念词表见 [glossary](../glossary.zh-CN.md)。
 
 ---
 

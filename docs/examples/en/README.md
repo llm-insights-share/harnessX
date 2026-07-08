@@ -4,7 +4,7 @@
 
 Scenarios are organized by **user journey**, not by version number. Each includes: **background & roles**, **step-by-step commands with expected output**, and **mechanism notes**.
 
-> CLI options and config: [Operation Guide](../operation-guide.en.md) · Glossary: [glossary](../glossary.md)
+> Thematic overview: [Usage Guide](../usage-guide.en.md) · CLI/config: [Operation Guide](../operation-guide.en.md) · Glossary: [glossary](../glossary.md)
 
 ---
 

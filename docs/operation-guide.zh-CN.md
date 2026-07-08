@@ -2,7 +2,10 @@
 
 **English**: [Operation Guide (English)](operation-guide.en.md)
 
-本文档说明如何在日常工作中使用 HarnessX（`hx` CLI）与 AI 编码 agent 协作交付软件变更。文中**凡涉及命令均列出全部选项及含义**；**凡需使用者配置的文件均给出样例与配置步骤**。端到端场景见 [`docs/examples/`](examples/README.md)（推荐 [场景选择指南](examples/00-场景选择指南.md)）。
+本文档说明如何在日常工作中使用 HarnessX（`hx` CLI）与 AI 编码 agent 协作交付软件变更。文中**凡涉及命令均列出全部选项及含义**；**凡需使用者配置的文件均给出样例与配置步骤**。
+
+- **按主题入门**（核心概念、初始化前配置、特殊项目定制）：[`usage-guide.zh-CN.md`](usage-guide.zh-CN.md)
+- **端到端场景**：[`docs/examples/`](examples/README.md)（推荐 [场景选择指南](examples/00-场景选择指南.md)）
 
 ---
 
@@ -642,6 +645,7 @@ enterprise profile 含 `prototype-complete`、`uat-complete`、统一 `drift` se
 
 ## 12. 进一步阅读
 
+- [使用说明（按主题）](usage-guide.zh-CN.md)
 - [使用场景示例（18 个，按旅程组织）](examples/README.md)
 - [概念词表](glossary.zh-CN.md)
 - [包边界说明](architecture/package-boundaries.md)
