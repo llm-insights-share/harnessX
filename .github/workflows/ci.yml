@@ -1,15 +1,43 @@
 name: ci
+
 on:
   push:
     branches: [main]
   pull_request:
+
 jobs:
-  verify:
+  quality-gates:
+    name: Quality Gates
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm ci
-      - run: npm run verify
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Test suite
+        run: npm test
+
+      - name: Dependency vulnerability scan
+        run: npm audit --audit-level=high
+
+      - name: Publish gate summary
+        if: always()
+        run: |
+          {
+            echo "## Release Gate Summary"
+            echo "- Type check: enforced"
+            echo "- Tests: enforced"
+            echo "- Dependency scan: high/critical blocked"
+            echo "- Policy: docs/process-upgrade/release-gate-policy.md"
+          } >> "$GITHUB_STEP_SUMMARY"
