@@ -37,6 +37,9 @@ describe("hxhub e2e", () => {
   it("creates asset scaffold and prints AI help", () => {
     const repo = makeRepo();
     hxhub(repo, ["init", ".", "--hub", "./hub", "--actor", "ops"]);
+    const sourceDir = path.join(repo, "skill-source");
+    fs.mkdirSync(sourceDir, { recursive: true });
+    fs.writeFileSync(path.join(sourceDir, "SKILL.md"), "# Clock Safety\n\nUse monotonic clocks.\n", "utf8");
     const created = hxhub(repo, [
       "asset",
       "create",
@@ -48,12 +51,15 @@ describe("hxhub e2e", () => {
       "1.0.0",
       "--status",
       "draft",
+      "--source-dir",
+      "./skill-source",
       "--out",
       "./assets/clock-safety"
     ]);
     expect(created).toContain("created");
     expect(fs.existsSync(path.join(repo, "assets/clock-safety/asset.yaml"))).toBe(true);
     expect(fs.existsSync(path.join(repo, "assets/clock-safety/SKILL.md"))).toBe(true);
+    expect(fs.readFileSync(path.join(repo, "assets/clock-safety/SKILL.md"), "utf8")).toContain("Use monotonic clocks.");
 
     const help = hxhub(repo, ["help", "general", "--json"]);
     expect(help).toContain("suggestions");

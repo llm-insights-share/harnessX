@@ -130,7 +130,7 @@ function submitSeededHub(target: string, opts: SeedSubmitOptions): void {
   runGitOrThrow(target, ["push", "-u", "origin", opts.branch], "push branch to origin");
 }
 
-async function interactiveCreateAsset(outDir?: string) {
+async function interactiveCreateAsset(outDir?: string, sourceDir?: string) {
   const rl = createInterface({ input, output });
   try {
     const id = (await rl.question("asset id: ")).trim();
@@ -138,9 +138,10 @@ async function interactiveCreateAsset(outDir?: string) {
     const version = (await rl.question("version [0.1.0]: ")).trim() || "0.1.0";
     const status = ((await rl.question("status [draft]: ")).trim() || "draft") as AssetStatus;
     const phaseRaw = (await rl.question("phase list comma separated (optional): ")).trim();
+    const sourceInput = sourceDir ?? (await rl.question("source directory (optional, contains original SKILL/template/rules files): ")).trim();
     const phase = phaseRaw ? phaseRaw.split(",").map((s) => s.trim()).filter(Boolean) : [];
     const root = path.resolve(outDir ?? id);
-    return createAssetScaffold({ rootDir: root, id, kind, version, status, phase });
+    return createAssetScaffold({ rootDir: root, id, kind, version, status, phase, sourceDir: sourceInput || undefined });
   } finally {
     rl.close();
   }
@@ -353,18 +354,20 @@ export function registerHubCommands(program: Command, opts: RegisterHubCommandsO
     .option("--status <status>", "draft|trial|enforced|deprecated", "draft")
     .option("--phase <list>", "comma-separated phases")
     .option("--out <dir>", "target directory")
+    .option("--source-dir <dir>", "directory containing source files for this asset (e.g. SKILL.md/template.md)")
     .option("--interactive", "ask prompts interactively")
-    .action(async (cmdOpts: { kind?: AssetKind; id?: string; assetVersion?: string; status?: AssetStatus; phase?: string; out?: string; interactive?: boolean }) => {
+    .action(async (cmdOpts: { kind?: AssetKind; id?: string; assetVersion?: string; status?: AssetStatus; phase?: string; out?: string; sourceDir?: string; interactive?: boolean }) => {
       const result =
         cmdOpts.interactive || !cmdOpts.kind || !cmdOpts.id
-          ? await interactiveCreateAsset(cmdOpts.out)
+          ? await interactiveCreateAsset(cmdOpts.out, cmdOpts.sourceDir)
           : createAssetScaffold({
               rootDir: path.resolve(cmdOpts.out ?? cmdOpts.id),
               id: cmdOpts.id,
               kind: cmdOpts.kind,
               version: cmdOpts.assetVersion,
               status: cmdOpts.status,
-              phase: cmdOpts.phase?.split(",").map((s) => s.trim()).filter(Boolean)
+              phase: cmdOpts.phase?.split(",").map((s) => s.trim()).filter(Boolean),
+              sourceDir: cmdOpts.sourceDir
             });
       console.log(`created ${result.dir}`);
       for (const f of result.files) console.log(`  + ${f}`);

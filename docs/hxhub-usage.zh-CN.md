@@ -86,16 +86,20 @@ hxhub asset create \
   --asset-version 1.0.0 \
   --status draft \
   --phase apply,verify \
+  --source-dir ./harnessX/assets/guides/idempotency-keys \
   --out ./assets/idempotency-keys
 ```
 
 > 注意：参数是 `--asset-version`（不是 `--version`）。
+> 可通过 `--source-dir` 指定创建资产所需原文件所在目录（如已有 `SKILL.md` / `template.md` / `rules.yaml` 目录）。
 
 ### 4.2 交互创建
 
 ```bash
 hxhub asset create --interactive
 ```
+
+交互模式也会询问 `source directory`，也可直接传 `--source-dir <dir>` 预填。
 
 自动生成 `asset.yaml` 与 kind 对应模板：
 - `guide.skill` -> `SKILL.md`
