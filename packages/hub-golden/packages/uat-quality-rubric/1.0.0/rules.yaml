@@ -1,0 +1,6 @@
+rules:
+  - id: uat-signoff
+    status: enforced
+    check: UAT sign-off is recorded
+    pattern: "\b(UAT|sign-?off|accepted)\b"
+    severity: warn

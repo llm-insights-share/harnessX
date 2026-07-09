@@ -1,0 +1,7 @@
+budgets:
+  - id: query-latency-p95
+    metric: db_query_p95_ms
+    max: 200
+  - id: payload-size
+    metric: response_bytes_p95
+    max: 65536

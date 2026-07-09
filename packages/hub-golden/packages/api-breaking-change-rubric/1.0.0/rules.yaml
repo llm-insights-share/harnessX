@@ -1,0 +1,6 @@
+rules:
+  - id: breaking-endpoint-change
+    status: enforced
+    check: Breaking API changes are called out explicitly
+    pattern: "\b(BREAKING|breaking change|major version)\b"
+    severity: block

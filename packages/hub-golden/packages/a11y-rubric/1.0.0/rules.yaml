@@ -1,0 +1,6 @@
+rules:
+  - id: a11y-mention
+    status: trial
+    check: Accessibility considerations are documented
+    pattern: "\b(a11y|accessibility|keyboard|contrast)\b"
+    severity: info

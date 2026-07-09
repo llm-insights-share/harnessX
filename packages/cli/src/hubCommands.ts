@@ -7,7 +7,9 @@ import { stdin as input, stdout as output } from "node:process";
 import {
   Workspace,
   ensureDir,
-  seedGoldenHub,
+  seedHub,
+  SEED_PROFILES,
+  SEED_SCENARIOS,
   listGoldenHubPackages,
   listGoldenHubBundles,
   listGoldenHubBlueprints,
@@ -86,8 +88,32 @@ function hubCtx(opts: HubCliBase, action: HubAction, requireHub = true) {
 interface SeedSubmitOptions {
   submit?: boolean;
   remote?: string;
-  branch: string;
-  message: string;
+  branch?: string;
+  message?: string;
+  profile?: string;
+  scenario?: string;
+  with?: string;
+  exclude?: string;
+  dryRun?: boolean;
+  full?: boolean;
+}
+
+function parseCsvList(value?: string): string[] | undefined {
+  if (!value) return undefined;
+  const items = value.split(",").map((s) => s.trim()).filter(Boolean);
+  return items.length ? items : undefined;
+}
+
+function seedOptionsFromCli(opts: SeedSubmitOptions) {
+  const selective = !!(opts.profile || opts.scenario || opts.with || opts.exclude || opts.dryRun);
+  return {
+    profile: opts.profile,
+    scenario: parseCsvList(opts.scenario),
+    with: parseCsvList(opts.with),
+    exclude: parseCsvList(opts.exclude),
+    dryRun: opts.dryRun,
+    full: opts.full ?? !selective
+  };
 }
 
 function gitConfigValue(cwd: string, key: string): string | null {
@@ -107,6 +133,8 @@ function runGitOrThrow(cwd: string, args: string[], action: string): string {
 function submitSeededHub(target: string, opts: SeedSubmitOptions): void {
   if (!opts.submit) return;
   if (!opts.remote) throw new Error("--remote <git-url> is required when --submit is enabled");
+  const message = opts.message ?? "seed hub assets";
+  const branch = opts.branch ?? "main";
   const gitDir = path.join(target, ".git");
   if (!fs.existsSync(gitDir)) runGitOrThrow(target, ["init"], "initialize git repository");
   const remoteExists = spawnSync("git", ["remote", "get-url", "origin"], { cwd: target, encoding: "utf8" });
@@ -119,7 +147,7 @@ function submitSeededHub(target: string, opts: SeedSubmitOptions): void {
   runGitOrThrow(target, ["add", "."], "stage seeded hub files");
   const gitName = gitConfigValue(target, "user.name");
   const gitEmail = gitConfigValue(target, "user.email");
-  const commitArgs = ["commit", "-m", opts.message];
+  const commitArgs = ["commit", "-m", message];
   if (!gitName) commitArgs.unshift("-c", "user.name=HarnessX Seed Bot");
   if (!gitEmail) commitArgs.unshift("-c", "user.email=harnessx-seed-bot@local");
   const commit = spawnSync("git", commitArgs, { cwd: target, encoding: "utf8" });
@@ -127,8 +155,8 @@ function submitSeededHub(target: string, opts: SeedSubmitOptions): void {
     const out = `${commit.stdout ?? ""}${commit.stderr ?? ""}`;
     if (!/nothing to commit|no changes added/i.test(out)) throw new Error(`failed to create commit${out.trim() ? `\n${out.trim()}` : ""}`);
   }
-  runGitOrThrow(target, ["branch", "-M", opts.branch], "set default branch");
-  runGitOrThrow(target, ["push", "-u", "origin", opts.branch], "push branch to origin");
+  runGitOrThrow(target, ["branch", "-M", branch], "set default branch");
+  runGitOrThrow(target, ["push", "-u", "origin", branch], "push branch to origin");
 }
 
 async function interactiveCreateAsset(outDir?: string, sourceDir?: string) {
@@ -162,6 +190,12 @@ export function registerHubCommands(program: Command, opts: RegisterHubCommandsO
   root
     .command("seed [path]")
     .description("Create a hub repo from built-in golden assets")
+    .option("--profile <name>", `governance profile (${SEED_PROFILES.join("|")})`)
+    .option("--scenario <names>", `domain scenarios, comma-separated (${SEED_SCENARIOS.join("|")})`)
+    .option("--with <kinds>", "asset kinds to include (guides,sensors,rubrics,bundles,blueprints,evals,all)")
+    .option("--exclude <refs>", "asset refs to skip (<id>@<version>, comma-separated)")
+    .option("--full", "copy entire golden hub (legacy default when no selective flags)")
+    .option("--dry-run", "print seed plan without writing files")
     .option("--submit", "commit and push seeded hub to a git remote")
     .option("--remote <git-url>", "remote repository URL used with --submit")
     .option("--branch <name>", "remote branch name (default: main)", "main")
@@ -170,9 +204,22 @@ export function registerHubCommands(program: Command, opts: RegisterHubCommandsO
       hubCtx({}, "hub.seed", false);
       const target = path.resolve(hubPath ?? "harness-hub");
       ensureDir(target);
-      const seeded = seedGoldenHub(target);
-      console.log(`Seeded ${target} with ${seeded.length} asset(s):`);
-      for (const p of seeded) console.log(`  ${p.id}@${p.version}`);
+      const options = seedOptionsFromCli(seedOpts);
+      const result = seedHub(target, options);
+      if (result.dryRun) {
+        console.log(`dry-run seed plan for ${target}`);
+        if (result.plan.profile) console.log(`profile: ${result.plan.profile}`);
+        if (result.plan.scenarios.length) console.log(`scenarios: ${result.plan.scenarios.join(", ")}`);
+        console.log(`assets (${result.plan.assets.length}):`);
+        for (const ref of result.plan.assets) console.log(`  ${ref}`);
+        if (result.plan.skipped.length) {
+          console.log(`skipped (${result.plan.skipped.length}):`);
+          for (const ref of result.plan.skipped) console.log(`  ${ref}`);
+        }
+        return;
+      }
+      console.log(`Seeded ${target} with ${result.seeded.length} asset(s):`);
+      for (const p of result.seeded) console.log(`  ${p.id}@${p.version}`);
       submitSeededHub(target, seedOpts);
     });
 
@@ -557,6 +604,6 @@ export function registerHubCommands(program: Command, opts: RegisterHubCommandsO
         console.log(`removed ${removed.length} cache entries`);
       });
   } else {
-    root.addHelpText("afterAll", `\nTips:\n  - ${prefix} init . --hub <git-url> --actor <name>\n  - ${prefix} doctor --fix-hints\n  - ${prefix} asset create --interactive\n`);
+    root.addHelpText("afterAll", `\nTips:\n  - ${prefix} init . --hub <git-url> --actor <name>\n  - ${prefix} seed . --profile standard --scenario core,api\n  - ${prefix} doctor --fix-hints\n  - ${prefix} asset create --interactive\n`);
   }
 }

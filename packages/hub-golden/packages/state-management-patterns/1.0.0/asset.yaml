@@ -1,0 +1,11 @@
+id: state-management-patterns
+kind: guide.skill
+version: 1.0.0
+origin: hub
+status: enforced
+execution: inferential
+phase: [design, apply]
+provenance:
+  - type: golden-package
+    ref: harnessx/hub-golden
+metrics: {}

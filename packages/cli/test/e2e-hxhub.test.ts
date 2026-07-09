@@ -85,6 +85,16 @@ describe("hxhub e2e", () => {
     expect(fs.readFileSync(path.join(repo, "assets/feature-template/template.md"), "utf8")).toContain("# 功能需求模版");
   });
 
+  it("seeds hub with profile and scenario dimensions", () => {
+    const repo = makeRepo();
+    const hubDir = path.join(repo, "hub");
+    const out = hxhub(repo, ["seed", hubDir, "--profile", "minimal", "--scenario", "api"]);
+    expect(out).toContain("Seeded");
+    expect(fs.existsSync(path.join(hubDir, "packages/coding-conventions/1.0.0/asset.yaml"))).toBe(true);
+    expect(fs.existsSync(path.join(hubDir, "bundles/api-service/1.0.0/bundle.yaml"))).toBe(true);
+    expect(fs.existsSync(path.join(hubDir, "packages/ui-page-spec-template/1.0.0/asset.yaml"))).toBe(false);
+  });
+
   it("fix repairs missing hub policy and maintainers", () => {
     const repo = makeRepo();
     hxhub(repo, ["init", ".", "--hub", "./hub", "--actor", "ops"]);

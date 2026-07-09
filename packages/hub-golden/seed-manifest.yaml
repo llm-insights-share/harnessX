@@ -1,0 +1,177 @@
+version: "1.0"
+
+# Governance / workflow dimension (--profile)
+profiles:
+  minimal:
+    assets:
+      - requirements-template@1.0.0
+      - coding-conventions@1.0.0
+      - common-review-rubrics@1.0.0
+  standard:
+    includes: [minimal]
+    assets:
+      - design-template@1.0.0
+      - test-strategy@1.0.0
+      - error-handling-playbook@1.0.0
+      - risk-review-rubrics@1.0.0
+      - rollback-template@1.0.0
+      - minimal-api-eval@1.0.0
+  strict:
+    includes: [standard]
+    assets:
+      - api-breaking-change-rubric@1.0.0
+      - backward-compat-rubric@1.0.0
+  enterprise:
+    includes: [standard]
+    assets:
+      - enterprise-delivery@1.0.0
+      - uat-checklist@1.0.0
+      - prd-authoring@1.0.0
+      - arch-authoring@1.0.0
+      - release-readiness-checklist@1.0.0
+      - risk-tiering@1.0.0
+      - prd-writing@1.0.0
+      - requirements-research-outline@1.0.0
+  enterprise-sdlc:
+    includes: [enterprise]
+    assets:
+      - enterprise-sdlc@1.0.0
+      - test-cases-template@1.0.0
+      - bug-record-template@1.0.0
+      - change-request-template@1.0.0
+      - uat-quality-rubric@1.0.0
+      - change-risk-rubric@1.0.0
+      - compliance-evidence-collection@1.0.0
+
+# Domain / scenario dimension (--scenario)
+scenarios:
+  core:
+    assets:
+      - requirements-template@1.0.0
+      - design-template@1.0.0
+      - api-change-template@1.0.0
+      - rollback-template@1.0.0
+      - coding-conventions@1.0.0
+      - error-handling-playbook@1.0.0
+      - test-strategy@1.0.0
+      - observability-basics@1.0.0
+      - common-review-rubrics@1.0.0
+      - risk-review-rubrics@1.0.0
+  api:
+    assets:
+      - api-conventions@1.0.0
+      - api-contract-template@1.0.0
+      - db-migration-template@1.0.0
+      - async-job-template@1.0.0
+      - idempotency-keys@1.0.0
+      - transaction-boundary@1.0.0
+      - cache-consistency@1.0.0
+      - resilience-patterns@1.0.0
+      - api-breaking-change-rubric@1.0.0
+      - backward-compat-rubric@1.0.0
+      - query-budget-rules@1.0.0
+      - api-service@1.0.0
+  frontend:
+    assets:
+      - ui-page-spec-template@1.0.0
+      - component-contract-template@1.0.0
+      - tracking-events-template@1.0.0
+      - a11y-checklist-template@1.0.0
+      - state-management-patterns@1.0.0
+      - frontend-performance@1.0.0
+      - design-token-governance@1.0.0
+      - ux-consistency-rubric@1.0.0
+      - a11y-rubric@1.0.0
+      - bundle-size-budget-rules@1.0.0
+      - frontend-2c@1.0.0
+      - prototype-wireframe@1.0.0
+  mobile:
+    assets:
+      - state-management-patterns@1.0.0
+      - frontend-performance@1.0.0
+      - resilience-patterns@1.0.0
+      - a11y-checklist-template@1.0.0
+  library:
+    assets:
+      - test-strategy@1.0.0
+      - backward-compat-rubric@1.0.0
+      - api-conventions@1.0.0
+      - coding-conventions@1.0.0
+  data:
+    assets:
+      - db-migration-template@1.0.0
+      - transaction-boundary@1.0.0
+      - cache-consistency@1.0.0
+      - query-budget-rules@1.0.0
+  observability:
+    assets:
+      - observability-basics@1.0.0
+      - resilience-patterns@1.0.0
+      - compliance-evidence-collection@1.0.0
+  async-jobs:
+    assets:
+      - async-job-template@1.0.0
+      - idempotency-keys@1.0.0
+      - transaction-boundary@1.0.0
+      - resilience-patterns@1.0.0
+
+catalog:
+  # --- core guides ---
+  requirements-template@1.0.0: { category: package, kind: guide.template }
+  design-template@1.0.0: { category: package, kind: guide.template }
+  api-change-template@1.0.0: { category: package, kind: guide.template }
+  rollback-template@1.0.0: { category: package, kind: guide.template }
+  coding-conventions@1.0.0: { category: package, kind: guide.skill }
+  error-handling-playbook@1.0.0: { category: package, kind: guide.skill }
+  test-strategy@1.0.0: { category: package, kind: guide.skill }
+  observability-basics@1.0.0: { category: package, kind: guide.skill }
+  prd-writing@1.0.0: { category: package, kind: guide.skill }
+  prd-authoring@1.0.0: { category: package, kind: guide.skill }
+  arch-authoring@1.0.0: { category: package, kind: guide.skill }
+  requirements-research-outline@1.0.0: { category: package, kind: guide.skill }
+  prototype-wireframe@1.0.0: { category: package, kind: guide.skill }
+  release-readiness-checklist@1.0.0: { category: package, kind: guide.skill }
+  risk-tiering@1.0.0: { category: package, kind: guide.skill }
+  compliance-evidence-collection@1.0.0: { category: package, kind: guide.skill }
+  # --- api ---
+  api-conventions@1.0.0: { category: package, kind: guide.skill }
+  api-contract-template@1.0.0: { category: package, kind: guide.template }
+  db-migration-template@1.0.0: { category: package, kind: guide.template }
+  async-job-template@1.0.0: { category: package, kind: guide.template }
+  idempotency-keys@1.0.0: { category: package, kind: guide.skill }
+  transaction-boundary@1.0.0: { category: package, kind: guide.skill }
+  cache-consistency@1.0.0: { category: package, kind: guide.skill }
+  resilience-patterns@1.0.0: { category: package, kind: guide.skill }
+  query-budget-rules@1.0.0: { category: package, kind: guide.constraint }
+  # --- frontend ---
+  ui-page-spec-template@1.0.0: { category: package, kind: guide.template }
+  component-contract-template@1.0.0: { category: package, kind: guide.template }
+  tracking-events-template@1.0.0: { category: package, kind: guide.template }
+  a11y-checklist-template@1.0.0: { category: package, kind: guide.template }
+  state-management-patterns@1.0.0: { category: package, kind: guide.skill }
+  frontend-performance@1.0.0: { category: package, kind: guide.skill }
+  design-token-governance@1.0.0: { category: package, kind: guide.skill }
+  bundle-size-budget-rules@1.0.0: { category: package, kind: guide.constraint }
+  # --- sdlc templates ---
+  uat-checklist@1.0.0: { category: package, kind: guide.template }
+  test-cases-template@1.0.0: { category: package, kind: guide.template }
+  bug-record-template@1.0.0: { category: package, kind: guide.template }
+  change-request-template@1.0.0: { category: package, kind: guide.template }
+  # --- rubrics ---
+  common-review-rubrics@1.0.0: { category: package, kind: sensor.rubric }
+  risk-review-rubrics@1.0.0: { category: package, kind: sensor.rubric }
+  api-breaking-change-rubric@1.0.0: { category: package, kind: sensor.rubric }
+  backward-compat-rubric@1.0.0: { category: package, kind: sensor.rubric }
+  ux-consistency-rubric@1.0.0: { category: package, kind: sensor.rubric }
+  a11y-rubric@1.0.0: { category: package, kind: sensor.rubric }
+  uat-quality-rubric@1.0.0: { category: package, kind: sensor.rubric }
+  change-risk-rubric@1.0.0: { category: package, kind: sensor.rubric }
+  # --- bundles / blueprints ---
+  api-service@1.0.0: { category: bundle, kind: harness.bundle }
+  frontend-2c@1.0.0: { category: bundle, kind: harness.bundle }
+  enterprise-delivery@1.0.0: { category: blueprint, kind: harness.blueprint }
+  enterprise-sdlc@1.0.0: { category: blueprint, kind: harness.blueprint }
+  # --- evals ---
+  minimal-api-eval@1.0.0:
+    category: eval
+    path: evals/golden-repos/minimal-api

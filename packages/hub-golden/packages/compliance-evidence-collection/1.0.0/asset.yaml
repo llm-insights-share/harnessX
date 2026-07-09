@@ -1,0 +1,11 @@
+id: compliance-evidence-collection
+kind: guide.skill
+version: 1.0.0
+origin: hub
+status: enforced
+execution: inferential
+phase: [verify, archive]
+provenance:
+  - type: golden-package
+    ref: harnessx/hub-golden
+metrics: {}

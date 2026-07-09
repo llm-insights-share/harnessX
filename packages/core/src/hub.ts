@@ -574,15 +574,5 @@ export function listHubEvalSets(hubRoot: string): string[] {
 }
 
 /** Creates a hub repo from built-in golden packages (pre-approved for local consumption). */
-export function seedGoldenHub(targetRoot: string, goldenDir = BUILTIN_HUB_GOLDEN_DIR): HubRef[] {
-  const seeded: HubRef[] = [];
-  for (const sub of ["packages", "bundles", "blueprints", "evals"] as const) {
-    const src = path.join(goldenDir, sub);
-    if (!fs.existsSync(src)) continue;
-    copyDir(src, path.join(targetRoot, sub));
-  }
-  const policySrc = path.join(goldenDir, "hub-policy.yaml");
-  if (fs.existsSync(policySrc)) fs.copyFileSync(policySrc, path.join(targetRoot, "hub-policy.yaml"));
-  seeded.push(...listGoldenHubPackages(goldenDir), ...listGoldenHubBundles(goldenDir), ...listGoldenHubBlueprints(goldenDir));
-  return seeded;
-}
+export { seedGoldenHub, seedHub, planSeedHub, readSeedManifest, SEED_PROFILES, SEED_SCENARIOS, SEED_WITH_FILTERS } from "./hubSeed.js";
+export type { SeedHubOptions, SeedHubPlan, SeedHubResult, SeedProfile, SeedScenario, SeedWithFilter } from "./hubSeed.js";

@@ -1,0 +1,6 @@
+rules:
+  - id: compat-note
+    status: trial
+    check: Compatibility strategy is documented for API/library changes
+    pattern: "\b(backward compatible|deprecat|version)\b"
+    severity: warn

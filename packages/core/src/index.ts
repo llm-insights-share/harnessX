@@ -38,6 +38,7 @@ export * from "./rubric.js";
 export * from "./janitor.js";
 export * from "./assets.js";
 export * from "./hub.js";
+export * from "./hubSeed.js";
 export * from "./hubSource.js";
 export * from "./hubAssetSchema.js";
 export * from "./hubLifecycle.js";

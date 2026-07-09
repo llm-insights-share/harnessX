@@ -1,0 +1,11 @@
+id: test-strategy
+kind: guide.skill
+version: 1.0.0
+origin: hub
+status: enforced
+execution: inferential
+phase: [spec, apply, verify]
+provenance:
+  - type: golden-package
+    ref: harnessx/hub-golden
+metrics: {}

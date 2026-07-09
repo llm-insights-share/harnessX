@@ -1,0 +1,11 @@
+rules:
+  - id: data-migration-risk
+    status: enforced
+    check: Data migrations include rollback and validation steps
+    pattern: "\b(rollback|backfill|validation)\b"
+    severity: warn
+  - id: authz-change
+    status: trial
+    check: Permission changes mention affected roles
+    pattern: "\b(role|permission|authz)\b"
+    severity: info

@@ -1,0 +1,11 @@
+id: api-change-template
+kind: guide.template
+version: 1.0.0
+origin: hub
+status: enforced
+execution: computational
+phase: [design, spec]
+provenance:
+  - type: golden-package
+    ref: harnessx/hub-golden
+metrics: {}

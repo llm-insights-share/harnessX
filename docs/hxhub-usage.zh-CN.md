@@ -38,7 +38,7 @@ hxhub search --category package
 ### 3.1 Ops（运维）
 
 - `hxhub golden`
-- `hxhub seed [path] [--submit --remote --branch --message]`
+- `hxhub seed [path] [--profile ...] [--scenario ...] [--with ...] [--exclude ...] [--dry-run] [--full]`
 - `hxhub add <id@version>`
 - `hxhub sync [--apply --force --only ... --offline --refresh]`
 - `hxhub promote <dir> --by <name> [--evidence --skip-policy --skip-eval]`
