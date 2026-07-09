@@ -25,4 +25,13 @@ export function registerApproveAliases(program: Command): void {
       const rec = recordPrephaseApproval(ws(), "arch", opts.approver);
       console.log(`approved global arch by ${rec.approver} (artifact ${rec.artifactHash.slice(0, 12)})`);
     });
+
+  approve
+    .command("arch-lld <module>")
+    .requiredOption("--approver <name>")
+    .description("Approve module LLD (T-837)")
+    .action((module: string, opts: { approver: string }) => {
+      const rec = recordPrephaseApproval(ws(), "arch-lld", opts.approver, undefined, module);
+      console.log(`approved module LLD "${module}" by ${rec.approver} (artifact ${rec.artifactHash.slice(0, 12)})`);
+    });
 }

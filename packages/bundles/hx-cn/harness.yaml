@@ -27,6 +27,16 @@ profiles:
       plan: plan-enterprise
       apply: fast
       verify: verification-enterprise
+  enterprise-sdlc:
+    phases: [explore, propose, design, spec, plan, test-design, apply, verify, archive]
+    suites:
+      propose: propose-sdlc
+      design: design-sdlc
+      spec: fast
+      plan: plan-sdlc
+      test-design: test-design-sdlc
+      apply: fast
+      verify: verification-sdlc
 
 suites:
   fast-lite: [spec-validate]
@@ -39,7 +49,12 @@ suites:
   verification-enterprise: [spec-validate, spec-trace, design-drift, arch-drift, unit-changed, mutation-probe, ai-spec-review]
   prd-check: [prd-complete]
   arch-check: [arch-hld-complete, arch-registry-complete, arch-approved]
-  arch-lld-check: [arch-lld-complete, arch-module-boundary]
+  arch-lld-check: [arch-lld-complete, arch-module-boundary, arch-lld-approved]
+  propose-sdlc: [wo-prephase-clear, prd-complete, prd-approved, requirements-extended-complete, spec-validate, typecheck, lint, unit-changed]
+  design-sdlc: [arch-approved, arch-lld-approved, arch-change-align, design-hld-complete, design-lld-complete, design-spec-align, prototype-complete, change-request-applied]
+  plan-sdlc: [plan-coverage, wo-lld-done]
+  test-design-sdlc: [test-cases-complete, test-cases-approved]
+  verification-sdlc: [spec-validate, spec-trace, design-drift, arch-drift, bugs-closed, drift, uat-complete, unit-changed, mutation-probe, ai-spec-review]
 
 guides:
   - id: requirements-template
@@ -337,3 +352,59 @@ sensors:
     builtin: arch-drift
     on_fail: warn
     fix_hint: "运行 hx arch promote <change> 将 design 沉淀到模块 LLD"
+  - id: wo-prephase-clear
+    kind: sensor.script
+    execution: computational
+    phase: [propose]
+    builtin: wo-prephase-clear
+    on_fail: block
+    fix_hint: "关闭待审 pre-phase 工单：hx wo inbox"
+  - id: requirements-extended-complete
+    kind: sensor.script
+    execution: computational
+    phase: [propose]
+    builtin: requirements-extended-complete
+    on_fail: block
+    fix_hint: "填写扩展 requirements/ 制品（调研、业务流程、集成）"
+  - id: test-cases-complete
+    kind: sensor.script
+    execution: computational
+    phase: [test-design]
+    builtin: test-cases-complete
+    on_fail: block
+    fix_hint: "完成 test-cases/overview.md — hx test-cases init"
+  - id: test-cases-approved
+    kind: sensor.script
+    execution: computational
+    phase: [test-design, apply]
+    builtin: test-cases-approved
+    on_fail: block
+    fix_hint: "提交并批准测试用例：hx test-cases submit"
+  - id: bugs-closed
+    kind: sensor.script
+    execution: computational
+    phase: [verify]
+    builtin: bugs-closed
+    on_fail: block
+    fix_hint: "关闭或修复 open bug：hx bug list"
+  - id: wo-lld-done
+    kind: sensor.script
+    execution: computational
+    phase: [plan]
+    builtin: wo-lld-done
+    on_fail: block
+    fix_hint: "将 lld-design 工单标记完成：hx wo done <id>"
+  - id: arch-lld-approved
+    kind: sensor.script
+    execution: computational
+    phase: [design, arch-lld]
+    builtin: arch-lld-approved
+    on_fail: block
+    fix_hint: "批准模块 LLD：hx approve arch-lld <module> --approver <姓名>"
+  - id: change-request-applied
+    kind: sensor.script
+    execution: computational
+    phase: [design, propose]
+    builtin: change-request-applied
+    on_fail: block
+    fix_hint: "批准后应用待处理变更单"

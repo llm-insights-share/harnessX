@@ -9,7 +9,9 @@ import {
   runHarnessSuite,
   buildArchPack,
   renderContextPack,
-  promoteArchFromChange
+  promoteArchFromChange,
+  createWorkOrder,
+  submitWorkOrder
 } from "@harnessx/core";
 import { builtinSensors } from "@harnessx/sensors";
 
@@ -107,6 +109,27 @@ export function registerArchCommands(program: Command): void {
         } else console.log(`PASS  ${id}`);
       }
       if (failed) process.exit(1);
+    });
+
+  arch
+    .command("submit")
+    .requiredOption("--by <name>", "submitter (architect)")
+    .option("--change <id>", "link change for arch-review")
+    .option("--title <title>", "review title override")
+    .description("Create and submit arch-review work order for global HLD")
+    .action((opts: { by: string; change?: string; title?: string }) => {
+      const w = ws();
+      const wo = createWorkOrder(w, {
+        type: "arch-review",
+        title: opts.title ?? "Review global architecture HLD",
+        scope: opts.change ? "change" : "prephase",
+        ref: { change: opts.change },
+        assigneeRole: "tech-manager",
+        createdBy: opts.by,
+        artifacts: [{ path: "docs/architecture/overview.md" }, { path: "docs/architecture/registry.yaml" }]
+      });
+      submitWorkOrder(w, wo.id, opts.by);
+      console.log(`submitted ${wo.id} for architecture review`);
     });
 }
 

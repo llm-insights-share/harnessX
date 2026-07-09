@@ -105,3 +105,9 @@ T-835,M20-Integration,P1,"hx approve 别名","approve prd/arch 简写命令","M2
 T-836,M20-Integration,P0,"M20 验收","p0-p2-integration 测试","M20 验收标准","T-830..T-835",done
 T-837,M21-Backlog,P2,"模块 LLD 批准门","hx approve arch-lld <module>","M21 backlog","T-831",planned
 T-838,M21-Backlog,P2,"LLD 双向 sync","change design ↔ org LLD 增量同步","M21 backlog","T-833",planned
+T-901,M22-SDLC,P0,"工单内核","workorder.ts + hx wo CLI","M22","T-836",done
+T-902,M23-SDLC,P0,"变更单","changeRequest.ts + hx cr + prd/arch submit","M23","T-901",done
+T-903,M24-SDLC,P1,"角色与扩展需求","roles.yaml + requirements-extended-complete","M24","T-902",done
+T-904,M25-SDLC,P0,"测试与 Bug 闭环","test-design phase + hx bug + test-cases","M25","T-903",done
+T-905,M26-SDLC,P1,"模块 LLD 批准","hx approve arch-lld + lld-design WO","M26","T-837",done
+T-906,M27-SDLC,P1,"蓝图与文档","enterprise-sdlc blueprint + 场景20 + m22 E2E","M27","T-904..T-905",done

@@ -1,0 +1,22 @@
+name: enterprise-sdlc
+extends: enterprise-sdlc
+hub_deps:
+  - requirements-research-outline@1.0.0
+  - prd-writing@1.0.0
+  - prd-authoring@1.0.0
+  - arch-authoring@1.0.0
+  - prototype-wireframe@1.0.0
+  - uat-checklist@1.0.0
+  - common-review-rubrics@1.0.0
+phases:
+  explore:
+    guides: [requirements-research-outline]
+  propose:
+    guides: [prd-writing, requirements-template]
+  design:
+    guides: [prototype-wireframe, design-template]
+  test-design:
+    guides: [design-template]
+  verify:
+    guides: [uat-checklist]
+    sensors: [uat-complete, drift, bugs-closed]

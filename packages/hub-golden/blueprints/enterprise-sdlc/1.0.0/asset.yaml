@@ -1,0 +1,7 @@
+id: enterprise-sdlc
+kind: harness.blueprint
+version: 1.0.0
+category: blueprint
+status: trial
+owner: platform
+phases: [explore, propose, design, test-design, verify]

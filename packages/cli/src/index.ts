@@ -10,6 +10,7 @@ import { registerMcpCommand } from "./mcp.js";
 import { registerPrdCommands } from "./prd.js";
 import { registerArchCommands } from "./arch.js";
 import { registerApproveAliases } from "./approve.js";
+import { registerSdlcCommands } from "./sdlc.js";
 import { VERSION } from "@harnessx/core";
 
 export const program = new Command("hx")
@@ -25,6 +26,7 @@ registerOrchestrationCommands(program);
 registerPrdCommands(program);
 registerArchCommands(program);
 registerApproveAliases(program);
+registerSdlcCommands(program);
 registerMcpCommand(program);
 
 program.parseAsync(process.argv).catch((e) => {

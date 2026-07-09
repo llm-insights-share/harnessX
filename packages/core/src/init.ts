@@ -8,6 +8,7 @@ import { hubAdd, hubBundleDir, resolveHubPackage, type HubRef } from "./hub.js";
 import { applyHubBlueprint } from "./blueprint.js";
 import { writeLock } from "./assets.js";
 import { isGitHubHubRef, resolveHubSource } from "./hubSource.js";
+import { scaffoldRoles } from "./roles.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 /** Built-in bundle sources shipped with the harnessx package. */
@@ -129,9 +130,10 @@ export function initWorkspace(root: string, opts: InitOptions = {}): InitResult 
   const blueprintSrc = path.join(baseDir, "blueprint.yaml");
   if (fs.existsSync(blueprintSrc)) fs.copyFileSync(blueprintSrc, path.join(ws.base, "blueprint.yaml"));
   copyDir(path.join(baseDir, "assets"), ws.assetsDir);
-  for (const dir of [ws.specsDir, ws.changesDir, ws.archiveDir, ws.runsDir, ws.bundlesDir]) ensureDir(dir);
+  for (const dir of [ws.specsDir, ws.changesDir, ws.archiveDir, ws.runsDir, ws.bundlesDir, ws.workordersDir(), ws.changeRequestsDir()]) ensureDir(dir);
+  scaffoldRoles(ws);
 
-  const created = ["constitution.md", "config.yaml", "harness.yaml", "assets/", "specs/", "changes/", "archive/", "runs/"];
+  const created = ["constitution.md", "config.yaml", "harness.yaml", "roles.yaml", "workorders/", "change-requests/", "assets/", "specs/", "changes/", "archive/", "runs/"];
 
   if (opts.bundle) {
     applyBundle(ws, opts.bundle, bundlesDir);

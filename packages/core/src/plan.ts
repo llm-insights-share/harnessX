@@ -6,6 +6,8 @@ import { inferCodeHints } from "./designLayout.js";
 import { archModuleLldRel } from "./archLayout.js";
 import { resolveModuleByCapability, readArchRegistry } from "./archRegistry.js";
 import { syncDeliveryTraceFromTasks } from "./deliveryTrace.js";
+import { readMeta } from "./metaStore.js";
+import { spawnLldDesignWorkOrders, listWorkOrders } from "./workorder.js";
 
 /**
  * T-203 (FR-006): generates tasks.md from delta specs as a dual-track list —
@@ -100,6 +102,19 @@ export function generateTasks(ws: Workspace, change: string): { file: string; ta
   const out = path.join(ws.changeDir(change), "tasks.md");
   fs.writeFileSync(out, serializeTasks(change, tasks), "utf8");
   syncDeliveryTraceFromTasks(ws, change, tasks);
+
+  try {
+    const meta = readMeta(ws, change);
+    if (meta.profile === "enterprise-sdlc" && meta.archModules?.length) {
+      const existing = listWorkOrders(ws, { type: "lld-design", change });
+      if (existing.length === 0) {
+        spawnLldDesignWorkOrders(ws, change, meta.archModules, "hx-plan");
+      }
+    }
+  } catch {
+    /* ignore if meta unreadable */
+  }
+
   return { file: out, tasks };
 }
 

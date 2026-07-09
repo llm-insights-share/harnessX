@@ -11,6 +11,7 @@ export const PHASE_STATES = [
   "designed",
   "specified",
   "planned",
+  "test_designed",
   "implementing",
   "verified",
   "archived"
@@ -30,6 +31,7 @@ export const PHASES: PhaseInfo[] = [
   { display: "Design", state: "designed", command: "design" },
   { display: "Spec", state: "specified", command: "spec" },
   { display: "Plan", state: "planned", command: "plan" },
+  { display: "TestDesign", state: "test_designed", command: "test-design" },
   { display: "Apply", state: "implementing", command: "apply" },
   { display: "Verify", state: "verified", command: "verify" },
   { display: "Archive", state: "archived", command: "archive" }
@@ -228,11 +230,171 @@ export type ArchRegistry = z.infer<typeof ArchRegistry>;
 
 /** Org-level pre-phase approvals at docs/.prephase-approvals.yaml */
 export const PrephaseApprovals = z.object({
-  version: z.string().default("1.0"),
+  version: z.string().default("1.1"),
   prd: z.record(ApprovalRecord).default({}),
-  arch: ApprovalRecord.optional()
+  arch: ApprovalRecord.optional(),
+  archLld: z.record(ApprovalRecord).default({})
 });
 export type PrephaseApprovals = z.infer<typeof PrephaseApprovals>;
+
+/* ── Work orders (enterprise SDLC) ── */
+
+export const WORK_ORDER_TYPES = [
+  "req-review",
+  "req-revise",
+  "req-change",
+  "arch-review",
+  "arch-revise",
+  "arch-change",
+  "arch-design",
+  "lld-design",
+  "test-case-review",
+  "test-run",
+  "bug-fix",
+  "retest"
+] as const;
+export type WorkOrderType = (typeof WORK_ORDER_TYPES)[number];
+
+export const WORK_ORDER_STATUSES = ["draft", "pending", "approved", "rejected", "done", "cancelled"] as const;
+export type WorkOrderStatus = (typeof WORK_ORDER_STATUSES)[number];
+
+export const WorkOrderRef = z.object({
+  prd: z.string().optional(),
+  change: z.string().optional(),
+  module: z.string().optional(),
+  bug: z.string().optional(),
+  changeRequest: z.string().optional()
+});
+export type WorkOrderRef = z.infer<typeof WorkOrderRef>;
+
+export const WorkOrderArtifact = z.object({
+  path: z.string(),
+  hash: z.string()
+});
+export type WorkOrderArtifact = z.infer<typeof WorkOrderArtifact>;
+
+export const WorkOrderHistoryEntry = z.object({
+  action: z.string(),
+  by: z.string(),
+  at: z.string(),
+  note: z.string().optional(),
+  reason: z.string().optional()
+});
+export type WorkOrderHistoryEntry = z.infer<typeof WorkOrderHistoryEntry>;
+
+export const WorkOrderSpawnSpec = z.object({
+  type: z.enum(WORK_ORDER_TYPES),
+  assigneeRole: z.string(),
+  ref: WorkOrderRef.optional(),
+  title: z.string().optional()
+});
+export type WorkOrderSpawnSpec = z.infer<typeof WorkOrderSpawnSpec>;
+
+export const WorkOrderYaml = z.object({
+  id: z.string(),
+  version: z.literal("1.0").default("1.0"),
+  type: z.enum(WORK_ORDER_TYPES),
+  title: z.string(),
+  status: z.enum(WORK_ORDER_STATUSES),
+  scope: z.enum(["prephase", "change"]),
+  ref: WorkOrderRef.default({}),
+  assigneeRole: z.string(),
+  createdBy: z.string(),
+  createdAt: z.string(),
+  artifacts: z.array(WorkOrderArtifact).default([]),
+  history: z.array(WorkOrderHistoryEntry).default([]),
+  spawn: z.array(WorkOrderSpawnSpec).default([]),
+  downstream: z.array(z.string()).default([]),
+  parentId: z.string().optional(),
+  contentHash: z.string().optional()
+});
+export type WorkOrderYaml = z.infer<typeof WorkOrderYaml>;
+
+export const WorkOrderIndex = z.object({
+  version: z.literal("1.0").default("1.0"),
+  nextSeq: z.number().int().positive().default(1),
+  orders: z
+    .array(
+      z.object({
+        id: z.string(),
+        type: z.string(),
+        status: z.string(),
+        assigneeRole: z.string(),
+        title: z.string(),
+        ref: WorkOrderRef.default({})
+      })
+    )
+    .default([])
+});
+export type WorkOrderIndex = z.infer<typeof WorkOrderIndex>;
+
+/* ── Change requests ── */
+
+export const CHANGE_REQUEST_KINDS = ["requirement-change", "design-change"] as const;
+export const CHANGE_REQUEST_ACTIONS = ["add", "modify", "delete"] as const;
+export const CHANGE_REQUEST_STATUSES = ["draft", "submitted", "approved", "rejected", "applied"] as const;
+
+export const ChangeRequestYaml = z.object({
+  id: z.string(),
+  version: z.literal("1.0").default("1.0"),
+  kind: z.enum(CHANGE_REQUEST_KINDS),
+  action: z.enum(CHANGE_REQUEST_ACTIONS),
+  target: z.object({
+    prd: z.string().optional(),
+    module: z.string().optional(),
+    version: z.string().optional()
+  }),
+  payload: z.object({
+    original: z.string().optional(),
+    changeNote: z.string().optional(),
+    revised: z.string().optional(),
+    deleted: z.string().optional()
+  }),
+  status: z.enum(CHANGE_REQUEST_STATUSES),
+  workorderId: z.string().optional(),
+  linkedChange: z.string().optional(),
+  createdBy: z.string().optional(),
+  createdAt: z.string().optional(),
+  contentHash: z.string().optional()
+});
+export type ChangeRequestYaml = z.infer<typeof ChangeRequestYaml>;
+
+export const ChangeRequestIndex = z.object({
+  version: z.literal("1.0").default("1.0"),
+  nextSeq: z.number().int().positive().default(1),
+  requests: z.array(z.object({ id: z.string(), kind: z.string(), status: z.string(), action: z.string() })).default([])
+});
+export type ChangeRequestIndex = z.infer<typeof ChangeRequestIndex>;
+
+/* ── Roles (enterprise SDLC RBAC) ── */
+
+export const RolesYaml = z.object({
+  version: z.string().default("1.0"),
+  workflow: z.object({ workorders: z.enum(["optional", "required"]).default("optional") }).default({ workorders: "optional" }),
+  roles: z.record(z.object({ can: z.array(z.string()).default([]), approves: z.array(z.string()).default([]) })).default({}),
+  members: z.record(z.string()).default({})
+});
+export type RolesYaml = z.infer<typeof RolesYaml>;
+
+/* ── Bugs ── */
+
+export const BUG_STATUSES = ["open", "fixed", "retest", "closed", "reopened"] as const;
+
+export const BugYaml = z.object({
+  id: z.string(),
+  title: z.string(),
+  severity: z.enum(["critical", "major", "minor", "trivial"]).default("major"),
+  status: z.enum(BUG_STATUSES),
+  scenario: z.string().optional(),
+  steps: z.string().optional(),
+  expected: z.string().optional(),
+  actual: z.string().optional(),
+  fixCommit: z.string().optional(),
+  workorders: z.array(z.string()).default([]),
+  createdBy: z.string().optional(),
+  createdAt: z.string().optional()
+});
+export type BugYaml = z.infer<typeof BugYaml>;
 
 export const ArchPromotedRecord = z.object({
   at: z.string(),

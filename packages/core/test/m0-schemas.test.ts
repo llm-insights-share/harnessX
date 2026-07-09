@@ -47,8 +47,9 @@ describe("T-001 core schemas", () => {
     expect(a.origin).toBe("local");
   });
 
-  it("phase mapping table has 8 consistent entries", () => {
-    expect(PHASES).toHaveLength(8);
+  it("phase mapping table has 9 consistent entries (includes test-design)", () => {
+    expect(PHASES).toHaveLength(9);
+    expect(phaseByCommand("test-design")?.state).toBe("test_designed");
     expect(phaseByCommand("apply")?.state).toBe("implementing");
     expect(PLUGIN_API_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
   });

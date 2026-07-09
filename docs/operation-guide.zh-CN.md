@@ -293,6 +293,9 @@ phases:
 | `hx arch init --title <title>` | 脚手架全局 HLD + `registry.yaml` |
 | `hx arch check` | 运行 `arch-check` suite（含 `arch-approved`） |
 | `hx approve arch --approver <name>` | 人工批准全局架构 |
+| `hx approve arch-lld <module> --approver <name>` | 人工批准模块 LLD（enterprise-sdlc） |
+| `hx prd submit <slug> --by <name>` | 提交 PRD 需求审核工单 |
+| `hx arch submit --by <name> [--change <id>]` | 提交概要设计审核工单 |
 | `hx arch lld init <module> --title <title>` | 脚手架模块 LLD |
 | `hx arch lld check <module>` | 模块 LLD 校验 |
 | `hx arch promote <change> [--by <name>]` | change design 结构化沉淀到模块 LLD |
@@ -308,6 +311,19 @@ Cursor 斜杠命令：`/hx-prd`、`/hx-arch`、`/hx-arch-lld`（`hx adapter sync
 | **Change 级（交付）** | `harnessX/changes/<id>/requirements/`、`design/`、`specs/` | 单次交付 | `hx gate approve <change> --gate spec` → `meta.yaml` |
 
 `hx guide pack` 在 propose/design 阶段将组织级制品**自动注入** Context Pack。归档前 `hx arch promote` 将 change design **回写**组织模块 LLD。
+
+### 4.5 企业 SDLC 工单层（profile: `enterprise-sdlc`）
+
+使用 `hx init --from-hub enterprise-sdlc@1.0.0` 或 `config.yaml` 设置 `profile: enterprise-sdlc`。在 `harnessX/roles.yaml` 映射成员角色。
+
+| 命令组 | 说明 |
+| --- | --- |
+| `hx wo *` | 工单：create/submit/approve/reject/done/inbox/extract |
+| `hx cr *` | 变更单：create/submit/show/list（需求/设计变更） |
+| `hx test-cases *` | 测试用例设计：init/check/submit |
+| `hx bug *` | Bug：create/list/fix/close |
+
+完整 walkthrough：[场景 20](examples/20-企业SDLC工单全流程.md)。
 
 ---
 

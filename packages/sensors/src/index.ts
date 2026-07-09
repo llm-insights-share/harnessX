@@ -26,6 +26,16 @@ import {
   archApproved,
   archDrift
 } from "./arch.js";
+import {
+  woPrephaseClear,
+  requirementsExtendedComplete,
+  testCasesComplete,
+  testCasesApproved,
+  bugsClosed,
+  woLldDone,
+  archLldApproved,
+  changeRequestApplied
+} from "./sdlc.js";
 
 export * from "./delivery.js";
 export * from "./prd.js";
@@ -82,7 +92,15 @@ export const builtinSensors: Record<string, BuiltinSensor> = {
   "arch-module-boundary": archModuleBoundary,
   "arch-change-align": archChangeAlign,
   "arch-approved": archApproved,
-  "arch-drift": archDrift
+  "arch-drift": archDrift,
+  "wo-prephase-clear": woPrephaseClear,
+  "requirements-extended-complete": requirementsExtendedComplete,
+  "test-cases-complete": testCasesComplete,
+  "test-cases-approved": testCasesApproved,
+  "bugs-closed": bugsClosed,
+  "wo-lld-done": woLldDone,
+  "arch-lld-approved": archLldApproved,
+  "change-request-applied": changeRequestApplied
 };
 
 export function registerBuiltin(name: string, sensor: BuiltinSensor): void {

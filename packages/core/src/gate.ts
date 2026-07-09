@@ -4,6 +4,7 @@ import { readMeta, recordGate, setStatus, activeWaivers } from "./metaStore.js";
 import { runSensor, type RunnerOptions } from "./sensorRunner.js";
 import { proposalProblems } from "./change.js";
 import { resolvePrdSlug } from "./prd.js";
+import { workorderProblems } from "./workorder.js";
 import { augmentSuiteIds, resolveCompensation } from "./gateCompensation.js";
 import { appendRun } from "./telemetry.js";
 import fs from "node:fs";
@@ -68,6 +69,8 @@ export async function gateCheck(
     if (!fs.existsSync(tasksFile)) blockers.push("tasks.md missing — run hx plan first (FR-006)");
   }
 
+  blockers.push(...workorderProblems(ws, change, phaseCmd));
+
   // Pre-phase PRD check on propose when not already in suite (standard → warn)
   const suiteName = harness.profiles[meta.profile]?.suites?.[phaseCmd];
   const suiteHasPrd = suiteName && (harness.suites[suiteName] ?? []).includes("prd-complete");
@@ -76,10 +79,10 @@ export async function gateCheck(
   if (phaseCmd === "propose" && !suiteHasPrd) {
     await appendPrephaseSensor(ws, harness, "prd-complete", change, runnerOpts, meta.profile, blockers, warnings);
   }
-  if (phaseCmd === "propose" && !suiteHasPrdApproved && meta.profile === "enterprise") {
+  if (phaseCmd === "propose" && !suiteHasPrdApproved && (meta.profile === "enterprise" || meta.profile === "enterprise-sdlc")) {
     await appendPrephaseSensor(ws, harness, "prd-approved", change, runnerOpts, meta.profile, blockers, warnings);
   }
-  if (phaseCmd === "design" && !suiteHasArchApproved && meta.profile === "enterprise") {
+  if (phaseCmd === "design" && !suiteHasArchApproved && (meta.profile === "enterprise" || meta.profile === "enterprise-sdlc")) {
     await appendPrephaseSensor(ws, harness, "arch-approved", change, runnerOpts, meta.profile, blockers, warnings);
   }
 
@@ -175,7 +178,7 @@ async function appendPrephaseSensor(
   const prdSlug = sensorId === "prd-complete" || sensorId === "prd-approved" ? resolvePrdSlug(ws, change) : undefined;
   const report = await runSensor(ws, def, change, { ...opts, prdSlug });
   const label = `${def.id}: ${report.summary}`;
-  const strict = profile === "enterprise" || profile === "strict";
+  const strict = profile === "enterprise" || profile === "strict" || profile === "enterprise-sdlc";
   if (report.status === "pass") return;
   if (report.status === "error" || (def.on_fail === "block" && strict)) blockers.push(label);
   else warnings.push(label);

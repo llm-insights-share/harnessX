@@ -12,9 +12,11 @@ export function prephaseApprovalsFile(ws: Workspace): string {
 export function readPrephaseApprovals(ws: Workspace): PrephaseApprovals {
   const file = prephaseApprovalsFile(ws);
   if (!fs.existsSync(file)) {
-    return PrephaseApprovals.parse({ version: "1.0", prd: {}, arch: undefined });
+    return PrephaseApprovals.parse({ version: "1.1", prd: {}, arch: undefined, archLld: {} });
   }
-  return PrephaseApprovals.parse(readYaml(file));
+  const raw = readYaml(file);
+  if (!raw.archLld) raw.archLld = {};
+  return PrephaseApprovals.parse(raw);
 }
 
 export function writePrephaseApprovals(ws: Workspace, data: PrephaseApprovals): void {
@@ -35,17 +37,32 @@ export function archArtifactHash(ws: Workspace): string {
   return content ? sha256(content) : "";
 }
 
-/** Record human sign-off for org-level PRD or global arch HLD. */
+export function archLldArtifactHash(ws: Workspace, moduleId: string): string {
+  const file = ws.archModuleLld(moduleId);
+  return fs.existsSync(file) ? sha256(fs.readFileSync(file, "utf8")) : "";
+}
+
+/** Record human sign-off for org-level PRD, global arch HLD, or module LLD. */
 export function recordPrephaseApproval(
   ws: Workspace,
-  gate: "prd" | "arch",
+  gate: "prd" | "arch" | "arch-lld",
   approver: string,
-  prdSlug?: string
+  prdSlug?: string,
+  moduleId?: string
 ): ApprovalRecord {
   const store = readPrephaseApprovals(ws);
-  const artifactHash = gate === "prd" ? prdArtifactHash(ws, prdSlug!) : archArtifactHash(ws);
-  if (!artifactHash) {
-    throw new Error(gate === "prd" ? `PRD file missing for slug "${prdSlug}"` : "architecture overview/registry missing — run hx arch init");
+  let artifactHash = "";
+  if (gate === "prd") {
+    if (!prdSlug) throw new Error("--prd <slug> required for gate prd");
+    artifactHash = prdArtifactHash(ws, prdSlug);
+    if (!artifactHash) throw new Error(`PRD file missing for slug "${prdSlug}"`);
+  } else if (gate === "arch") {
+    artifactHash = archArtifactHash(ws);
+    if (!artifactHash) throw new Error("architecture overview/registry missing — run hx arch init");
+  } else {
+    if (!moduleId) throw new Error("--module <id> required for gate arch-lld");
+    artifactHash = archLldArtifactHash(ws, moduleId);
+    if (!artifactHash) throw new Error(`module LLD missing for "${moduleId}" — run hx arch lld init`);
   }
   const record: ApprovalRecord = {
     gate,
@@ -54,10 +71,11 @@ export function recordPrephaseApproval(
     artifactHash
   };
   if (gate === "prd") {
-    if (!prdSlug) throw new Error("--prd <slug> required for gate prd");
-    store.prd[prdSlug] = record;
-  } else {
+    store.prd[prdSlug!] = record;
+  } else if (gate === "arch") {
     store.arch = record;
+  } else {
+    store.archLld[moduleId!] = record;
   }
   writePrephaseApprovals(ws, store);
   return record;
@@ -71,10 +89,21 @@ export function archApproval(ws: Workspace): ApprovalRecord | undefined {
   return readPrephaseApprovals(ws).arch;
 }
 
+export function archLldApproval(ws: Workspace, moduleId: string): ApprovalRecord | undefined {
+  return readPrephaseApprovals(ws).archLld[moduleId];
+}
+
 /** True when approval exists and still matches current artifact content. */
 export function isPrephaseApproved(ws: Workspace, gate: "prd" | "arch", prdSlug?: string): boolean {
   const record = gate === "prd" ? prdApproval(ws, prdSlug!) : archApproval(ws);
   if (!record) return false;
   const current = gate === "prd" ? prdArtifactHash(ws, prdSlug!) : archArtifactHash(ws);
+  return Boolean(current) && record.artifactHash === current;
+}
+
+export function isArchLldApproved(ws: Workspace, moduleId: string): boolean {
+  const record = archLldApproval(ws, moduleId);
+  if (!record) return false;
+  const current = archLldArtifactHash(ws, moduleId);
   return Boolean(current) && record.artifactHash === current;
 }

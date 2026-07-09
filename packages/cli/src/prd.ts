@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import fs from "node:fs";
-import { Workspace, scaffoldPrd, listPrdSlugs, runSensor, buildPrdPack, renderContextPack } from "@harnessx/core";
+import { Workspace, scaffoldPrd, listPrdSlugs, runSensor, buildPrdPack, renderContextPack, createWorkOrder, submitWorkOrder } from "@harnessx/core";
 import { builtinSensors } from "@harnessx/sensors";
 
 const ws = () => Workspace.locate(process.cwd());
@@ -39,6 +39,26 @@ export function registerPrdCommands(program: Command): void {
   prd.command("list").action(() => {
     for (const s of listPrdSlugs(ws())) console.log(s);
   });
+
+  prd
+    .command("submit <slug>")
+    .requiredOption("--by <name>", "submitter (product manager)")
+    .option("--title <title>", "review title override")
+    .description("Create and submit req-review work order for PRD")
+    .action((slug: string, opts: { by: string; title?: string }) => {
+      const w = ws();
+      const wo = createWorkOrder(w, {
+        type: "req-review",
+        title: opts.title ?? `Review PRD ${slug}`,
+        scope: "prephase",
+        ref: { prd: slug },
+        assigneeRole: "tech-manager",
+        createdBy: opts.by,
+        artifacts: [{ path: `docs/prd/${slug}.md` }]
+      });
+      submitWorkOrder(w, wo.id, opts.by);
+      console.log(`submitted ${wo.id} for PRD "${slug}"`);
+    });
 }
 
 export function registerPrdGuidePack(guide: Command): void {

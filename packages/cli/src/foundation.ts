@@ -13,7 +13,9 @@ import {
   scaffoldExplore,
   importOpenspec,
   archiveChange,
-  scaffoldFromIssue
+  scaffoldFromIssue,
+  scaffoldExtendedRequirements,
+  readMeta
 } from "@harnessx/core";
 
 export const ws = () => Workspace.locate(process.cwd());
@@ -112,9 +114,18 @@ export function registerFoundationCommands(program: Command): void {
     .description("Scaffold proposal.md and an initial delta spec (FR-003)")
     .option("--title <title>", "proposal title", "Untitled")
     .action((changeId: string, opts: { title: string }) => {
-      const res = scaffoldProposal(ws(), changeId, opts.title);
+      const w = ws();
+      const res = scaffoldProposal(w, changeId, opts.title);
       console.log(`Wrote ${res.proposalFile}`);
       console.log(`Wrote ${res.deltaFile}`);
+      try {
+        const meta = readMeta(w, changeId);
+        if (meta.profile === "enterprise-sdlc") {
+          for (const f of scaffoldExtendedRequirements(w, changeId)) console.log(`Wrote harnessX/changes/${changeId}/${f}`);
+        }
+      } catch {
+        /* ignore */
+      }
     });
 
   program

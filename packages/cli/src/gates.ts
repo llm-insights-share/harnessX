@@ -62,14 +62,20 @@ export function registerGateCommands(program: Command): void {
 
   gate
     .command("approve [change]")
-    .requiredOption("--gate <gate>", "gate being approved (spec|prd|arch)")
+    .requiredOption("--gate <gate>", "gate being approved (spec|prd|arch|arch-lld|test-cases)")
     .requiredOption("--approver <name>")
     .option("--prd <slug>", "PRD slug (required when --gate prd)")
-    .action((change: string | undefined, opts: { gate: string; approver: string; prd?: string }) => {
+    .option("--module <id>", "module id (required when --gate arch-lld)")
+    .action((change: string | undefined, opts: { gate: string; approver: string; prd?: string; module?: string }) => {
       const w = ws();
-      if (opts.gate === "prd" || opts.gate === "arch") {
-        const rec = recordPrephaseApproval(w, opts.gate, opts.approver, opts.prd);
-        const target = opts.gate === "prd" ? `prd:${opts.prd}` : "arch:hld";
+      if (opts.gate === "prd" || opts.gate === "arch" || opts.gate === "arch-lld") {
+        if (opts.gate === "arch-lld" && !opts.module) throw new Error("--module required for gate arch-lld");
+        const rec =
+          opts.gate === "arch-lld"
+            ? recordPrephaseApproval(w, opts.gate, opts.approver, opts.prd, opts.module)
+            : recordPrephaseApproval(w, opts.gate, opts.approver, opts.prd);
+        const target =
+          opts.gate === "prd" ? `prd:${opts.prd}` : opts.gate === "arch-lld" ? `arch-lld:${opts.module}` : "arch:hld";
         console.log(`approved gate "${opts.gate}" (${target}) by ${rec.approver} at ${rec.at} (artifact ${rec.artifactHash.slice(0, 12)})`);
         return;
       }

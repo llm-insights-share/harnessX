@@ -115,6 +115,37 @@ export class Workspace {
     return path.join(this.archModuleDir(moduleId), "lld.md");
   }
 
+  workordersDir() {
+    return path.join(this.base, "workorders");
+  }
+  workorderFile(id: string) {
+    return path.join(this.workordersDir(), `${id}.yaml`);
+  }
+  workorderIndexFile() {
+    return path.join(this.workordersDir(), "index.yaml");
+  }
+  changeRequestsDir() {
+    return path.join(this.base, "change-requests");
+  }
+  changeRequestFile(id: string) {
+    return path.join(this.changeRequestsDir(), `${id}.yaml`);
+  }
+  changeRequestIndexFile() {
+    return path.join(this.changeRequestsDir(), "index.yaml");
+  }
+  rolesFile() {
+    return path.join(this.base, "roles.yaml");
+  }
+  testCasesDir(change: string) {
+    return path.join(this.changeDir(change), "test-cases");
+  }
+  bugsDir(change: string) {
+    return path.join(this.changeDir(change), "bugs");
+  }
+  bugFile(change: string, bugId: string) {
+    return path.join(this.bugsDir(change), `${bugId}.yaml`);
+  }
+
   readConfig(): ConfigYaml {
     return ConfigYaml.parse(YAML.parse(fs.readFileSync(this.configFile, "utf8")) ?? {});
   }

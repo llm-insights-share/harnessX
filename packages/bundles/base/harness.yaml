@@ -27,6 +27,16 @@ profiles:
       plan: plan-enterprise
       apply: fast
       verify: verification-enterprise
+  enterprise-sdlc:
+    phases: [explore, propose, design, spec, plan, test-design, apply, verify, archive]
+    suites:
+      propose: propose-sdlc
+      design: design-sdlc
+      spec: fast
+      plan: plan-sdlc
+      test-design: test-design-sdlc
+      apply: fast
+      verify: verification-sdlc
 
 suites:
   fast-lite: [spec-validate]
@@ -39,7 +49,12 @@ suites:
   verification-enterprise: [spec-validate, spec-trace, design-drift, arch-drift, drift, uat-complete, unit-changed, mutation-probe, ai-spec-review]
   prd-check: [prd-complete]
   arch-check: [arch-hld-complete, arch-registry-complete, arch-approved]
-  arch-lld-check: [arch-lld-complete, arch-module-boundary]
+  arch-lld-check: [arch-lld-complete, arch-module-boundary, arch-lld-approved]
+  propose-sdlc: [wo-prephase-clear, prd-complete, prd-approved, requirements-extended-complete, spec-validate, typecheck, lint, unit-changed]
+  design-sdlc: [arch-approved, arch-lld-approved, arch-change-align, design-hld-complete, design-lld-complete, design-spec-align, prototype-complete, change-request-applied]
+  plan-sdlc: [plan-coverage, wo-lld-done]
+  test-design-sdlc: [test-cases-complete, test-cases-approved]
+  verification-sdlc: [spec-validate, spec-trace, design-drift, arch-drift, bugs-closed, drift, uat-complete, unit-changed, mutation-probe, ai-spec-review]
 
 guides:
   - id: requirements-template
@@ -363,3 +378,59 @@ sensors:
     builtin: arch-drift
     on_fail: warn
     fix_hint: "Run hx arch promote <change> to沉淀 design into module LLD"
+  - id: wo-prephase-clear
+    kind: sensor.script
+    execution: computational
+    phase: [propose]
+    builtin: wo-prephase-clear
+    on_fail: block
+    fix_hint: "Close pending pre-phase work orders: hx wo inbox"
+  - id: requirements-extended-complete
+    kind: sensor.script
+    execution: computational
+    phase: [propose]
+    builtin: requirements-extended-complete
+    on_fail: block
+    fix_hint: "Fill extended requirements/ artifacts (research, business flows, integrations)"
+  - id: test-cases-complete
+    kind: sensor.script
+    execution: computational
+    phase: [test-design]
+    builtin: test-cases-complete
+    on_fail: block
+    fix_hint: "Complete test-cases/overview.md — hx test-cases init"
+  - id: test-cases-approved
+    kind: sensor.script
+    execution: computational
+    phase: [test-design, apply]
+    builtin: test-cases-approved
+    on_fail: block
+    fix_hint: "Submit and approve test cases: hx test-cases submit"
+  - id: bugs-closed
+    kind: sensor.script
+    execution: computational
+    phase: [verify]
+    builtin: bugs-closed
+    on_fail: block
+    fix_hint: "Close or fix open bugs: hx bug list"
+  - id: wo-lld-done
+    kind: sensor.script
+    execution: computational
+    phase: [plan]
+    builtin: wo-lld-done
+    on_fail: block
+    fix_hint: "Mark lld-design work orders done: hx wo done <id>"
+  - id: arch-lld-approved
+    kind: sensor.script
+    execution: computational
+    phase: [design, arch-lld]
+    builtin: arch-lld-approved
+    on_fail: block
+    fix_hint: "Approve module LLD: hx approve arch-lld <module> --approver <name>"
+  - id: change-request-applied
+    kind: sensor.script
+    execution: computational
+    phase: [design, propose]
+    builtin: change-request-applied
+    on_fail: block
+    fix_hint: "Apply pending change requests after approval"

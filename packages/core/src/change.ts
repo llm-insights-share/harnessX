@@ -3,6 +3,7 @@ import path from "node:path";
 import { Workspace, ensureDir } from "./paths.js";
 import { initMeta, readMeta } from "./metaStore.js";
 import { scaffoldDeliveryTrace } from "./deliveryTrace.js";
+import { checkReqReviewForPrd } from "./workorder.js";
 import type { MetaYaml } from "./schemas.js";
 
 export interface OverlapWarning {
@@ -43,9 +44,16 @@ export function createChange(
   if (fs.existsSync(ws.changeDir(id))) throw new Error(`change "${id}" already exists`);
   if (domains.length === 0) throw new Error("declare touched domains with --domains (FR-011)");
 
-  const warnings = detectOverlaps(ws, domains);
   const config = ws.readConfig();
-  const meta = initMeta(ws, id, profile ?? config.profile, domains, opts);
+  const chosenProfile = profile ?? config.profile;
+  if (chosenProfile === "enterprise-sdlc" && opts?.prdRef && !checkReqReviewForPrd(ws, opts.prdRef)) {
+    throw new Error(
+      `PRD "${opts.prdRef}" requires an approved req-review work order before change create (hx prd submit ${opts.prdRef})`
+    );
+  }
+
+  const warnings = detectOverlaps(ws, domains);
+  const meta = initMeta(ws, id, chosenProfile, domains, opts);
   for (const sub of ["specs", "traces", "runs", "requirements", "design"]) ensureDir(path.join(ws.changeDir(id), sub));
   for (const sub of ["api", "ui/components", "data", "sequences"]) ensureDir(path.join(ws.changeDir(id), "design", sub));
   return { meta, warnings };
