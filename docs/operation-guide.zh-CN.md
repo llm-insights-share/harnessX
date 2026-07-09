@@ -560,7 +560,9 @@ hx meta verify --all
 
 当你把 Hub 作为组织级资产仓时，建议使用以下命令完成生命周期、评审、策略与完整性治理。
 
-**专项手册**（资产清单 + 各类维护样例）：[Hub 资产维护手册](hub-asset-maintenance.zh-CN.md) · [English](hub-asset-maintenance.en.md)
+**专项手册**（资产清单 + 各类维护样例）：[Hub 资产维护手册](hub-asset-maintenance.zh-CN.md) · [English](hub-asset-maintenance.en.md) · [场景 21 双角色与贡献审核](examples/21-hub-双角色与贡献审核.md)
+
+配置 `config.yaml` 的 `hub.source` + `hub.role`（`consumer` | `maintainer`）后，多数 `hx hub` 命令可省略 `--hub`。使用角色通过 `hx hub submit` 提交资产到 `contributions/`；运维角色通过 `hx hub contributions accept` 合并到正式目录后 `hx hub push`。
 
 #### `hx hub sync`
 

@@ -17,6 +17,7 @@ export interface ResolveHubSourceOptions {
   offline?: boolean;
   refresh?: boolean;
   maxStaleMs?: number;
+  branch?: string;
   gitExec?: GitExec;
 }
 
@@ -80,7 +81,8 @@ export function resolveHubSource(workspaceRoot: string, hubRef: string, opts: Re
   ensureDir(path.dirname(repoDir));
 
   if (!fs.existsSync(path.join(repoDir, ".git"))) {
-    const cloned = execGit(["clone", hubRef, repoDir]);
+    const cloneArgs = opts.branch ? ["clone", "-b", opts.branch, hubRef, repoDir] : ["clone", hubRef, repoDir];
+    const cloned = execGit(cloneArgs);
     if (cloned.status !== 0) throwGitFailure("clone", hubRef, cloned);
     // test doubles may skip side effects; create .git marker so subsequent calls behave consistently
     ensureDir(path.join(repoDir, ".git"));
@@ -97,16 +99,61 @@ export function resolveHubSource(workspaceRoot: string, hubRef: string, opts: Re
     const fetched = execGit(["-C", repoDir, "fetch", "--all", "--prune"]);
     if (fetched.status !== 0) throwGitFailure("fetch", hubRef, fetched);
 
-    const branchOut = execGit(["-C", repoDir, "rev-parse", "--abbrev-ref", "HEAD"]);
-    const branch = branchOut.status === 0 ? branchOut.stdout.trim() : "";
-    if (branch && branch !== "HEAD") {
-      const pulled = execGit(["-C", repoDir, "pull", "--ff-only", "origin", branch]);
+    if (opts.branch) {
+      const checkout = execGit(["-C", repoDir, "checkout", opts.branch]);
+      if (checkout.status !== 0) throwGitFailure("checkout", hubRef, checkout);
+      const pulled = execGit(["-C", repoDir, "pull", "--ff-only", "origin", opts.branch]);
       if (pulled.status !== 0) throwGitFailure("pull", hubRef, pulled);
+    } else {
+      const branchOut = execGit(["-C", repoDir, "rev-parse", "--abbrev-ref", "HEAD"]);
+      const branch = branchOut.status === 0 ? branchOut.stdout.trim() : "";
+      if (branch && branch !== "HEAD") {
+        const pulled = execGit(["-C", repoDir, "pull", "--ff-only", "origin", branch]);
+        if (pulled.status !== 0) throwGitFailure("pull", hubRef, pulled);
+      }
     }
     writeCacheState(repoDir, { lastFetchedAt: new Date().toISOString() });
   }
 
   return repoDir;
+}
+
+export interface HubGitPushOptions {
+  message: string;
+  branch?: string;
+  gitExec?: GitExec;
+}
+
+/** Commit and push hub repo changes (for maintainer workflows). */
+export function hubGitPush(hubRoot: string, opts: HubGitPushOptions): { committed: boolean; pushed: boolean } {
+  const execGit = opts.gitExec ?? runGit;
+  if (!fs.existsSync(path.join(hubRoot, ".git"))) {
+    throw new Error(`hub directory is not a git repository: ${hubRoot}`);
+  }
+  const status = execGit(["-C", hubRoot, "status", "--porcelain"]);
+  if (status.status !== 0) throw new Error(`git status failed: ${status.stderr || status.stdout}`);
+  const dirty = status.stdout.trim().length > 0;
+  let committed = false;
+  if (dirty) {
+    const add = execGit(["-C", hubRoot, "add", "."]);
+    if (add.status !== 0) throw new Error(`git add failed: ${add.stderr || add.stdout}`);
+    const commit = execGit(["-C", hubRoot, "commit", "-m", opts.message]);
+    if (commit.status !== 0) {
+      const out = `${commit.stdout}${commit.stderr}`;
+      if (!/nothing to commit|no changes added/i.test(out)) throw new Error(`git commit failed: ${out}`);
+    } else {
+      committed = true;
+    }
+  }
+  const branch =
+    opts.branch ||
+    (() => {
+      const b = execGit(["-C", hubRoot, "rev-parse", "--abbrev-ref", "HEAD"]);
+      return b.status === 0 ? b.stdout.trim() : "main";
+    })();
+  const push = execGit(["-C", hubRoot, "push", "-u", "origin", branch]);
+  if (push.status !== 0) throw new Error(`git push failed: ${push.stderr || push.stdout}`);
+  return { committed, pushed: true };
 }
 
 export function gcHubRemoteCache(workspaceRoot: string, olderThanMs = 30 * 24 * 3600_000): string[] {

@@ -2,7 +2,7 @@
 
 **适用角色**：总架构师、平台组 Hub 维护者、资产作者、业务仓库负责人  
 **版本**：HarnessX v0.4+  
-**关联场景**：[08 Hub 资产共享与供应链](examples/08-hub-资产共享与供应链.md) · [16 Hub 蓝图初始化](examples/16-v0.3-hub-blueprint-init.md) · [17 平台治理与仪表盘](examples/17-v0.4-平台治理与仪表盘.md)
+**关联场景**：[08 Hub 资产共享与供应链](examples/08-hub-资产共享与供应链.md) · [16 Hub 蓝图初始化](examples/16-v0.3-hub-blueprint-init.md) · [17 平台治理与仪表盘](examples/17-v0.4-平台治理与仪表盘.md) · [21 Hub 双角色与贡献审核](examples/21-hub-双角色与贡献审核.md)
 
 ---
 
@@ -21,12 +21,39 @@ Hub 的信任模型（四道关卡）：
 
 **资产解析优先级**（高 → 低）：`change` > `local` > `team` > `hub` > `builtin`
 
+### 1.1 双角色连接（运维 / 使用）
+
+项目通过 `config.yaml` 声明连接同一 Hub 时的角色：
+
+```yaml
+# 使用角色（业务开发项目）
+hub:
+  source: git@github.com:your-org/hx-hub.git
+  role: consumer
+  actor: wang.dev
+
+# 运维角色（平台管理项目）
+hub:
+  source: git@github.com:your-org/hx-hub.git
+  role: maintainer
+  actor: zhao.platform
+  branch: main   # 可选
+```
+
+| 角色 | 能力 |
+| --- | --- |
+| `consumer` | 检索、安装、同步；`hx hub submit` 提交到 `contributions/` |
+| `maintainer` | 正式发布 `hx hub promote`、审核 `hx hub contributions accept`、策略检查、`hx hub push` |
+
+配置 `hub` 后，多数 `hx hub *` 命令**无需再传 `--hub`**。Hub 仓库根目录的 `hub-policy.yaml` 定义维护者白名单与 `installRequiresApproval` 等策略。
+
 ---
 
 ## 2. Hub 仓库目录结构
 
 ```
 harness-hub/
+├── hub-policy.yaml              # 维护者白名单与消费策略
 ├── packages/                    # 可复用单包（Skill、模版、Rubric …）
 │   └── <asset-id>/
 │       └── <version>/
@@ -44,6 +71,9 @@ harness-hub/
 │       └── <version>/
 │           ├── asset.yaml
 │           └── blueprint.yaml
+├── contributions/               # 使用角色提交、待运维审核的资产
+│   └── <actor>/
+│       └── <asset-id>/<version>/
 ├── evals/                       # 可选：golden-repo 验收集
 │   └── golden-repos/
 │       └── <name>/
@@ -124,7 +154,7 @@ hx hub golden
 
 ## 5. 内置拓扑 Bundle 清单（`hx bundle list`，可发布到 Hub）
 
-这些 Bundle 随 HarnessX 发行，维护者可 `hx hub promote` 到组织 Hub。
+这些 Bundle 随 HarnessX 发行。发布到 Hub 时，`asset.yaml` 中 `kind: harness.bundle`，`hx hub promote` 会写入 `bundles/<id>/<version>/`（运维角色）。
 
 | Bundle ID | 说明 | 典型项目 |
 | --- | --- | --- |
@@ -318,22 +348,21 @@ hx hub promote ./path/to/common-review-rubrics \
 
 ### 9.5 发布 / 升级 Bundle
 
-**从内置 Bundle 首次发布**：
+**从内置 Bundle 首次发布**（运维角色，`kind: harness.bundle`）：
 
 ```bash
-# 将内置 api-service 复制到 Hub（需手动或通过内部脚本打包）
-# 典型结构见 packages/hub-golden/bundles/api-service/1.0.0/
-
-hx hub eval api-service@1.0.0 --hub <hub> --golden minimal-api
-hx hub review approve api-service@1.0.0 --hub <hub> --reviewer platform
+# 目录含 asset.yaml + bundle.yaml + assets/
+hx hub promote ./path/to/api-service-bundle --by platform --evidence "golden eval pass"
+hx hub eval api-service@1.0.0 --golden minimal-api
+hx hub review approve api-service@1.0.0 --reviewer platform
 ```
 
 **升级 Bundle（1.0.0 → 1.1.0）**：
 
-1. 复制 `bundles/api-service/1.0.0/` → `1.1.0/`
-2. 修改 `bundle.yaml` / 资产内容
-3. 更新 `asset.yaml` 的 `version`
-4. `hx hub promote` 新目录 → 评审 → 通知消费方 `hx hub sync`
+1. 更新目录内 `bundle.yaml` / 资产内容
+2. 递增 `asset.yaml` 的 `version`
+3. `hx hub promote` 新目录 → 评审 → `hx hub push`
+4. 通知消费方对 **Package** 执行 `hx hub sync`（Bundle 已安装项目需重新 `hx bundle add --hub`）
 
 ### 9.6 发布 / 维护 Blueprint
 
@@ -462,19 +491,20 @@ imports:
 
 | 命令 | 说明 |
 | --- | --- |
-| `hx hub golden` | 列出内置 Golden 包 |
-| `hx hub seed [path]` | 种子 Hub |
-| `hx hub add <id>@<ver> --hub <path>` | 安装到 .hub-cache |
-| `hx hub sync --hub <path> [--apply] [--force]` | 检查 / 合并升级 |
-| `hx hub promote <dir> --hub <path> --by <name>` | 发布本地资产到 Hub |
-| `hx hub approve <id>@<ver> --hub <path> --reviewer <name>` | 评审通过 |
-| `hx hub search [q] --hub <path> [--kind] [--phase] [--category]` | 检索 |
-| `hx hub catalog rebuild --hub <path>` | 重建 index.json |
+| `hx hub golden` | 列出内置 Golden 包 / Bundle / Blueprint |
+| `hx hub seed [path]` | 种子 Hub（含 hub-policy.yaml） |
+| `hx hub add <id>@<ver> [--hub]` | 安装到 .hub-cache（config 可省略 --hub） |
+| `hx hub sync [--hub] [--apply] [--force]` | 检查 / 合并升级 |
+| `hx hub promote <dir> --by <name>` | 运维：发布到正式目录（自动识别 package/bundle/blueprint） |
+| `hx hub submit <dir> [--evidence]` | 使用：提交到 contributions/ 待审核 |
+| `hx hub contributions list/accept/reject` | 运维：贡献审核队列 |
+| `hx hub push [--message]` | 运维：提交并推送 Hub Git 变更 |
+| `hx hub search [q] [--category]` | 检索 |
 | `hx hub asset info/promote/deprecate` | Hub 侧生命周期 |
 | `hx hub review request/approve/reject` | 评审工作流 |
 | `hx hub policy check [--strict]` | 治理策略 |
-| `hx hub eval <id>@<ver> [--local] [--golden]` | 质量评估 |
-| `hx hub cache gc [--older-than-days N]` | 清理远端镜像缓存 |
+| `hx hub eval <id>@<ver> [--local] [--golden] [--list]` | 质量评估（支持 Bundle/Blueprint） |
+| `hx hub cache gc` | 清理远端镜像缓存 |
 
 ### 11.3 相关
 

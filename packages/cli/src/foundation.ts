@@ -7,7 +7,9 @@ import {
   listBundles,
   listHubBundles,
   applyBundle,
-  resolveHubSource,
+  applyHubBundle,
+  resolveHubContext,
+  hubConfigSource,
   createChange,
   scaffoldProposal,
   scaffoldExplore,
@@ -31,8 +33,11 @@ export function registerFoundationCommands(program: Command): void {
     .option("--adapter <target>", "adapter target to record in config (cursor, codex, …)")
     .action((opts: { bundle?: string; locale?: string; fromHub?: string; hub?: string; adapter?: string }) => {
       if (opts.fromHub) {
-        if (!opts.hub) throw new Error("--hub is required with --from-hub");
-        const res = initFromHub(process.cwd(), { hubRef: opts.fromHub, hubRoot: opts.hub, locale: opts.locale, adapter: opts.adapter });
+        const w = ws();
+        const conn = resolveHubContext(w, { hubRef: opts.hub, action: "hub.add" });
+        const hubRef = opts.hub ?? conn.connection?.source;
+        if (!hubRef) throw new Error("--hub is required with --from-hub (or set config.yaml hub)");
+        const res = initFromHub(process.cwd(), { hubRef: opts.fromHub, hubRoot: hubRef, locale: opts.locale, adapter: opts.adapter });
         console.log(`Initialized from hub ${opts.fromHub} → ${res.ws.base}`);
         for (const c of res.created) console.log(`  + ${c}`);
         console.log("\nNext steps:");
@@ -50,14 +55,26 @@ export function registerFoundationCommands(program: Command): void {
     .command("bundle")
     .argument("<action>", "list | add")
     .argument("[bundleId]", "topology bundle id (required for add)")
-    .option("--hub <path>", "list bundles from hub source (local path or GitHub URL)")
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
+    .option("--version <ver>", "bundle version when adding from hub", "1.0.0")
     .description("Manage topology bundles")
-    .action((action: string, bundleId: string | undefined, opts: { hub?: string }) => {
+    .action((action: string, bundleId: string | undefined, opts: { hub?: string; version?: string }) => {
       if (action === "list") {
         if (opts?.hub) {
-          const hubRoot = resolveHubSource(process.cwd(), opts.hub, { updateRemote: true });
+          const { hubRoot } = resolveHubContext(ws(), { hubRef: opts.hub, action: "hub.search" });
           for (const b of listHubBundles(hubRoot)) console.log(`${b.id}@${b.version}\t(hub)`);
         } else {
+          try {
+            const w = ws();
+            const hub = hubConfigSource(w.readConfig().hub);
+            if (hub) {
+              const { hubRoot } = resolveHubContext(w, { hubRef: hub, action: "hub.search" });
+              for (const b of listHubBundles(hubRoot)) console.log(`${b.id}@${b.version}\t(hub)`);
+              return;
+            }
+          } catch {
+            /* fall through to builtin */
+          }
           for (const b of listBundles()) console.log(`${b.id}\t${b.description}`);
         }
         return;
@@ -65,8 +82,14 @@ export function registerFoundationCommands(program: Command): void {
       if (action === "add") {
         if (!bundleId) throw new Error("bundle id required: hx bundle add <id>");
         const w = ws();
-        applyBundle(w, bundleId);
-        console.log(`Applied bundle "${bundleId}" — see harness.yaml and assets/bundles/${bundleId}/`);
+        if (opts.hub || w.readConfig().hub) {
+          const { hubRoot } = resolveHubContext(w, { hubRef: opts.hub, action: "hub.add" });
+          applyHubBundle(w, hubRoot, bundleId, opts.version ?? "1.0.0");
+          console.log(`Applied hub bundle "${bundleId}@${opts.version ?? "1.0.0"}" — see harness.yaml and assets/bundles/${bundleId}/`);
+        } else {
+          applyBundle(w, bundleId);
+          console.log(`Applied bundle "${bundleId}" — see harness.yaml and assets/bundles/${bundleId}/`);
+        }
         return;
       }
       throw new Error(`unknown bundle action: ${action}`);

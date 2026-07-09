@@ -8,6 +8,6 @@ export interface HubGovernanceReport {
 
 export function hubGovernanceReport(hubRoot: string, policy: HubPolicyOptions = {}): HubGovernanceReport {
   const entries = buildHubCatalog(hubRoot);
-  const issues = checkHubPolicy(entries, policy);
+  const issues = checkHubPolicy(entries, { ...policy, hubRoot });
   return { ok: issues.every((i) => i.severity !== "error"), issues };
 }

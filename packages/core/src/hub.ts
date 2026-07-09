@@ -9,6 +9,9 @@ import { assertHubAssetTransition } from "./hubLifecycle.js";
 import { approveHubReview, readHubReview, requestHubReview } from "./hubReview.js";
 import { hashHubAssetDir } from "./hubIntegrity.js";
 import { hubEvalLocal } from "./hubEval.js";
+import { hubBlueprintDir } from "./blueprint.js";
+import type { AssetManifest } from "./schemas.js";
+import type { HubAssetCategory } from "./hubAssetSchema.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 /** Built-in golden hub packages shipped with harnessx (T-602). */
@@ -43,6 +46,35 @@ export function hubPackageDir(hubRoot: string, id: string, version: string): str
 
 export function hubBundleDir(hubRoot: string, id: string, version: string): string {
   return path.join(hubRoot, "bundles", id, version);
+}
+
+export function hubCategoryFromKind(kind: string): HubAssetCategory {
+  if (kind === "harness.bundle") return "bundle";
+  if (kind === "harness.blueprint") return "blueprint";
+  return "package";
+}
+
+export function resolveHubDestDir(hubRoot: string, manifest: Pick<AssetManifest, "id" | "version" | "kind">): string {
+  switch (manifest.kind) {
+    case "harness.bundle":
+      return hubBundleDir(hubRoot, manifest.id, manifest.version);
+    case "harness.blueprint":
+      return hubBlueprintDir(hubRoot, manifest.id, manifest.version);
+    default:
+      return hubPackageDir(hubRoot, manifest.id, manifest.version);
+  }
+}
+
+function validatePromoteLayout(assetDir: string, manifest: AssetManifest): void {
+  if (manifest.kind === "harness.bundle") {
+    if (!fs.existsSync(path.join(assetDir, "bundle.yaml"))) throw new Error("harness.bundle requires bundle.yaml");
+  } else if (manifest.kind === "harness.blueprint") {
+    if (!fs.existsSync(path.join(assetDir, "blueprint.yaml"))) throw new Error("harness.blueprint requires blueprint.yaml");
+  }
+}
+
+export function hubContributionDir(hubRoot: string, actor: string, id: string, version: string): string {
+  return path.join(hubRoot, "contributions", actor, id, version);
 }
 
 export function hubVersions(hubRoot: string, id: string, category: "packages" | "bundles" | "blueprints" = "packages"): string[] {
@@ -179,7 +211,12 @@ export function resolveHubPackage(hubRoot: string, ref: HubRef): { kind: "packag
 }
 
 /** hub add: install a package version into the repo hub cache (with injection scan, T-603). */
-export function hubAdd(ws: Workspace, hubRoot: string, ref: HubRef): { dir: string; asset: LoadedAsset } {
+export interface HubAddOptions {
+  /** When true, only approved packages may be installed (consumer role default). */
+  requireApproved?: boolean;
+}
+
+export function hubAdd(ws: Workspace, hubRoot: string, ref: HubRef, opts: HubAddOptions = {}): { dir: string; asset: LoadedAsset } {
   const resolved = resolveHubPackage(hubRoot, ref);
   if (!resolved || resolved.kind !== "package") {
     const src = hubPackageDir(hubRoot, ref.id, ref.version);
@@ -187,6 +224,13 @@ export function hubAdd(ws: Workspace, hubRoot: string, ref: HubRef): { dir: stri
   }
   const src = resolved?.kind === "package" ? resolved.dir : hubPackageDir(hubRoot, ref.id, ref.version);
   if (!fs.existsSync(path.join(src, "asset.yaml"))) throw new Error(`hub package ${ref.id}@${ref.version} not found in ${hubRoot}`);
+
+  if (opts.requireApproved) {
+    const review = readHubReview(src);
+    if (review.status !== "approved") {
+      throw new Error(`hub package ${ref.id}@${ref.version} is not approved (status: ${review.status})`);
+    }
+  }
 
   const findings = scanAssetDir(src);
   if (findings.length > 0) {
@@ -371,7 +415,10 @@ export function hubPromote(ws: Workspace, hubRoot: string, assetDir: string, opt
   const findings = scanAssetDir(assetDir);
   if (findings.length > 0) throw new Error(`asset failed injection scan before publish: ${findings[0]}`);
 
-  const dest = hubPackageDir(hubRoot, asset.manifest.id, asset.manifest.version);
+  validatePromoteLayout(assetDir, asset.manifest);
+
+  const category = hubCategoryFromKind(asset.manifest.kind);
+  const dest = resolveHubDestDir(hubRoot, asset.manifest);
   if (fs.existsSync(dest)) throw new Error(`${asset.manifest.id}@${asset.manifest.version} already published — bump the version`);
   copyDir(assetDir, dest);
 
@@ -390,7 +437,7 @@ export function hubPromote(ws: Workspace, hubRoot: string, assetDir: string, opt
     HubAssetMeta.parse({
       id: manifest.id,
       version: manifest.version,
-      category: "package",
+      category,
       kind: manifest.kind,
       owner: opts.owner,
       status: manifest.status,
@@ -407,15 +454,15 @@ export function hubPromote(ws: Workspace, hubRoot: string, assetDir: string, opt
 }
 
 export function hubApproveReview(hubRoot: string, id: string, version: string, reviewer: string): void {
-  const dir = hubPackageDir(hubRoot, id, version);
-  if (!fs.existsSync(path.join(dir, "asset.yaml"))) throw new Error(`package ${id}@${version} not found`);
-  approveHubReview(dir, reviewer);
+  const resolved = resolveHubPackage(hubRoot, { id, version });
+  if (!resolved) throw new Error(`hub asset ${id}@${version} not found`);
+  approveHubReview(resolved.dir, reviewer);
 }
 
 export function hubReviewStatus(hubRoot: string, id: string, version: string): "pending" | "approved" | "rejected" | "missing" {
-  const dir = hubPackageDir(hubRoot, id, version);
-  if (!fs.existsSync(path.join(dir, "asset.yaml"))) return "missing";
-  return readHubReview(dir).status;
+  const resolved = resolveHubPackage(hubRoot, { id, version });
+  if (!resolved) return "missing";
+  return readHubReview(resolved.dir).status;
 }
 
 export interface HubAssetInfo {
@@ -500,6 +547,32 @@ export function listHubBundles(hubRoot: string): HubRef[] {
   return out.sort((a, b) => a.id.localeCompare(b.id) || a.version.localeCompare(b.version));
 }
 
+export function listHubBlueprints(hubRoot: string): HubRef[] {
+  const root = path.join(hubRoot, "blueprints");
+  if (!fs.existsSync(root)) return [];
+  const out: HubRef[] = [];
+  for (const id of fs.readdirSync(root, { withFileTypes: true }).filter((d) => d.isDirectory())) {
+    for (const ver of hubVersions(hubRoot, id.name, "blueprints")) {
+      out.push({ id: id.name, version: ver });
+    }
+  }
+  return out.sort((a, b) => a.id.localeCompare(b.id) || a.version.localeCompare(b.version));
+}
+
+export function listGoldenHubBlueprints(goldenDir = BUILTIN_HUB_GOLDEN_DIR): HubRef[] {
+  return listHubBlueprints(goldenDir);
+}
+
+export function listHubEvalSets(hubRoot: string): string[] {
+  const root = path.join(hubRoot, "evals", "golden-repos");
+  if (!fs.existsSync(root)) return [];
+  return fs
+    .readdirSync(root, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .sort();
+}
+
 /** Creates a hub repo from built-in golden packages (pre-approved for local consumption). */
 export function seedGoldenHub(targetRoot: string, goldenDir = BUILTIN_HUB_GOLDEN_DIR): HubRef[] {
   const seeded: HubRef[] = [];
@@ -508,6 +581,8 @@ export function seedGoldenHub(targetRoot: string, goldenDir = BUILTIN_HUB_GOLDEN
     if (!fs.existsSync(src)) continue;
     copyDir(src, path.join(targetRoot, sub));
   }
-  seeded.push(...listGoldenHubPackages(goldenDir), ...listGoldenHubBundles(goldenDir));
+  const policySrc = path.join(goldenDir, "hub-policy.yaml");
+  if (fs.existsSync(policySrc)) fs.copyFileSync(policySrc, path.join(targetRoot, "hub-policy.yaml"));
+  seeded.push(...listGoldenHubPackages(goldenDir), ...listGoldenHubBundles(goldenDir), ...listGoldenHubBlueprints(goldenDir));
   return seeded;
 }

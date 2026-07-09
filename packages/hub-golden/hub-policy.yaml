@@ -1,0 +1,6 @@
+version: "1.0"
+maintainers:
+  - platform-team
+minApprovals: 1
+consumerCanSubmit: true
+installRequiresApproval: true

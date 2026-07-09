@@ -24,28 +24,64 @@ import {
   seedGoldenHub,
   listGoldenHubPackages,
   listGoldenHubBundles,
+  listGoldenHubBlueprints,
   listHubBundles,
-  hubEvalPackage,
+  listHubEvalSets,
+  hubEvalAsset,
   hubEvalLocal,
   hubEvalGoldenRepo,
   writeHubEvalReport,
   scanAssetDir,
   searchHubCatalog,
   writeHubIndex,
-  resolveHubSource,
-  dispatchFileSave,
-  runScheduled,
-  startWatcher,
-  buildFixPack,
+  resolveHubContext,
+  assertHubAction,
+  readHubConnection,
+  hubSubmit,
+  listHubContributions,
+  hubAcceptContribution,
+  hubRejectContribution,
+  hubContributionInfo,
+  parseContributionRef,
+  contributionRefKey,
+  readHubRepoPolicy,
+  hubGitPush,
   loadAssetDir,
   ensureDir,
-  type AssetStatus
+  type AssetStatus,
+  type HubAction
 } from "@harnessx/core";
 import { builtinSensors } from "@harnessx/sensors";
 import { compileAdapters, adapterDrift, availableTargets, exportQoderQuest, TARGETS, computeTier } from "@harnessx/adapters";
+import { dispatchFileSave, runScheduled, startWatcher, buildFixPack } from "@harnessx/core";
 
 const ws = () => Workspace.locate(process.cwd());
 const runnerOpts = () => ({ builtins: builtinSensors });
+
+interface HubCliBase {
+  hub?: string;
+  actor?: string;
+  offline?: boolean;
+  refresh?: boolean;
+}
+
+function hubCtx(opts: HubCliBase, action: HubAction, requireHub = true) {
+  const workspace = ws();
+  if (requireHub) {
+    const { hubRoot, connection, actor } = resolveHubContext(workspace, {
+      hubRef: opts.hub,
+      offline: opts.offline,
+      refresh: opts.refresh,
+      action
+    });
+    const policy = readHubRepoPolicy(hubRoot);
+    const requireApproved = connection?.role === "consumer" && policy.installRequiresApproval;
+    return { workspace, hubRoot, connection, actor: opts.actor ?? actor, requireApproved };
+  }
+  assertHubAction(workspace, action);
+  const connection = readHubConnection(workspace);
+  return { workspace, hubRoot: "", connection, actor: opts.actor ?? "", requireApproved: false };
+}
 
 interface SeedSubmitOptions {
   submit?: boolean;
@@ -146,8 +182,10 @@ export function registerAssetCommands(program: Command): void {
 
   const hub = program.command("hub").description("Harness Hub (§11.5)");
   hub.command("golden").description("List built-in golden hub packages").action(() => {
+    hubCtx({}, "hub.golden", false);
     for (const p of listGoldenHubPackages()) console.log(`package\t${p.id}@${p.version}`);
     for (const p of listGoldenHubBundles()) console.log(`bundle\t${p.id}@${p.version}`);
+    for (const p of listGoldenHubBlueprints()) console.log(`blueprint\t${p.id}@${p.version}`);
   });
   hub
     .command("seed [path]")
@@ -157,56 +195,58 @@ export function registerAssetCommands(program: Command): void {
     .option("--branch <name>", "remote branch name (default: main)", "main")
     .option("--message <text>", "commit message used with --submit", "seed hub packages")
     .action((hubPath: string | undefined, opts: SeedSubmitOptions) => {
+      hubCtx({}, "hub.seed", false);
       const target = path.resolve(hubPath ?? "harness-hub");
       ensureDir(target);
       const pkgs = seedGoldenHub(target);
-      console.log(`Seeded ${target} with ${pkgs.length} package(s):`);
+      console.log(`Seeded ${target} with ${pkgs.length} asset(s):`);
       for (const p of pkgs) console.log(`  ${p.id}@${p.version}`);
       submitSeededHub(target, opts);
       if (opts.submit) console.log(`Submitted ${target} to ${opts.remote} (${opts.branch})`);
     });
   hub
     .command("add <pkg>")
-    .requiredOption("--hub <path>", "hub source (local path or GitHub URL)")
-    .action((pkg: string, opts: { hub: string }) => {
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
+    .action((pkg: string, opts: { hub?: string }) => {
+      const { workspace, hubRoot, requireApproved } = hubCtx(opts, "hub.add");
       const [id, version] = pkg.split("@");
       if (!version) throw new Error("use <id>@<version>");
-      const hubRoot = resolveHubSource(process.cwd(), opts.hub, { updateRemote: true });
-      const res = hubAdd(ws(), hubRoot, { id, version });
+      const res = hubAdd(workspace, hubRoot, { id, version }, { requireApproved });
       console.log(`installed ${id}@${version} → ${res.dir}`);
       console.log("run hx lock write to pin it");
     });
   hub
     .command("sync")
-    .requiredOption("--hub <path>", "hub source (local path or GitHub URL)")
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
     .option("--apply", "apply upstream updates with three-way merge")
     .option("--force", "apply merges even when conflicts occur")
     .option("--offline", "use local hub cache without remote fetch")
     .option("--refresh", "force refresh remote cache before operation")
     .option("--only <ids>", "comma-separated package ids to sync")
-    .action((opts: { hub: string; apply?: boolean; force?: boolean; only?: string; offline?: boolean; refresh?: boolean }) => {
-      const hubRoot = resolveHubSource(process.cwd(), opts.hub, { updateRemote: true, offline: opts.offline, refresh: opts.refresh });
+    .action((opts: { hub?: string; apply?: boolean; force?: boolean; only?: string; offline?: boolean; refresh?: boolean }) => {
+      const { workspace, hubRoot } = hubCtx(opts, "hub.sync");
       if (opts.apply) {
         const only = opts.only?.split(",").map((s) => s.trim()).filter(Boolean);
-        for (const r of hubSyncApply(ws(), hubRoot, { force: opts.force, only })) {
+        for (const r of hubSyncApply(workspace, hubRoot, { force: opts.force, only })) {
           const conflicts = r.conflicts?.length ? ` conflicts: ${r.conflicts.join(", ")}` : "";
           console.log(`${r.id}\t${r.action}\t${r.detail ?? ""}${r.toVersion ? ` → ${r.toVersion}` : ""}${conflicts}`);
         }
         console.log("run hx lock write to refresh harness.lock");
         return;
       }
-      for (const e of hubSync(ws(), hubRoot)) {
+      for (const e of hubSync(workspace, hubRoot)) {
         console.log(`${e.id}\tinstalled ${e.installed}\tlatest ${e.latest}\t${e.state}`);
       }
     });
   hub
     .command("promote <dir>")
-    .requiredOption("--hub <path>", "hub source (local path or GitHub URL)")
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
     .requiredOption("--by <name>")
     .option("--evidence <ref>", "metrics/report evidencing the asset's value")
     .option("--skip-policy", "skip policy check before publish")
-    .action((dir: string, opts: { hub: string; by: string; evidence?: string; skipPolicy?: boolean }) => {
-      const hubRoot = resolveHubSource(process.cwd(), opts.hub, { updateRemote: true });
+    .option("--skip-eval", "skip pre-publish hub eval")
+    .action((dir: string, opts: { hub?: string; by: string; evidence?: string; skipPolicy?: boolean; skipEval?: boolean }) => {
+      const { workspace, hubRoot } = hubCtx(opts, "hub.promote");
       if (!opts.skipPolicy) {
         const report = hubGovernanceReport(hubRoot);
         if (!report.ok) {
@@ -214,27 +254,61 @@ export function registerAssetCommands(program: Command): void {
           throw new Error(`hub policy check failed before promote: ${first?.asset} ${first?.message}`);
         }
       }
-      const res = hubPromote(ws(), hubRoot, path.resolve(dir), { publishedBy: opts.by, evidence: opts.evidence });
+      const res = hubPromote(workspace, hubRoot, path.resolve(dir), {
+        publishedBy: opts.by,
+        evidence: opts.evidence,
+        skipEval: opts.skipEval
+      });
       console.log(`published to ${res.dest} (review pending)`);
     });
   hub
+    .command("submit <dir>")
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
+    .option("--evidence <ref>", "metrics/report evidencing the asset's value")
+    .option("--actor <name>", "submitter identity (defaults to config hub.actor)")
+    .option("--skip-eval", "skip pre-submit hub eval")
+    .action((dir: string, opts: { hub?: string; evidence?: string; actor?: string; skipEval?: boolean }) => {
+      const { workspace, hubRoot, actor } = hubCtx(opts, "hub.submit");
+      const res = hubSubmit(workspace, hubRoot, path.resolve(dir), {
+        actor,
+        evidence: opts.evidence,
+        skipEval: opts.skipEval
+      });
+      console.log(`submitted to ${res.dest} (pending maintainer review)`);
+    });
+  hub
+    .command("push")
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
+    .option("--message <text>", "commit message", "chore: hub update")
+    .option("--branch <name>", "remote branch to push")
+    .action((opts: { hub?: string; message?: string; branch?: string }) => {
+      const { hubRoot } = hubCtx(opts, "hub.push");
+      const result = hubGitPush(hubRoot, { message: opts.message ?? "chore: hub update", branch: opts.branch });
+      console.log(`push complete (committed=${result.committed}, pushed=${result.pushed})`);
+    });
+  hub
     .command("approve <pkg>")
-    .requiredOption("--hub <path>", "hub source (local path or GitHub URL)")
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
     .requiredOption("--reviewer <name>")
-    .action((pkg: string, opts: { hub: string; reviewer: string }) => {
+    .action((pkg: string, opts: { hub?: string; reviewer: string }) => {
       const [id, version] = pkg.split("@");
-      const hubRoot = resolveHubSource(process.cwd(), opts.hub, { updateRemote: true });
-      hubApproveReview(hubRoot, id, version, opts.reviewer);
+      const { hubRoot } = hubCtx(opts, "hub.review");
+      hubApproveReview(hubRoot, id!, version!, opts.reviewer);
       console.log(`${pkg} review approved by ${opts.reviewer}`);
     });
   hub
     .command("eval <pkg>")
-    .requiredOption("--hub <path>", "hub source (local path or GitHub URL)")
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
     .option("--local <dir>", "evaluate a local asset directory instead of a hub package")
     .option("--golden <name>", "evaluate a golden-repo eval set")
+    .option("--list", "list golden eval sets in hub")
     .option("--out <file>", "write eval report json")
-    .action((pkg: string, opts: { hub: string; local?: string; golden?: string; out?: string }) => {
-      const hubRoot = resolveHubSource(process.cwd(), opts.hub, { updateRemote: true });
+    .action((pkg: string, opts: { hub?: string; local?: string; golden?: string; list?: boolean; out?: string }) => {
+      const { hubRoot } = hubCtx(opts, "hub.eval");
+      if (opts.list) {
+        for (const name of listHubEvalSets(hubRoot)) console.log(name);
+        return;
+      }
       if (opts.golden) {
         const res = hubEvalGoldenRepo(hubRoot, opts.golden);
         for (const c of res.checks) console.log(`${c.ok ? "PASS" : "FAIL"}\t${c.name}${c.detail ? `\t${c.detail}` : ""}`);
@@ -251,20 +325,20 @@ export function registerAssetCommands(program: Command): void {
       }
       const [id, version] = pkg.split("@");
       if (!version) throw new Error("use <id>@<version>");
-      const res = hubEvalPackage(hubRoot, { id, version });
+      const res = hubEvalAsset(hubRoot, { id, version });
       for (const c of res.checks) console.log(`${c.ok ? "PASS" : "FAIL"}\t${c.name}${c.detail ? `\t${c.detail}` : ""}`);
       if (opts.out) console.log(`report\t${writeHubEvalReport(path.resolve(opts.out), res)}`);
       if (!res.passed) process.exit(1);
     });
   hub
     .command("search [query]")
-    .requiredOption("--hub <path>", "hub source (local path or GitHub URL)")
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
     .option("--kind <kind>", "filter by asset kind")
     .option("--phase <phase>", "filter by phase")
     .option("--category <cat>", "package | bundle | blueprint")
     .option("--index", "write hub index.json")
-    .action((query: string | undefined, opts: { hub: string; kind?: string; phase?: string; category?: string; index?: boolean }) => {
-      const hubRoot = resolveHubSource(process.cwd(), opts.hub, { updateRemote: true });
+    .action((query: string | undefined, opts: { hub?: string; kind?: string; phase?: string; category?: string; index?: boolean }) => {
+      const { hubRoot } = hubCtx(opts, "hub.search");
       if (opts.index) {
         console.log(`wrote ${writeHubIndex(hubRoot)}`);
         return;
@@ -283,43 +357,86 @@ export function registerAssetCommands(program: Command): void {
   hub
     .command("catalog")
     .argument("<action>", "rebuild")
-    .requiredOption("--hub <path>", "hub source (local path or GitHub URL)")
-    .action((action: string, opts: { hub: string }) => {
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
+    .action((action: string, opts: { hub?: string }) => {
       if (action !== "rebuild") throw new Error(`unknown hub catalog action: ${action}`);
-      const hubRoot = resolveHubSource(process.cwd(), opts.hub, { updateRemote: true, refresh: true });
+      const { hubRoot } = hubCtx({ ...opts, refresh: true }, "hub.catalog");
       console.log(`wrote ${writeHubIndex(hubRoot)}`);
+    });
+
+  const hubContrib = hub.command("contributions").description("Contribution review queue (maintainer)");
+  hubContrib
+    .command("list")
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
+    .option("--status <status>", "pending | approved | rejected")
+    .option("--actor <name>", "filter by submitter")
+    .action((opts: { hub?: string; status?: "pending" | "approved" | "rejected"; actor?: string }) => {
+      const { hubRoot } = hubCtx(opts, "hub.contributions");
+      for (const e of listHubContributions(hubRoot, { status: opts.status, actor: opts.actor })) {
+        console.log(`${contributionRefKey(e.ref)}\t${e.reviewStatus}\t${e.kind ?? ""}`);
+      }
+    });
+  hubContrib
+    .command("show <ref>")
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
+    .action((ref: string, opts: { hub?: string }) => {
+      const { hubRoot, actor } = hubCtx(opts, "hub.contributions");
+      const parsed = parseContributionRef(ref, actor);
+      const info = hubContributionInfo(hubRoot, parsed);
+      console.log(JSON.stringify(info, null, 2));
+    });
+  hubContrib
+    .command("accept <ref>")
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
+    .requiredOption("--reviewer <name>", "maintainer reviewer")
+    .action((ref: string, opts: { hub?: string; reviewer: string }) => {
+      const { hubRoot, actor } = hubCtx(opts, "hub.contributions");
+      const parsed = parseContributionRef(ref, actor);
+      const res = hubAcceptContribution(hubRoot, parsed, opts.reviewer);
+      console.log(`accepted ${ref} → ${res.dest}`);
+    });
+  hubContrib
+    .command("reject <ref>")
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
+    .requiredOption("--reviewer <name>", "maintainer reviewer")
+    .requiredOption("--reason <text>", "rejection reason")
+    .action((ref: string, opts: { hub?: string; reviewer: string; reason: string }) => {
+      const { hubRoot, actor } = hubCtx(opts, "hub.contributions");
+      const parsed = parseContributionRef(ref, actor);
+      hubRejectContribution(hubRoot, parsed, opts.reviewer, opts.reason);
+      console.log(`rejected ${ref}: ${opts.reason}`);
     });
 
   const hubAsset = hub.command("asset").description("Hub asset lifecycle management");
   hubAsset
     .command("info <pkg>")
-    .requiredOption("--hub <path>", "hub source (local path or GitHub URL)")
-    .action((pkg: string, opts: { hub: string }) => {
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
+    .action((pkg: string, opts: { hub?: string }) => {
       const [id, version] = pkg.split("@");
       if (!id || !version) throw new Error("use <id>@<version>");
-      const hubRoot = resolveHubSource(process.cwd(), opts.hub, { updateRemote: true });
+      const { hubRoot } = hubCtx(opts, "hub.asset");
       const info = hubAssetInfo(hubRoot, { id, version });
       console.log(JSON.stringify(info, null, 2));
     });
   hubAsset
     .command("promote <pkg>")
-    .requiredOption("--hub <path>", "hub source (local path or GitHub URL)")
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
     .requiredOption("--to <status>", "draft | trial | enforced | deprecated | archived")
-    .action((pkg: string, opts: { hub: string; to: "draft" | "trial" | "enforced" | "deprecated" | "archived" }) => {
+    .action((pkg: string, opts: { hub?: string; to: "draft" | "trial" | "enforced" | "deprecated" | "archived" }) => {
       const [id, version] = pkg.split("@");
       if (!id || !version) throw new Error("use <id>@<version>");
-      const hubRoot = resolveHubSource(process.cwd(), opts.hub, { updateRemote: true, refresh: true });
+      const { hubRoot } = hubCtx({ ...opts, refresh: true }, "hub.asset");
       const meta = hubSetAssetStatus(hubRoot, { id, version }, opts.to);
       console.log(`${pkg} -> ${meta.status}`);
     });
   hubAsset
     .command("deprecate <pkg>")
-    .requiredOption("--hub <path>", "hub source (local path or GitHub URL)")
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
     .requiredOption("--reason <text>", "deprecation reason")
-    .action((pkg: string, opts: { hub: string; reason: string }) => {
+    .action((pkg: string, opts: { hub?: string; reason: string }) => {
       const [id, version] = pkg.split("@");
       if (!id || !version) throw new Error("use <id>@<version>");
-      const hubRoot = resolveHubSource(process.cwd(), opts.hub, { updateRemote: true, refresh: true });
+      const { hubRoot } = hubCtx({ ...opts, refresh: true }, "hub.asset");
       const meta = hubSetAssetStatus(hubRoot, { id, version }, "deprecated");
       console.log(`${pkg} -> ${meta.status} (${opts.reason})`);
     });
@@ -327,37 +444,37 @@ export function registerAssetCommands(program: Command): void {
   const hubReviewCmd = hub.command("review").description("Hub review workflow");
   hubReviewCmd
     .command("request <pkg>")
-    .requiredOption("--hub <path>", "hub source (local path or GitHub URL)")
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
     .requiredOption("--by <name>", "requestor")
-    .action((pkg: string, opts: { hub: string; by: string }) => {
+    .action((pkg: string, opts: { hub?: string; by: string }) => {
       const [id, version] = pkg.split("@");
       if (!id || !version) throw new Error("use <id>@<version>");
-      const hubRoot = resolveHubSource(process.cwd(), opts.hub, { updateRemote: true, refresh: true });
+      const { hubRoot } = hubCtx({ ...opts, refresh: true }, "hub.review");
       const info = hubAssetInfo(hubRoot, { id, version });
       const rec = requestHubReview(info.dir, opts.by);
       console.log(`${pkg}\t${rec.status}\trequested by ${opts.by}`);
     });
   hubReviewCmd
     .command("approve <pkg>")
-    .requiredOption("--hub <path>", "hub source (local path or GitHub URL)")
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
     .requiredOption("--reviewer <name>", "reviewer")
-    .action((pkg: string, opts: { hub: string; reviewer: string }) => {
+    .action((pkg: string, opts: { hub?: string; reviewer: string }) => {
       const [id, version] = pkg.split("@");
       if (!id || !version) throw new Error("use <id>@<version>");
-      const hubRoot = resolveHubSource(process.cwd(), opts.hub, { updateRemote: true, refresh: true });
+      const { hubRoot } = hubCtx({ ...opts, refresh: true }, "hub.review");
       const info = hubAssetInfo(hubRoot, { id, version });
       const rec = approveHubReview(info.dir, opts.reviewer);
       console.log(`${pkg}\t${rec.status}\tapproved by ${opts.reviewer}`);
     });
   hubReviewCmd
     .command("reject <pkg>")
-    .requiredOption("--hub <path>", "hub source (local path or GitHub URL)")
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
     .requiredOption("--reviewer <name>", "reviewer")
     .requiredOption("--reason <text>", "rejection reason")
-    .action((pkg: string, opts: { hub: string; reviewer: string; reason: string }) => {
+    .action((pkg: string, opts: { hub?: string; reviewer: string; reason: string }) => {
       const [id, version] = pkg.split("@");
       if (!id || !version) throw new Error("use <id>@<version>");
-      const hubRoot = resolveHubSource(process.cwd(), opts.hub, { updateRemote: true, refresh: true });
+      const { hubRoot } = hubCtx({ ...opts, refresh: true }, "hub.review");
       const info = hubAssetInfo(hubRoot, { id, version });
       const rec = rejectHubReview(info.dir, opts.reviewer, opts.reason);
       console.log(`${pkg}\t${rec.status}\trejected by ${opts.reviewer}: ${opts.reason}`);
@@ -366,11 +483,11 @@ export function registerAssetCommands(program: Command): void {
   hub
     .command("policy")
     .argument("<action>", "check")
-    .requiredOption("--hub <path>", "hub source (local path or GitHub URL)")
+    .option("--hub <path>", "hub source (defaults to config.yaml hub)")
     .option("--strict", "fail on warnings")
-    .action((action: string, opts: { hub: string; strict?: boolean }) => {
+    .action((action: string, opts: { hub?: string; strict?: boolean }) => {
       if (action !== "check") throw new Error(`unknown hub policy action: ${action}`);
-      const hubRoot = resolveHubSource(process.cwd(), opts.hub, { updateRemote: true, refresh: true });
+      const { hubRoot } = hubCtx({ ...opts, refresh: true }, "hub.policy");
       const report = hubGovernanceReport(hubRoot);
       for (const i of report.issues) {
         const label = i.severity === "error" ? "ERROR" : "WARN";

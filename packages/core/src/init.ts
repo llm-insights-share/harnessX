@@ -165,6 +165,15 @@ export function applyBundle(ws: Workspace, bundleId: string, bundlesDir = BUILTI
   fs.writeFileSync(ws.harnessFile, YAML.stringify(HarnessYaml.parse(harness)), "utf8");
 }
 
+/** Apply a topology bundle from a hub bundles/ directory. */
+export function applyHubBundle(ws: Workspace, hubRoot: string, bundleId: string, version = "1.0.0"): void {
+  const dir = hubBundleDir(hubRoot, bundleId, version);
+  if (!fs.existsSync(path.join(dir, "bundle.yaml"))) {
+    throw new Error(`hub bundle ${bundleId}@${version} not found in ${hubRoot}`);
+  }
+  applyBundle(ws, bundleId, dir);
+}
+
 export function listBundles(bundlesDir = BUILTIN_BUNDLES_DIR): { id: string; description: string }[] {
   return fs
     .readdirSync(bundlesDir, { withFileTypes: true })

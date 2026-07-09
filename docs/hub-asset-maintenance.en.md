@@ -16,6 +16,20 @@ Trust model: immutable versions · review (`.review`) · bidirectional injection
 
 Resolution priority: `change` > `local` > `team` > `hub` > `builtin`
 
+### Dual-role connection
+
+```yaml
+hub:
+  source: git@github.com:your-org/hx-hub.git
+  role: consumer    # or maintainer
+  actor: wang.dev
+```
+
+- **consumer**: search, add, sync, `hx hub submit` → `contributions/`
+- **maintainer**: `hx hub promote`, `hx hub contributions accept`, `hx hub push`
+
+Hub repo `hub-policy.yaml` lists maintainers and `installRequiresApproval`. See [Scenario 21 (zh)](examples/21-hub-双角色与贡献审核.md).
+
 ---
 
 ## 2. Hub layout

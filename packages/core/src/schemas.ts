@@ -144,11 +144,25 @@ export type HarnessYaml = z.infer<typeof HarnessYaml>;
 
 /* ── config.yaml: this repo's choices (kept separate from the registry, §7.1) ── */
 
+export const HubRole = z.enum(["consumer", "maintainer"]);
+export type HubRole = z.infer<typeof HubRole>;
+
+export const HubConnectionYaml = z.object({
+  source: z.string(),
+  role: HubRole.optional(),
+  actor: z.string().optional(),
+  branch: z.string().optional()
+});
+export type HubConnectionYaml = z.infer<typeof HubConnectionYaml>;
+
+export const HubConfigField = z.union([z.string(), HubConnectionYaml]);
+export type HubConfigField = z.infer<typeof HubConfigField>;
+
 export const ConfigYaml = z.object({
   profile: z.string().default("standard"),
   locale: z.enum(["en", "zh-CN"]).default("en"),
   compat_mode: z.enum(["openspec"]).optional(),
-  hub: z.string().optional(),
+  hub: HubConfigField.optional(),
   adapter: z
     .object({
       target: z.string().optional(),

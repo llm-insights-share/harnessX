@@ -17,6 +17,7 @@
 | 从组织 Hub 初始化 | [16 Hub 蓝图初始化](16-v0.3-hub-blueprint-init.md) · **[Hub 资产维护手册](hub-asset-maintenance.zh-CN.md)** |
 | 企业级需求→编码交接 | [19 组织 Pre-phase](19-组织级PRD与架构设计.md) → [15 enterprise 交接](15-企业级需求到交付交接.md) |
 | 企业 SDLC 工单全流程 | [20 企业 SDLC 工单全流程](20-企业SDLC工单全流程.md)（profile: `enterprise-sdlc`） |
+| Hub 双角色与贡献审核 | [21 Hub 双角色与贡献审核](21-hub-双角色与贡献审核.md) |
 | Codex/脚本无头交付 | [18 精简 harness + MCP](18-精简配置与无头Agent-MCP.md) |
 | 不确定 | [00 场景选择指南](00-场景选择指南.md) |
 

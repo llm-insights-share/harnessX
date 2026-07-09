@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
 import { AssetManifest } from "./schemas.js";
-import { scanAssetDir, hubPackageDir, hubBundleDir, type HubRef } from "./hub.js";
+import { scanAssetDir, hubPackageDir, hubBundleDir, resolveHubPackage, type HubRef } from "./hub.js";
 import { loadAssetDir } from "./assets.js";
 
 /**
@@ -80,6 +80,26 @@ export function hubEvalPackage(hubRoot: string, ref: HubRef): HubEvalResult {
 export function hubEvalBundle(hubRoot: string, ref: HubRef): HubEvalResult {
   const dir = hubBundleDir(hubRoot, ref.id, ref.version);
   return evalDir(dir, `bundle:${ref.id}@${ref.version}`);
+}
+
+export function hubEvalBlueprint(hubRoot: string, ref: HubRef): HubEvalResult {
+  const resolved = resolveHubPackage(hubRoot, ref);
+  const dir = resolved?.kind === "blueprint" ? resolved.dir : path.join(hubRoot, "blueprints", ref.id, ref.version);
+  return evalDir(dir, `blueprint:${ref.id}@${ref.version}`);
+}
+
+/** Route eval to the correct hub category directory. */
+export function hubEvalAsset(hubRoot: string, ref: HubRef): HubEvalResult {
+  const resolved = resolveHubPackage(hubRoot, ref);
+  if (!resolved) return { package: `${ref.id}@${ref.version}`, passed: false, checks: [{ name: "asset exists", ok: false, detail: "not found in hub" }] };
+  switch (resolved.kind) {
+    case "bundle":
+      return hubEvalBundle(hubRoot, ref);
+    case "blueprint":
+      return hubEvalBlueprint(hubRoot, ref);
+    default:
+      return hubEvalPackage(hubRoot, ref);
+  }
 }
 
 /** Runs eval sets under hub/evals/golden-repos/<name>/checks.yaml if present. */

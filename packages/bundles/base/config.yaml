@@ -1,1 +1,6 @@
 profile: standard
+# hub: git@github.com:your-org/hx-hub.git          # 简单连接
+# hub:                                              # 双角色连接
+#   source: git@github.com:your-org/hx-hub.git
+#   role: consumer                                  # consumer | maintainer
+#   actor: your.name
