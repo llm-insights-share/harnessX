@@ -51,7 +51,7 @@ flowchart TD
 | Feature developer (Cursor) | Journey 2 | [02](02-standard-feature-development.md) |
 | Core-domain engineer (payments, etc.) | Journey 2 | [03](03-core-domain-strict-test-first.md) |
 | On-call / incident response | Journey 2 | [05](05-emergency-hotfix-lite.md) |
-| Enterprise BA / architect | Journey 3 | [15](15-enterprise-delivery-handoff.md) |
+| Enterprise BA / architect | Journey 3 | [19](19-org-prd-and-architecture.md) → [15](15-enterprise-delivery-handoff.md) |
 | Full-stack tech lead | Journey 3 | [14](14-enterprise-fullstack-multi-role.md) |
 | Platform / architecture committee | Journey 4 | [08](08-hub-asset-sharing-supply-chain.md) → [16](16-v0.3-hub-blueprint-init.md) → [17](17-v0.4-platform-governance.md) |
 | Quality / engineering effectiveness | Journey 4 | [07](07-steering-quality-governance.md) |
