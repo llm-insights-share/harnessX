@@ -564,6 +564,8 @@ hx meta verify --all
 
 配置 `config.yaml` 的 `hub.source` + `hub.role`（`consumer` | `maintainer`）后，多数 `hx hub` 命令可省略 `--hub`。使用角色通过 `hx hub submit` 提交资产到 `contributions/`；运维角色通过 `hx hub contributions accept` 合并到正式目录后 `hx hub push`。
 
+**已有远程 hx-hub 时，运维项目如何初始化**：见 [Hub 资产维护手册 §9.2](hub-asset-maintenance.zh-CN.md#92-已有远程-hub运维项目初始化方案-a推荐)（独立 `hx-hub-ops` 仓库 + `role: maintainer`）。
+
 #### `hx hub sync`
 
 ```bash

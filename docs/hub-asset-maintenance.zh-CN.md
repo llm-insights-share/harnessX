@@ -47,6 +47,8 @@ hub:
 
 配置 `hub` 后，多数 `hx hub *` 命令**无需再传 `--hub`**。Hub 仓库根目录的 `hub-policy.yaml` 定义维护者白名单与 `installRequiresApproval` 等策略。
 
+**已有远程 Hub 时**，运维项目初始化见 [§9.2 已有远程 Hub：运维项目初始化](#92-已有远程-hub运维项目初始化方案-a推荐)。
+
 ---
 
 ## 2. Hub 仓库目录结构
@@ -264,7 +266,9 @@ hx hub asset deprecate my-skill@1.0.0 --hub <hub> --reason "replaced by my-skill
 
 ## 9. 平台组：Hub 初始化与日常维护
 
-### 9.1 首次建立组织 Hub
+### 9.1 首次建立组织 Hub（远程仓库为空时）
+
+适用于组织**尚未**有 hx-hub 远程仓库、或需要从零种子化内容的场景。
 
 ```bash
 # 从内置 Golden 种子创建
@@ -278,10 +282,129 @@ hx hub seed ./harness-hub \
   --message "chore: seed harness hub golden packages"
 
 # 重建检索索引
-hx hub search --hub ./harness-hub --index
+hx hub search --index
 ```
 
-### 9.2 发布新 Package（Skill 示例）
+种子会写入 `packages/`、`bundles/`、`blueprints/`、`evals/` 及默认 `hub-policy.yaml`。
+
+---
+
+### 9.2 已有远程 Hub：运维项目初始化（方案 A，推荐）
+
+适用于远程 **hx-hub 已存在**（已有 `packages/` 等目录）。此时**不需要**在运维项目里再次 `hx hub seed`；应单独建立 **Hub 运维项目**，通过 `config.yaml` 连接远程 Hub 并以 `maintainer` 角色操作。
+
+#### 两个仓库的职责
+
+| 仓库 | 作用 |
+| --- | --- |
+| **hx-hub**（远程已存在） | 资产本体：`packages/`、`bundles/`、`blueprints/`、`contributions/`、`hub-policy.yaml` |
+| **hx-hub-ops**（运维项目，需新建） | 平台组工作区：执行 `promote`、`contributions accept`、`push` 等 maintainer 命令 |
+
+运维项目与 hx-hub **可以是两个不同的 Git 仓库**；`hx hub` 命令通过本地镜像 `harnessX/.hub-remotes/<hash>/repo` 读写远程 Hub 内容，再用 `hx hub push` 推回远程。
+
+#### 步骤 1：创建运维仓库并初始化 HarnessX
+
+```bash
+mkdir hx-hub-ops && cd hx-hub-ops
+git init
+hx init
+```
+
+生成 `harnessX/`（含 `config.yaml`、`harness.yaml`、`roles.yaml`）。运维项目使用 `profile: standard` 即可，无需 `enterprise-sdlc`。
+
+#### 步骤 2：配置 Hub 连接（maintainer）
+
+编辑 `harnessX/config.yaml`：
+
+```yaml
+profile: standard
+
+hub:
+  source: git@github.com:your-org/hx-hub.git   # 已有远程 Hub 地址（SSH 推荐）
+  role: maintainer
+  actor: zhao.platform                          # 运维身份，用于 --by / --reviewer
+  branch: main                                  # 可选，Hub 默认分支
+```
+
+配置 `hub.source` 后，多数 `hx hub *` 命令**可省略 `--hub`**。
+
+#### 步骤 3：配置成员与角色（建议）
+
+编辑 `harnessX/roles.yaml`，将运维人员映射到具备 Hub 权限的角色：
+
+```yaml
+members:
+  zhao.platform: chief-architect    # 默认含 hub.*
+```
+
+未显式设置 `hub.role` 时，系统会根据 `roles.yaml` 中的 `hub.*` 权限推断是否为 maintainer。
+
+#### 步骤 4：验证连接
+
+首次执行 `hx hub` 命令时，会自动 `git clone` 远程 Hub 到 `harnessX/.hub-remotes/<hash>/repo`。
+
+```bash
+hx hub search --category package
+hx hub policy check --strict
+hx hub contributions list
+```
+
+能列出远程资产且策略检查符合预期，即表示连接成功。
+
+#### 步骤 5：确认远程 Hub 的 `hub-policy.yaml`
+
+远程 hx-hub 根目录应包含（若无则需在 Hub 仓库中补充并提交）：
+
+```yaml
+version: "1.0"
+maintainers:
+  - zhao.platform        # 须与 hub.actor / --reviewer 一致
+minApprovals: 1
+consumerCanSubmit: true
+installRequiresApproval: true
+```
+
+`hx hub contributions accept` 等审核操作会校验 `maintainers` 名单。
+
+#### 步骤 6：Git / SSH 前置条件
+
+- 运维环境能 `git clone` 远程 hx-hub（私有库需配置 SSH key）
+- 推荐 URL：`git@github.com:your-org/hx-hub.git`
+- `hx hub push` 需要对 hx-hub 仓库具备 **写权限**
+
+#### 初始化检查清单
+
+- [ ] 运维项目已执行 `hx init`
+- [ ] `config.yaml` 中 `hub.source` 指向远程 hx-hub
+- [ ] `hub.role: maintainer` 且 `hub.actor` 已设置
+- [ ] 远程 `hub-policy.yaml` 的 `maintainers` 包含该 actor
+- [ ] `hx hub search` 能列出远程资产
+- [ ] `hx hub policy check` 通过或已知现存告警
+- [ ] 对 hx-hub 具备 `git push` 权限
+
+#### 初始化后的日常命令
+
+```bash
+# 查看与治理
+hx hub search
+hx hub policy check --strict
+hx hub contributions list --status pending
+
+# 维护人员直接发布资产（见 §9.3）
+hx hub promote <dir> --by zhao.platform --evidence "..."
+hx hub review approve my-skill@1.0.0 --reviewer zhao.platform
+hx hub push --message "publish: my-skill@1.0.0"
+
+# 审核业务方贡献（见场景 21）
+hx hub contributions accept wang.dev/my-skill@1.0.0 --reviewer zhao.platform
+hx hub push --message "accept: my-skill@1.0.0"
+```
+
+> **与业务项目的区别**：业务仓库配置 `hub.role: consumer`，使用 `hx hub add` / `hx hub submit`；运维项目使用 `hx hub promote` / `hx hub contributions accept`，不要用 `submit` 代替正式发布。
+
+---
+
+### 9.3 发布新 Package（Skill 示例）
 
 **场景**：订单团队沉淀了 `idempotency-keys` Skill，平台组推广到全公司。
 
@@ -315,7 +438,7 @@ hx hub eval idempotency-keys@1.0.0 \
   --out /tmp/idempotency-eval.json
 ```
 
-### 9.3 发布新 Template（UAT 清单类）
+### 9.4 发布新 Template（UAT 清单类）
 
 ```bash
 # 模版目录结构
@@ -330,7 +453,7 @@ hx hub approve my-uat@1.0.0 --hub <hub> --reviewer tm.zhang
 
 消费方在 change 中复制：`cp harnessX/.hub-cache/my-uat/template.md harnessX/changes/<id>/uat-checklist.md`
 
-### 9.4 发布 Rubric（`sensor.rubric`）
+### 9.5 发布 Rubric（`sensor.rubric`）
 
 参考 Golden 包 `common-review-rubrics@1.0.0`：
 
@@ -346,7 +469,7 @@ hx hub promote ./path/to/common-review-rubrics \
 # 在 harness.yaml 注册 sensor.rubric 并引用 hub-cache 路径
 ```
 
-### 9.5 发布 / 升级 Bundle
+### 9.6 发布 / 升级 Bundle
 
 **从内置 Bundle 首次发布**（运维角色，`kind: harness.bundle`）：
 
@@ -364,7 +487,7 @@ hx hub review approve api-service@1.0.0 --reviewer platform
 3. `hx hub promote` 新目录 → 评审 → `hx hub push`
 4. 通知消费方对 **Package** 执行 `hx hub sync`（Bundle 已安装项目需重新 `hx bundle add --hub`）
 
-### 9.6 发布 / 维护 Blueprint
+### 9.7 发布 / 维护 Blueprint
 
 参考 `enterprise-sdlc@1.0.0`：
 
@@ -390,7 +513,7 @@ hx init --from-hub enterprise-sdlc@1.0.0 --hub <hub> --adapter cursor
 
 升级蓝图时：**必须** semver 新版本；已初始化项目不会自动切换 profile，需人工 `hub sync` 依赖包。
 
-### 9.7 Steering 闭环发布（失败 → 规则 → Hub）
+### 9.8 Steering 闭环发布（失败 → 规则 → Hub）
 
 ```bash
 hx steer report

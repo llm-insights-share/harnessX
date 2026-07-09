@@ -33,3 +33,5 @@ Built-in example packages for `hx hub seed`. Teams can publish this directory as
 Packages ship with `.review` status `approved` so they are consumable immediately after seeding.
 
 **Maintenance guide**: [docs/hub-asset-maintenance.zh-CN.md](../../docs/hub-asset-maintenance.zh-CN.md) (中文) · [docs/hub-asset-maintenance.en.md](../../docs/hub-asset-maintenance.en.md) (English)
+
+**Ops project init** (remote Hub already exists): [§9.2 Plan A](../../docs/hub-asset-maintenance.zh-CN.md#92-已有远程-hub运维项目初始化方案-a推荐)

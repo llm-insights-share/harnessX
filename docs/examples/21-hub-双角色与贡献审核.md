@@ -3,13 +3,15 @@
 **角色**：赵平台（运维 / maintainer）、王开发（使用 / consumer）  
 **目标**：业务项目查询 Hub 资产并提交优秀 Skill；运维项目在管理仓库审核后合并到正式 Hub。
 
+> **运维项目初始化（已有远程 hx-hub）**：完整步骤见 [Hub 资产维护手册 §9.2](../hub-asset-maintenance.zh-CN.md#92-已有远程-hub运维项目初始化方案-a推荐)。
+
 ---
 
-## 1. 运维项目：初始化 Hub 连接
+## 1. 运维项目：连接远程 Hub
 
-```bash
-cd hx-hub-ops
-# config.yaml
+前提：已按 §9.2 完成 `hx-hub-ops` 初始化，`config.yaml` 配置如下：
+
+```yaml
 hub:
   source: git@github.com:your-org/hx-hub.git
   role: maintainer
@@ -79,5 +81,6 @@ installRequiresApproval: true
 
 ## 5. 相关文档
 
+- [Hub 资产维护手册 §9.2 运维项目初始化](../hub-asset-maintenance.zh-CN.md#92-已有远程-hub运维项目初始化方案-a推荐)
 - [Hub 资产维护手册](../hub-asset-maintenance.zh-CN.md)
 - [场景 08：Hub 资产共享与供应链](08-hub-资产共享与供应链.md)

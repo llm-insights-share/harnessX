@@ -30,6 +30,8 @@ hub:
 
 Hub repo `hub-policy.yaml` lists maintainers and `installRequiresApproval`. See [Scenario 21 (zh)](examples/21-hub-双角色与贡献审核.md).
 
+**Existing remote Hub — ops project init (Plan A)**: see [Chinese guide §9.2](hub-asset-maintenance.zh-CN.md#92-已有远程-hub运维项目初始化方案-a推荐).
+
 ---
 
 ## 2. Hub layout
@@ -82,6 +84,38 @@ harness-hub/
 ```bash
 hx hub golden
 ```
+
+---
+
+## 4.1 Ops project init (existing remote Hub, Plan A)
+
+When **hx-hub already exists** on GitHub, create a separate **hx-hub-ops** repo (do not re-seed):
+
+```bash
+mkdir hx-hub-ops && cd hx-hub-ops && git init && hx init
+```
+
+`harnessX/config.yaml`:
+
+```yaml
+profile: standard
+hub:
+  source: git@github.com:your-org/hx-hub.git
+  role: maintainer
+  actor: zhao.platform
+  branch: main   # optional
+```
+
+Verify:
+
+```bash
+hx hub search --category package
+hx hub policy check --strict
+```
+
+Ensure remote `hub-policy.yaml` lists your actor under `maintainers`. Use `hx hub push` after promote/accept (requires write access to hx-hub).
+
+Full checklist and daily commands: [Chinese guide §9.2](hub-asset-maintenance.zh-CN.md#92-已有远程-hub运维项目初始化方案-a推荐).
 
 ---
 
