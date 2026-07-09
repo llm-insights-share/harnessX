@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import YAML from "yaml";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const hxhubBin = path.join(repoRoot, "bin", "hxhub.js");
@@ -82,5 +83,19 @@ describe("hxhub e2e", () => {
       "./assets/feature-template"
     ]);
     expect(fs.readFileSync(path.join(repo, "assets/feature-template/template.md"), "utf8")).toContain("# 功能需求模版");
+  });
+
+  it("fix repairs missing hub policy and maintainers", () => {
+    const repo = makeRepo();
+    hxhub(repo, ["init", ".", "--hub", "./hub", "--actor", "ops"]);
+    fs.mkdirSync(path.join(repo, "hub"), { recursive: true });
+
+    const out = hxhub(repo, ["fix", "--hub", "./hub", "--maintainer", "zhangsan"]);
+    expect(out).toContain("add_maintainer");
+
+    const policyPath = path.join(repo, "hub", "hub-policy.yaml");
+    expect(fs.existsSync(policyPath)).toBe(true);
+    const policy = YAML.parse(fs.readFileSync(policyPath, "utf8")) as { maintainers?: string[] };
+    expect(policy.maintainers).toContain("zhangsan");
   });
 });

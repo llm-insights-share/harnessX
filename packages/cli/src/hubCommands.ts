@@ -45,6 +45,7 @@ import {
   createAssetScaffold,
   hubAdvice,
   runHubDoctor,
+  runHubFix,
   initHubOpsProject,
   type AssetKind,
   type AssetStatus,
@@ -512,6 +513,30 @@ export function registerHubCommands(program: Command, opts: RegisterHubCommandsO
           for (const h of report.hints) console.log(`  - ${h}`);
         }
         if (!report.ok) process.exit(1);
+      });
+
+    root
+      .command("fix")
+      .description("Check and repair common hub repository problems")
+      .option("--hub <path>", "hub source override")
+      .option("--maintainer <name>", "maintainer name used when policy has none")
+      .option("--json", "print machine-readable JSON")
+      .action((cmdOpts: { hub?: string; maintainer?: string; json?: boolean }) => {
+        const result = runHubFix(ws(), { hubRef: cmdOpts.hub, maintainer: cmdOpts.maintainer });
+        if (cmdOpts.json) return void console.log(JSON.stringify(result, null, 2));
+        console.log(`hub root: ${result.hubRoot}`);
+        for (const action of result.actions) {
+          console.log(`${action.status.toUpperCase()}\t${action.code}\t${action.message}`);
+        }
+        if (result.remainingIssues.length > 0) {
+          console.log("\nRemaining issues:");
+          for (const issue of result.remainingIssues) {
+            console.log(`${issue.severity.toUpperCase()}\t${issue.asset}\t${issue.message}`);
+          }
+        } else {
+          console.log("No remaining governance issues.");
+        }
+        if (!result.ok) process.exit(1);
       });
   }
 

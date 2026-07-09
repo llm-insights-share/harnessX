@@ -50,6 +50,7 @@ export * from "./hubInit.js";
 export * from "./hubScaffold.js";
 export * from "./hubAdvice.js";
 export * from "./hubDoctor.js";
+export * from "./hubFix.js";
 export * from "./hubPolicy.js";
 export * from "./hubGovernance.js";
 export * from "./hubIntegrity.js";
