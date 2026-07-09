@@ -29,25 +29,26 @@ function readTemplateFromSource(sourceDir: string, names: string[]): string | un
   return undefined;
 }
 
-function templateFiles(kind: AssetKind, sourceDir?: string): Record<string, string> {
+function templateFiles(kind: AssetKind, sourceDir?: string, sourceFile?: string): Record<string, string> {
+  const fromSourceFile = sourceFile ? fs.readFileSync(sourceFile, "utf8") : undefined;
   if (kind === "guide.skill") {
-    const fromSource = sourceDir ? readTemplateFromSource(sourceDir, ["SKILL.md", "skill.md"]) : undefined;
+    const fromSource = fromSourceFile ?? (sourceDir ? readTemplateFromSource(sourceDir, ["SKILL.md", "skill.md"]) : undefined);
     return { "SKILL.md": fromSource ?? "# Skill\n\nDescribe guidance.\n" };
   }
   if (kind === "guide.template") {
-    const fromSource = sourceDir ? readTemplateFromSource(sourceDir, ["template.md", "TEMPLATE.md"]) : undefined;
+    const fromSource = fromSourceFile ?? (sourceDir ? readTemplateFromSource(sourceDir, ["template.md", "TEMPLATE.md"]) : undefined);
     return { "template.md": fromSource ?? "# Template\n\n{{content}}\n" };
   }
   if (kind === "sensor.rubric") {
-    const fromSource = sourceDir ? readTemplateFromSource(sourceDir, ["rules.yaml", "rubric.yaml"]) : undefined;
+    const fromSource = fromSourceFile ?? (sourceDir ? readTemplateFromSource(sourceDir, ["rules.yaml", "rubric.yaml"]) : undefined);
     return { "rules.yaml": fromSource ?? "rules: []\n" };
   }
   if (kind === "harness.bundle") {
-    const fromSource = sourceDir ? readTemplateFromSource(sourceDir, ["bundle.yaml"]) : undefined;
+    const fromSource = fromSourceFile ?? (sourceDir ? readTemplateFromSource(sourceDir, ["bundle.yaml"]) : undefined);
     return { "bundle.yaml": fromSource ?? "description: bundle\nguides: []\nsensors: []\n", "assets/.keep": "" };
   }
   if (kind === "harness.blueprint") {
-    const fromSource = sourceDir ? readTemplateFromSource(sourceDir, ["blueprint.yaml"]) : undefined;
+    const fromSource = fromSourceFile ?? (sourceDir ? readTemplateFromSource(sourceDir, ["blueprint.yaml"]) : undefined);
     return { "blueprint.yaml": fromSource ?? "name: blueprint\nhub_deps: []\n" };
   }
   return { "README.md": "# Asset\n" };
@@ -80,9 +81,17 @@ export function createAssetScaffold(opts: CreateAssetOptions): CreateAssetResult
   const dir = path.resolve(opts.rootDir);
   ensureDir(dir);
   const files: string[] = [];
-  const sourceDir = opts.sourceDir ? path.resolve(opts.sourceDir) : undefined;
-  if (sourceDir && (!fs.existsSync(sourceDir) || !fs.statSync(sourceDir).isDirectory())) {
-    throw new Error(`source directory not found: ${sourceDir}`);
+  const sourcePath = opts.sourceDir ? path.resolve(opts.sourceDir) : undefined;
+  let sourceDir: string | undefined;
+  let sourceFile: string | undefined;
+  if (sourcePath) {
+    if (!fs.existsSync(sourcePath)) throw new Error(`source path not found: ${sourcePath}`);
+    const stat = fs.statSync(sourcePath);
+    if (stat.isDirectory()) sourceDir = sourcePath;
+    else if (stat.isFile()) {
+      sourceFile = sourcePath;
+      sourceDir = path.dirname(sourcePath);
+    } else throw new Error(`source path must be a directory or file: ${sourcePath}`);
   }
 
   const manifest: AssetManifest = AssetManifest.parse({
@@ -100,7 +109,7 @@ export function createAssetScaffold(opts: CreateAssetOptions): CreateAssetResult
   writeYaml(path.join(dir, "asset.yaml"), manifest);
   files.push("asset.yaml");
 
-  const templates = templateFiles(opts.kind, sourceDir);
+  const templates = templateFiles(opts.kind, sourceDir, sourceFile);
   for (const [rel, content] of Object.entries(templates)) {
     const abs = path.join(dir, rel);
     ensureDir(path.dirname(abs));

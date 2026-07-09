@@ -64,4 +64,23 @@ describe("hxhub e2e", () => {
     const help = hxhub(repo, ["help", "general", "--json"]);
     expect(help).toContain("suggestions");
   });
+
+  it("accepts source file path for asset create", () => {
+    const repo = makeRepo();
+    const sourceFile = path.join(repo, "功能需求模版.md");
+    fs.writeFileSync(sourceFile, "# 功能需求模版\n\n- 目标\n", "utf8");
+    hxhub(repo, [
+      "asset",
+      "create",
+      "--kind",
+      "guide.template",
+      "--id",
+      "feature-template",
+      "--source-dir",
+      sourceFile,
+      "--out",
+      "./assets/feature-template"
+    ]);
+    expect(fs.readFileSync(path.join(repo, "assets/feature-template/template.md"), "utf8")).toContain("# 功能需求模版");
+  });
 });
