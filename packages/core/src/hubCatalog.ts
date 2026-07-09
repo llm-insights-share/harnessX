@@ -2,7 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
 import { AssetManifest } from "./schemas.js";
-import { hubBundleDir, hubPackageDir, hubVersions } from "./hub.js";
+import { hubBundleDir, hubVersions } from "./hub.js";
+import { walkHubPackages } from "./hubPackagePaths.js";
 import { hubBlueprintDir } from "./blueprint.js";
 import { HubAssetMeta, type HubAssetCategory } from "./hubAssetSchema.js";
 import { hashHubAssetDir } from "./hubIntegrity.js";
@@ -92,7 +93,28 @@ export function buildHubCatalog(hubRoot: string): HubCatalogEntry[] {
     }
   };
 
-  scan("package", "packages", (id, ver) => hubPackageDir(hubRoot, id, ver));
+  const scanPackages = () => {
+    for (const loc of walkHubPackages(hubRoot)) {
+      const dir = loc.dir;
+      const manifest = manifestOrNull(dir);
+      const meta = readMeta(dir);
+      const review = readHubReview(dir);
+      out.push({
+        id: manifest?.id ?? loc.id,
+        version: manifest?.version ?? loc.version,
+        category: "package",
+        kind: manifest?.kind ?? loc.kind,
+        status: meta.status ?? manifest?.status,
+        phase: manifest?.phase ?? meta.phases,
+        description: readDesc(dir, "package"),
+        owner: meta.owner,
+        review: review.status,
+        hash: meta.security?.hash ?? hashHubAssetDir(dir)
+      });
+    }
+  };
+
+  scanPackages();
   scan("bundle", "bundles", (id, ver) => hubBundleDir(hubRoot, id, ver));
   scan("blueprint", "blueprints", (id, ver) => hubBlueprintDir(hubRoot, id, ver));
   return out.sort((a, b) => a.id.localeCompare(b.id) || a.version.localeCompare(b.version));

@@ -40,7 +40,7 @@ describe("hub seed manifest", () => {
     const target = tmp();
     const result = seedHub(target, { profile: "minimal", scenario: ["core"], goldenDir: BUILTIN_HUB_GOLDEN_DIR });
     expect(result.seeded.length).toBeGreaterThan(0);
-    expect(fs.existsSync(path.join(target, "packages/requirements-template/1.0.0/asset.yaml"))).toBe(true);
+    expect(fs.existsSync(path.join(target, "packages/guide/template/requirements-template/1.0.0/asset.yaml"))).toBe(true);
     expect(fs.existsSync(path.join(target, "hub-policy.yaml"))).toBe(true);
     expect(fs.existsSync(path.join(target, "bundles/api-service/1.0.0"))).toBe(false);
   });

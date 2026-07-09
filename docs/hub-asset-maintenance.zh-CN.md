@@ -459,7 +459,7 @@ hx hub approve my-uat@1.0.0 --hub <hub> --reviewer tm.zhang
 参考 Golden 包 `common-review-rubrics@1.0.0`：
 
 ```
-packages/common-review-rubrics/1.0.0/
+packages/sensor/rubric/common-review-rubrics/1.0.0/
   asset.yaml          # kind: sensor.rubric
   rules.yaml          # 规则列表（pattern + status: trial|enforced）
 ```

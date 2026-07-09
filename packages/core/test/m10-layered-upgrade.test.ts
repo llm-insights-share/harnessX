@@ -133,7 +133,7 @@ describe("v0.3 layered upgrade", () => {
     makeAsset(local, "team-tip", { status: "trial", version: "0.3.0" });
     const res = steerPublish(ws, local, hub, { publishedBy: "alice" });
     expect(res.eval.passed).toBe(true);
-    expect(fs.existsSync(path.join(hub, "packages/team-tip/0.3.0/asset.yaml"))).toBe(true);
+    expect(fs.existsSync(path.join(hub, "packages/guide/skill/team-tip/0.3.0/asset.yaml"))).toBe(true);
     writeLock(ws);
   });
 });

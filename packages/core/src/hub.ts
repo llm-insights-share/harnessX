@@ -12,6 +12,12 @@ import { hubEvalLocal } from "./hubEval.js";
 import { hubBlueprintDir } from "./blueprint.js";
 import type { AssetManifest } from "./schemas.js";
 import type { HubAssetCategory } from "./hubAssetSchema.js";
+import {
+  hubPackageDirForKind,
+  hubPackageVersions,
+  listHubPackageRefs,
+  resolveHubPackageDir
+} from "./hubPackagePaths.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 /** Built-in golden hub packages shipped with harnessx (T-602). */
@@ -19,10 +25,10 @@ export const BUILTIN_HUB_GOLDEN_DIR = path.resolve(HERE, "../../hub-golden");
 
 /**
  * T-602 (§11.5): Harness Hub — a directory/git repo of shared asset packages:
- *   hub/packages/<id>/<version>/{asset.yaml, content...}
+ *   hub/packages/<kind>/<...>/<id>/<version>/{asset.yaml, content...}
  *   hub/bundles/<id>/<version>/{bundle.yaml, assets/...}
  *   hub/blueprints/<name>/<version>/{blueprint.yaml, ...}
- *   hub/packages/<id>/<version>/.review (publication review marker, T-603)
+ *   hub/packages/.../.review (publication review marker, T-603)
  * - add:     copy a hub package version into the repo's hub cache layer
  * - sync:    detect upstream updates vs local overrides (three-way-ish report)
  * - sync --apply: three-way merge upstream vs local override vs baseline
@@ -40,7 +46,10 @@ export interface HubSyncMeta {
   syncedAt: string;
 }
 
-export function hubPackageDir(hubRoot: string, id: string, version: string): string {
+export function hubPackageDir(hubRoot: string, id: string, version: string, kind?: string): string {
+  const resolved = resolveHubPackageDir(hubRoot, { id, version }, kind);
+  if (resolved) return resolved;
+  if (kind) return hubPackageDirForKind(hubRoot, kind, id, version);
   return path.join(hubRoot, "packages", id, version);
 }
 
@@ -61,7 +70,7 @@ export function resolveHubDestDir(hubRoot: string, manifest: Pick<AssetManifest,
     case "harness.blueprint":
       return hubBlueprintDir(hubRoot, manifest.id, manifest.version);
     default:
-      return hubPackageDir(hubRoot, manifest.id, manifest.version);
+      return hubPackageDir(hubRoot, manifest.id, manifest.version, manifest.kind);
   }
 }
 
@@ -78,6 +87,7 @@ export function hubContributionDir(hubRoot: string, actor: string, id: string, v
 }
 
 export function hubVersions(hubRoot: string, id: string, category: "packages" | "bundles" | "blueprints" = "packages"): string[] {
+  if (category === "packages") return hubPackageVersions(hubRoot, id);
   const dir = path.join(hubRoot, category, id);
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir).sort();
@@ -199,8 +209,9 @@ export function mergeAssetDirs(baselineDir: string, localDir: string, remoteDir:
 
 /** Resolves a hub ref across packages/, bundles/, blueprints/. */
 export function resolveHubPackage(hubRoot: string, ref: HubRef): { kind: "package" | "bundle" | "blueprint"; dir: string } | null {
+  const pkgDir = resolveHubPackageDir(hubRoot, ref);
+  if (pkgDir) return { kind: "package", dir: pkgDir };
   for (const [kind, category] of [
-    ["package", "packages"],
     ["bundle", "bundles"],
     ["blueprint", "blueprints"]
   ] as const) {
@@ -282,7 +293,7 @@ export function hubSync(ws: Workspace, hubRoot: string): HubSyncEntry[] {
     if (!installed) continue;
     const versions = hubVersions(hubRoot, e.name);
     const latest = versions.at(-1) ?? installed.manifest.version;
-    const upstreamDir = hubPackageDir(hubRoot, e.name, installed.manifest.version);
+    const upstreamDir = hubPackageDir(hubRoot, e.name, installed.manifest.version, installed.manifest.kind);
     const meta = readSyncMeta(installedDir);
     const baselineHash = meta?.baselineHash ?? installed.contentHash;
     const locallyModified = assetContentHash(installedDir) !== baselineHash;
@@ -334,8 +345,8 @@ export function hubSyncApply(ws: Workspace, hubRoot: string, opts: HubSyncApplyO
     const baselineVersion = meta?.version ?? installed.manifest.version;
     const targetVersion = entry.state.includes("update") ? entry.latest : baselineVersion;
 
-    const baselineDir = hubPackageDir(hubRoot, entry.id, baselineVersion);
-    const remoteDir = hubPackageDir(hubRoot, entry.id, targetVersion);
+    const baselineDir = hubPackageDir(hubRoot, entry.id, baselineVersion, installed.manifest.kind);
+    const remoteDir = hubPackageDir(hubRoot, entry.id, targetVersion, installed.manifest.kind);
     if (!fs.existsSync(remoteDir)) {
       results.push({ id: entry.id, action: "conflict", detail: `upstream ${entry.id}@${targetVersion} not found` });
       continue;
@@ -511,15 +522,7 @@ export function hubSetAssetStatus(hubRoot: string, ref: HubRef, to: HubAssetStat
 
 /** Lists package ids available in the built-in golden hub catalog. */
 export function listGoldenHubPackages(goldenDir = BUILTIN_HUB_GOLDEN_DIR): HubRef[] {
-  const root = path.join(goldenDir, "packages");
-  if (!fs.existsSync(root)) return [];
-  const out: HubRef[] = [];
-  for (const id of fs.readdirSync(root, { withFileTypes: true }).filter((d) => d.isDirectory())) {
-    for (const ver of hubVersions(goldenDir, id.name)) {
-      out.push({ id: id.name, version: ver });
-    }
-  }
-  return out.sort((a, b) => a.id.localeCompare(b.id) || a.version.localeCompare(b.version));
+  return listHubPackageRefs(goldenDir);
 }
 
 export function listGoldenHubBundles(goldenDir = BUILTIN_HUB_GOLDEN_DIR): HubRef[] {

@@ -1,8 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import YAML from "yaml";
-import { BUILTIN_HUB_GOLDEN_DIR, type HubRef } from "./hub.js";
+import { hubPackageDirForKind } from "./hubPackagePaths.js";
 import { ensureDir } from "./paths.js";
+import type { HubRef } from "./hub.js";
+
+const BUILTIN_HUB_GOLDEN_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../hub-golden");
 
 export const SEED_PROFILES = ["minimal", "standard", "strict", "enterprise", "enterprise-sdlc"] as const;
 export const SEED_SCENARIOS = ["core", "api", "frontend", "mobile", "library", "data", "observability", "async-jobs"] as const;
@@ -134,7 +138,12 @@ function assetSourcePath(goldenDir: string, manifest: SeedManifest, ref: string)
   if (entry.path) return path.join(goldenDir, entry.path);
   const { id, version } = parseRef(ref);
   if (entry.category === "eval") return path.join(goldenDir, "evals", "golden-repos", id);
-  const plural = entry.category === "package" ? "packages" : `${entry.category}s`;
+  if (entry.category === "package") {
+    const kind = entry.kind;
+    if (!kind) throw new Error(`seed catalog entry ${ref} missing kind for package`);
+    return hubPackageDirForKind(goldenDir, kind, id, version);
+  }
+  const plural = entry.category === "bundle" ? "bundles" : "blueprints";
   return path.join(goldenDir, plural, id, version);
 }
 
@@ -142,7 +151,12 @@ function assetDestPath(targetRoot: string, manifest: SeedManifest, ref: string):
   const entry = manifest.catalog[ref];
   const { id, version } = parseRef(ref);
   if (entry.category === "eval") return path.join(targetRoot, "evals", "golden-repos", id);
-  const plural = entry.category === "package" ? "packages" : `${entry.category}s`;
+  if (entry.category === "package") {
+    const kind = entry.kind;
+    if (!kind) throw new Error(`seed catalog entry ${ref} missing kind for package`);
+    return hubPackageDirForKind(targetRoot, kind, id, version);
+  }
+  const plural = entry.category === "bundle" ? "bundles" : "blueprints";
   return path.join(targetRoot, plural, id, version);
 }
 

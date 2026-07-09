@@ -116,7 +116,7 @@ describe("m28 hub dual-role ops", () => {
     );
 
     const accepted = hubAcceptContribution(hub, { actor: "wang.dev", id: "team-tip", version: "0.2.0" }, "zhao.platform");
-    expect(accepted.dest).toContain(path.join("packages", "team-tip", "0.2.0"));
+    expect(accepted.dest).toContain(path.join("packages", "guide", "skill", "team-tip", "0.2.0"));
     expect(listHubContributions(hub, { status: "approved" }).length).toBeGreaterThanOrEqual(1);
   });
 

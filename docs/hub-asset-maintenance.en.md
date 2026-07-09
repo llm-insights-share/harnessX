@@ -39,7 +39,7 @@ For ops-focused workflows, use the dedicated `hxhub` CLI (coexists with `hx hub`
 
 ```
 harness-hub/
-├── packages/<id>/<version>/     # asset.yaml + content + .review
+├── packages/<kind>/<...>/<id>/<version>/   # asset.yaml + content + .review
 ├── bundles/<id>/<version>/      # bundle.yaml + assets/
 ├── blueprints/<id>/<version>/   # blueprint.yaml
 └── evals/golden-repos/<name>/   # checks.yaml

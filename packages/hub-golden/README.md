@@ -42,6 +42,12 @@ Manifest: `seed-manifest.yaml` (profiles, scenarios, catalog).
 
 ## Packages (`packages/`)
 
+Packages are stored by kind under `packages/<kind>/<...>/<id>/<version>/`, for example:
+
+- `packages/guide/skill/api-conventions/1.0.0/`
+- `packages/guide/template/requirements-template/1.0.0/`
+- `packages/sensor/rubric/common-review-rubrics/1.0.0/`
+
 Includes first-batch assets such as:
 
 | Package | Kind | Purpose |

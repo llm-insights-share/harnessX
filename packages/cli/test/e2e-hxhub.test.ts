@@ -90,9 +90,9 @@ describe("hxhub e2e", () => {
     const hubDir = path.join(repo, "hub");
     const out = hxhub(repo, ["seed", hubDir, "--profile", "minimal", "--scenario", "api"]);
     expect(out).toContain("Seeded");
-    expect(fs.existsSync(path.join(hubDir, "packages/coding-conventions/1.0.0/asset.yaml"))).toBe(true);
+    expect(fs.existsSync(path.join(hubDir, "packages/guide/skill/coding-conventions/1.0.0/asset.yaml"))).toBe(true);
     expect(fs.existsSync(path.join(hubDir, "bundles/api-service/1.0.0/bundle.yaml"))).toBe(true);
-    expect(fs.existsSync(path.join(hubDir, "packages/ui-page-spec-template/1.0.0/asset.yaml"))).toBe(false);
+    expect(fs.existsSync(path.join(hubDir, "packages/guide/template/ui-page-spec-template/1.0.0/asset.yaml"))).toBe(false);
   });
 
   it("fix repairs missing hub policy and maintainers", () => {

@@ -2,7 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
 import { AssetManifest } from "./schemas.js";
-import { scanAssetDir, hubPackageDir, hubBundleDir, resolveHubPackage, type HubRef } from "./hub.js";
+import { scanAssetDir, hubBundleDir, resolveHubPackage, type HubRef } from "./hub.js";
+import { resolveHubPackageDir } from "./hubPackagePaths.js";
 import { loadAssetDir } from "./assets.js";
 
 /**
@@ -73,7 +74,8 @@ export function hubEvalLocal(assetDir: string): HubEvalResult {
 }
 
 export function hubEvalPackage(hubRoot: string, ref: HubRef): HubEvalResult {
-  const dir = hubPackageDir(hubRoot, ref.id, ref.version);
+  const dir = resolveHubPackageDir(hubRoot, ref);
+  if (!dir) return { package: `${ref.id}@${ref.version}`, passed: false, checks: [{ name: "asset exists", ok: false, detail: "not found in hub" }] };
   return evalDir(dir, `${ref.id}@${ref.version}`);
 }
 

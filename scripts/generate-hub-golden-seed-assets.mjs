@@ -524,7 +524,8 @@ function executionForKind(kind) {
 }
 
 for (const asset of ASSETS) {
-  const dir = path.join(GOLDEN, asset.id, "1.0.0");
+  const segments = asset.kind.split(".");
+  const dir = path.join(GOLDEN, ...segments, asset.id, "1.0.0");
   if (fs.existsSync(dir)) {
     console.log(`skip existing ${asset.id}`);
     continue;

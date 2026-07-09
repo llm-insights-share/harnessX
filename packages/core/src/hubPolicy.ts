@@ -1,9 +1,10 @@
+import path from "node:path";
+import fs from "node:fs";
 import type { HubCatalogEntry } from "./hubCatalog.js";
 import { readHubRepoPolicy } from "./hubPolicySchema.js";
 import { listHubContributions } from "./hubContributions.js";
 import { readHubReview } from "./hubReview.js";
-import path from "node:path";
-import fs from "node:fs";
+import { resolveHubPackageDir } from "./hubPackagePaths.js";
 
 export interface HubPolicyIssue {
   asset: string;
@@ -32,8 +33,11 @@ export function checkHubPolicy(entries: HubCatalogEntry[], opts: HubPolicyOption
     if (e.status === "enforced") {
       if (e.review !== "approved") issues.push({ asset: key, severity: "error", message: "enforced asset is not approved" });
       if (opts.hubRoot) {
-        const resolved = path.join(opts.hubRoot, e.category === "bundle" ? "bundles" : e.category === "blueprint" ? "blueprints" : "packages", e.id, e.version);
-        if (fs.existsSync(resolved)) {
+        const resolved =
+          e.category === "package"
+            ? resolveHubPackageDir(opts.hubRoot, { id: e.id, version: e.version }, e.kind)
+            : path.join(opts.hubRoot, e.category === "bundle" ? "bundles" : "blueprints", e.id, e.version);
+        if (resolved && fs.existsSync(resolved)) {
           const review = readHubReview(resolved);
           if (minApprovals > 1 && (review.approvedBy?.length ?? 0) < minApprovals) {
             issues.push({
