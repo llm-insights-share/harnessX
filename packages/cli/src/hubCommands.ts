@@ -138,7 +138,7 @@ async function interactiveCreateAsset(outDir?: string, sourceDir?: string) {
     const version = (await rl.question("version [0.1.0]: ")).trim() || "0.1.0";
     const status = ((await rl.question("status [draft]: ")).trim() || "draft") as AssetStatus;
     const phaseRaw = (await rl.question("phase list comma separated (optional): ")).trim();
-    const sourceInput = sourceDir ?? (await rl.question("source directory (optional, contains original SKILL/template/rules files): ")).trim();
+    const sourceInput = sourceDir ?? (await rl.question("source path (optional, directory or file containing original SKILL/template/rules): ")).trim();
     const phase = phaseRaw ? phaseRaw.split(",").map((s) => s.trim()).filter(Boolean) : [];
     const root = path.resolve(outDir ?? id);
     return createAssetScaffold({ rootDir: root, id, kind, version, status, phase, sourceDir: sourceInput || undefined });
@@ -354,7 +354,7 @@ export function registerHubCommands(program: Command, opts: RegisterHubCommandsO
     .option("--status <status>", "draft|trial|enforced|deprecated", "draft")
     .option("--phase <list>", "comma-separated phases")
     .option("--out <dir>", "target directory")
-    .option("--source-dir <dir>", "directory containing source files for this asset (e.g. SKILL.md/template.md)")
+    .option("--source-dir <dir>", "source path (directory or single file) for this asset scaffold")
     .option("--interactive", "ask prompts interactively")
     .action(async (cmdOpts: { kind?: AssetKind; id?: string; assetVersion?: string; status?: AssetStatus; phase?: string; out?: string; sourceDir?: string; interactive?: boolean }) => {
       const result =
