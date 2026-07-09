@@ -271,15 +271,28 @@ Rule of thumb: **agent work in Cursor; human accountability actions in terminal*
 | Implementation | task-by-task coding + self-correction | `plan`, `apply`, `guide task-pack`, `fix` |
 | Testing | verify, trace, promote, archive | `verify`, `trace check`, `arch promote`, `archive` |
 
-### 4.3 Pre-phase commands (org-level)
+### 4.3 Pre-phase commands (org-level, `docs/` artifacts)
 
 | Command | Purpose |
 | --- | --- |
-| `hx prd init/check <slug>` | Org PRD |
-| `hx approve prd <slug> --approver <name>` | PRD sign-off |
-| `hx arch init/check`, `hx approve arch` | Global HLD sign-off |
-| `hx arch lld init/check <module>` | Module LLD |
-| `hx arch promote <change>` | Structured design沉淀 into module LLD |
+| `hx prd init <slug>` / `hx prd check <slug>` | Org PRD scaffold / validation |
+| `hx approve prd <slug> --approver <name>` | PRD sign-off (alias for `hx gate approve --gate prd --prd <slug>`) |
+| `hx arch init` / `hx arch check` | Global HLD scaffold / `arch-check` suite (includes `arch-approved`) |
+| `hx approve arch --approver <name>` | Global HLD sign-off |
+| `hx arch lld init <module>` / `hx arch lld check <module>` | Module LLD scaffold / validation |
+| `hx arch promote <change> [--by <name>]` | Structured change design → module LLD |
+| `hx guide prd-pack <slug>` / `hx guide arch-pack` | Pre-phase Context Packs |
+
+Cursor slash commands: `/hx-prd`, `/hx-arch`, `/hx-arch-lld` (after `hx adapter sync`).
+
+### 4.4 Dual-track artifact model
+
+| Track | Path | Lifecycle | Human approval |
+| --- | --- | --- | --- |
+| **Org (Pre-phase)** | `docs/prd/`, `docs/architecture/` | Reused across changes | `hx approve prd/arch` → `docs/.prephase-approvals.yaml` |
+| **Change (delivery)** | `harnessX/changes/<id>/requirements/`, `design/`, `specs/` | One delivery | `hx gate approve <change> --gate spec` → `meta.yaml` |
+
+`hx guide pack` **auto-injects** org artifacts into Context Packs during propose/design. Before archive, `hx arch promote` **writes back** change design into org module LLD.
 
 ---
 
@@ -289,16 +302,31 @@ Rule of thumb: **agent work in Cursor; human accountability actions in terminal*
 
 - `harnessX/changes/<id>/proposal.md`
 - `harnessX/changes/<id>/specs/**` (delta specs)
+- (enterprise) `requirements/` (PRD distillation)
 - approval records in `meta.yaml`
+- Context Pack includes linked **org PRD** (`meta.prdRef` or `docs/prd/<change>.md`)
 
 ### 5.2 Recommended flow
+
+**standard / strict**:
 
 ```bash
 hx change create add-refund --domains orders,payments
 hx propose add-refund --title "Support partial refunds"
+hx gate check add-refund --phase propose
+# After spec is finalized, approve spec→plan:
 hx gate check add-refund --phase spec
 hx gate approve add-refund --gate spec --approver alice
 hx gate advance add-refund
+```
+
+**enterprise** (complete [Scenario 19](examples/en/19-org-prd-and-architecture.md) Pre-phase first):
+
+```bash
+hx change create add-refund --domains orders --profile enterprise \
+  --prd orders-refund --arch-modules order
+hx propose add-refund --title "Support partial refunds"
+hx gate check add-refund --phase propose   # includes prd-complete, prd-approved
 ```
 
 ### 5.3 Commands and all options (this stage)
@@ -307,12 +335,17 @@ hx gate advance add-refund
 | --- | --- | --- |
 | `change create <id>` | `--domains <list>` | touched domains (comma-separated) |
 |  | `--profile <name>` | override default profile |
+|  | `--prd <slug>` | link org PRD (enterprise) |
+|  | `--arch-modules <list>` | link org module LLD (enterprise) |
 |  | `--from-issue <url>` | scaffold from GitHub issue |
 | `change list` | — | list active changes |
 | `propose <change>` | `--title <title>` | proposal title (default `Untitled`) |
-| `gate check <change>` | `--phase <cmd>` | check specified phase |
-| `gate approve <change>` | `--gate <gate>` | required gate name (usually `spec`) |
+| `gate check <change>` | `--phase <cmd>` | check specified phase (default: next phase) |
+| `gate approve [change]` | `--gate <gate>` | change-level: `spec`, etc.; org-level: `prd`/`arch` |
 |  | `--approver <name>` | required approver name |
+|  | `--prd <slug>` | required for org-level PRD approval |
+| `approve prd <slug>` | `--approver <name>` | PRD approval shorthand |
+| `approve arch` | `--approver <name>` | global HLD approval shorthand |
 | `gate advance <change>` | — | advance if gate passes |
 
 ### 5.4 Stage-specific configuration
@@ -333,13 +366,15 @@ compensation:
 
 ### 6.1 Outputs
 
-- `design.md` or `design/overview.md`
-- (enterprise) design artifacts such as `design/ui/pages.md`
-- design gate pass records
+- `design/overview.md` (rendered by `design-template`)
+- (enterprise) `design/ui/pages.md`, LLD files
+- Context Pack includes **org HLD**, **registry**, **module LLD**
+- design gate records (enterprise: `arch-approved`, `prototype-complete`, etc.)
 
 ### 6.2 Recommended flow
 
 ```bash
+# enterprise: ensure hx approve arch completed
 hx design add-refund
 hx guide pack add-refund --phase design --out /tmp/design-pack.md
 hx gate check add-refund --phase design
@@ -437,6 +472,8 @@ hx verify add-refund
 hx trace check add-refund
 hx fixture verify
 hx rebase check add-refund
+# enterprise: promote change design to org module LLD before archive
+hx arch promote add-refund --by architect
 hx archive add-refund
 ```
 
@@ -457,7 +494,8 @@ hx archive add-refund
 |  | `--approved-by <name>` | required approver |
 |  | `--expires <iso>` | expiry time |
 | `waiver list <change>` | — | list active/expired waivers |
-| `archive <change>` | `--force` | skip verified-state requirement (careful) |
+| `arch promote <change>` | `--by <name>`, `--dry-run` | enterprise: structured design → module LLD |
+| `archive <change>` | `--force` | skip verified-state requirement (careful); enterprise blocks without promote |
 | `rebase check <change>` | — | pre-archive conflict check |
 | `meta verify [change]` | `--all` | tamper detection for meta chain |
 
@@ -643,7 +681,7 @@ Enterprise profile adds `prototype-complete`, `uat-complete`, unified `drift`. S
 ## 12. Further reading
 
 - [Usage Guide (by theme)](usage-guide.en.md)
-- [18 usage scenarios (by user journey)](examples/en/README.md)
+- [19 usage scenarios (by user journey)](examples/en/README.md)
 - [Concept glossary](glossary.md)
 - [Package boundaries](architecture/package-boundaries.md)
 - [L1 env contract JSON Schema](../schemas/l1/agent-env-contract.json)

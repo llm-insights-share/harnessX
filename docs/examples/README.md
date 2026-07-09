@@ -15,7 +15,7 @@
 | 第一次接入 HarnessX | [01 新项目接入](01-新项目接入.md) |
 | 交付一个常规功能 | [02 标准功能全流程](02-标准功能开发全流程.md)（需先 01） |
 | 从组织 Hub 初始化 | [16 Hub 蓝图初始化](16-v0.3-hub-blueprint-init.md) |
-| 企业级需求→编码交接 | [15 enterprise 交接](15-企业级需求到交付交接.md) |
+| 企业级需求→编码交接 | [19 组织 Pre-phase](19-组织级PRD与架构设计.md) → [15 enterprise 交接](15-企业级需求到交付交接.md) |
 | Codex/脚本无头交付 | [18 精简 harness + MCP](18-精简配置与无头Agent-MCP.md) |
 | 不确定 | [00 场景选择指南](00-场景选择指南.md) |
 
@@ -44,6 +44,7 @@
 
 | 场景 | 何时选 |
 | --- | --- |
+| [19 组织级 PRD/架构](19-组织级PRD与架构设计.md) | Pre-phase：`docs/prd/` + `docs/architecture/`、`hx approve`、`hx arch promote` |
 | [14 全栈多角色](14-企业全栈多角色交付.md) | API + B 端 + C 端五人协作 |
 | [15 enterprise 交接](15-企业级需求到交付交接.md) | 需求分析 → HLD/LLD → task-pack |
 

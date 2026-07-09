@@ -2,7 +2,7 @@
 
 **中文**: [使用说明（中文）](usage-guide.zh-CN.md)
 
-This guide explains HarnessX **by theme** so you can learn core concepts, pre-init personalization, and special-project customization in one place. It complements the [Operation Guide](operation-guide.en.md) (organized by delivery phase) and [Usage scenario examples](examples/en/README.md) (18 end-to-end journeys).
+This guide explains HarnessX **by theme** so you can learn core concepts, pre-init personalization, and special-project customization in one place. It complements the [Operation Guide](operation-guide.en.md) (organized by delivery phase) and [Usage scenario examples](examples/en/README.md) (19 end-to-end journeys).
 
 | Document | Organization | When to read |
 | --- | --- | --- |
@@ -107,7 +107,20 @@ Delta specs use OpenSpec format; `spec-validate` blocks bad EARS/scenarios in th
 | **lite** | Hotfix, tiny change | [05 Emergency hotfix](examples/en/05-emergency-hotfix-lite.md) |
 | **standard** | Most features | [02 Standard feature](examples/en/02-standard-feature-development.md) |
 | **strict** | Core domains, test-first | [03 Core domain strict](examples/en/03-core-domain-strict-test-first.md) |
-| **enterprise** | Multi-role delivery | [14](examples/en/14-enterprise-fullstack-multi-role.md), [15](examples/en/15-enterprise-delivery-handoff.md) |
+| **enterprise** | Multi-role delivery | [19](examples/en/19-org-prd-and-architecture.md) → [15](examples/en/15-enterprise-delivery-handoff.md), [14](examples/en/14-enterprise-fullstack-multi-role.md) |
+
+#### Enterprise Pre-phase (org-level artifacts)
+
+Before enterprise change delivery, complete org Pre-phase ([Scenario 19](examples/en/19-org-prd-and-architecture.md)):
+
+```text
+/hx-prd → hx prd check → hx approve prd <slug> --approver <name>
+/hx-arch → hx arch check → hx approve arch --approver <name>
+/hx-arch-lld <module> → hx arch lld check <module>
+hx change create <id> --prd <slug> --arch-modules <module> --profile enterprise
+```
+
+`hx guide pack` **auto-injects** `docs/prd/` and `docs/architecture/` into Context Packs during propose/design. Before archive, run `hx arch promote <change>` to write change design back into module LLD.
 
 ### 1.8 Platform / org scenarios
 
@@ -129,13 +142,14 @@ Delta specs use OpenSpec format; `spec-validate` blocks bad EARS/scenarios in th
 
 Tier 2 adapters trigger **gate compensation** (extra sensors, warn→block). See [config.yaml compensation](operation-guide.en.md#31-harnessxconfigyaml).
 
-### 1.10 Mental model (five points)
+### 1.10 Mental model (six points)
 
 1. Behaviour changes live in a **change workspace** with delta specs.
 2. **Gates** advance only when sensors pass + preconditions (e.g. human approval); crashes block (fail-closed).
 3. **Guides** assemble phase Context Packs; **Sensors** validate output with `fix_hint` → `hx fix`.
 4. **`hx archive`** merges deltas into main specs (source of truth).
-5. **Steering + Hub** evolve the harness itself across the org.
+5. **Org Pre-phase** (`docs/prd/`, `docs/architecture/`) and **change-level delivery** coexist; `hx guide pack` injects org artifacts; `hx arch promote` writes back module LLD before archive.
+6. **Steering + Hub** evolve the harness itself across the org.
 
 ---
 
@@ -246,9 +260,15 @@ Optional `compat_mode: openspec` in `config.yaml` for short-term parallel use.
 
 ### 3.2 Enterprise multi-role delivery
 
-**Walkthrough**: [14](examples/en/14-enterprise-fullstack-multi-role.md), [15](examples/en/15-enterprise-delivery-handoff.md)
+**Walkthrough**: [19](examples/en/19-org-prd-and-architecture.md) (org Pre-phase) → [15](examples/en/15-enterprise-delivery-handoff.md), [14](examples/en/14-enterprise-fullstack-multi-role.md)
 
-`enterprise-delivery` blueprint adds `requirements/`, `design/` HLD+LLD, `delivery-trace.yaml`, `@design=` handoff, `hx guide task-pack`.
+```bash
+hx init --from-hub enterprise-delivery@1.0.0 --hub ./harness-hub
+```
+
+`enterprise-delivery` blueprint adds org-level `docs/prd/` + `docs/architecture/` (Pre-phase), change-level `requirements/`, `design/` HLD+LLD, `delivery-trace.yaml`, `@design=` handoff, `hx guide task-pack`, and `hx arch promote` before archive.
+
+Extra sensors: `prd-complete`, `prd-approved`, `arch-approved`, `arch-change-align`, `requirements-complete`, `design-hld-complete`, `prototype-complete`, `uat-complete`, `design-drift`, `arch-drift`, etc.
 
 ### 3.3 Multi-topology / full-stack monorepo
 
@@ -314,7 +334,7 @@ Hub layout: `packages/`, `bundles/`, `blueprints/`, `evals/`. See built-in `pack
 | New backend API | `api-service` bundle | 01 |
 | Legacy OpenSpec | `openspec import` | 06 |
 | Payments / core | `strict` + testfirst | 03 |
-| Enterprise BA+arch+dev | `enterprise-delivery` | 14, 15 |
+| Enterprise BA+arch+dev | `enterprise-delivery` | [19](examples/en/19-org-prd-and-architecture.md) → 15, 14 |
 | Many repos | Central Hub + lock | 08, 16 |
 | No Cursor | imports + MCP | 18 |
 | Security extension | custom sensor | 10 |
@@ -328,6 +348,7 @@ Hub layout: `packages/`, `bundles/`, `blueprints/`, `evals/`. See built-in `pack
 ### A. Common commands
 
 Init: `hx init`, `hx bundle`, `hx hooks install`, `hx ci init`, `hx adapter sync`  
+Pre-phase (org): `hx prd`, `hx arch`, `hx arch lld`, `hx approve prd/arch`, `hx arch promote`  
 Change lifecycle: `hx change`, `hx propose/design/plan/apply/verify/archive`  
 Gates: `hx gate check/advance/approve/replay`  
 Quality: `hx trace check`, `hx sync`, `hx fixture`, `hx testfirst`  
@@ -342,7 +363,7 @@ Full options: [Operation Guide](operation-guide.en.md).
 | Doc | Purpose |
 | --- | --- |
 | [Operation Guide](operation-guide.en.md) | Phase-based commands |
-| [Scenario picker](examples/en/00-scenario-picker.md) | Choose among 18 scenarios |
+| [Scenario picker](examples/en/00-scenario-picker.md) | Choose among 19 scenarios |
 | [Glossary](glossary.md) | Terms |
 | [Design doc](harness-delivery-system-design.html) | Full design |
 | [README](../README.md) | Overview |

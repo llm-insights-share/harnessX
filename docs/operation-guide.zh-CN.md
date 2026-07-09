@@ -300,6 +300,15 @@ phases:
 
 Cursor 斜杠命令：`/hx-prd`、`/hx-arch`、`/hx-arch-lld`（`hx adapter sync` 后可用）。
 
+### 4.4 双轨制品模型
+
+| 轨道 | 路径 | 生命周期 | 人工批准 |
+| --- | --- | --- | --- |
+| **组织级（Pre-phase）** | `docs/prd/`、`docs/architecture/` | 跨多个 change 复用 | `hx approve prd/arch` → `docs/.prephase-approvals.yaml` |
+| **Change 级（交付）** | `harnessX/changes/<id>/requirements/`、`design/`、`specs/` | 单次交付 | `hx gate approve <change> --gate spec` → `meta.yaml` |
+
+`hx guide pack` 在 propose/design 阶段将组织级制品**自动注入** Context Pack。归档前 `hx arch promote` 将 change design **回写**组织模块 LLD。
+
 ---
 
 ## 5. 需求阶段（Requirements）
@@ -308,16 +317,31 @@ Cursor 斜杠命令：`/hx-prd`、`/hx-arch`、`/hx-arch-lld`（`hx adapter sync
 
 - `harnessX/changes/<id>/proposal.md`
 - `harnessX/changes/<id>/specs/**`（delta spec）
+-（enterprise）`requirements/`（PRD 蒸馏）
 - `meta.yaml` 中的状态与审批记录
+- Context Pack 含链接的 **org PRD**（`meta.prdRef` 或 `docs/prd/<change>.md`）
 
 ### 5.2 推荐流程
+
+**standard / strict**：
 
 ```bash
 hx change create add-refund --domains orders,payments
 hx propose add-refund --title "支持部分退款"
 hx gate check add-refund --phase propose
+# spec 阶段定稿后再批准 spec→plan：
+hx gate check add-refund --phase spec
 hx gate approve add-refund --gate spec --approver zhangsan
 hx gate advance add-refund
+```
+
+**enterprise**（需先完成 [场景 19](examples/19-组织级PRD与架构设计.md) Pre-phase）：
+
+```bash
+hx change create add-refund --domains orders --profile enterprise \
+  --prd orders-refund --arch-modules order
+hx propose add-refund --title "支持部分退款"
+hx gate check add-refund --phase propose   # 含 prd-complete、prd-approved
 ```
 
 ### 5.3 本阶段命令与全部选项
@@ -326,12 +350,17 @@ hx gate advance add-refund
 | --- | --- | --- |
 | `change create <id>` | `--domains <list>` | 触及域列表（逗号分隔） |
 |  | `--profile <name>` | 覆盖默认 profile |
+|  | `--prd <slug>` | 链接组织 PRD（enterprise） |
+|  | `--arch-modules <list>` | 链接组织模块 LLD（enterprise） |
 |  | `--from-issue <url>` | 从 GitHub issue 脚手架（可推断域） |
 | `change list` | — | 查看活跃 change |
 | `propose <change>` | `--title <title>` | proposal 标题（默认 `Untitled`） |
 | `gate check <change>` | `--phase <cmd>` | 检查指定阶段（不填则默认下一阶段） |
-| `gate approve <change>` | `--gate <gate>` | 必填，通常 `spec` |
+| `gate approve [change]` | `--gate <gate>` | change 级：`spec` 等；org 级：`prd`/`arch` |
 |  | `--approver <name>` | 必填，审批人 |
+|  | `--prd <slug>` | org 级 PRD 批准时必填 |
+| `approve prd <slug>` | `--approver <name>` | PRD 批准简写 |
+| `approve arch` | `--approver <name>` | 全局架构批准简写 |
 | `gate advance <change>` | — | 在当前阶段全绿时推进 |
 
 ### 5.4 需求阶段配置建议
@@ -352,13 +381,15 @@ compensation:
 
 ### 6.1 目标与产物
 
-- `design.md` 或 `design/overview.md`
+- `design/overview.md`（由 `design-template` 渲染）
 -（enterprise）`design/ui/pages.md`、LLD 文件
-- 设计阶段 gate 记录（如 prototype-complete）
+- Context Pack 含 **org HLD**、**registry**、**模块 LLD**
+- 设计阶段 gate 记录（enterprise：`arch-approved`、`prototype-complete` 等）
 
 ### 6.2 推荐流程
 
 ```bash
+# enterprise：确保已 hx approve arch
 hx design add-refund
 hx guide pack add-refund --phase design --out /tmp/design-pack.md
 hx gate check add-refund --phase design
@@ -456,6 +487,8 @@ hx verify add-refund
 hx trace check add-refund
 hx fixture verify
 hx rebase check add-refund
+# enterprise：archive 前沉淀 change design 到组织模块 LLD
+hx arch promote add-refund --by architect
 hx archive add-refund
 ```
 
@@ -476,7 +509,8 @@ hx archive add-refund
 |  | `--approved-by <name>` | 必填，批准人 |
 |  | `--expires <iso>` | 过期时间（默认 +14 天） |
 | `waiver list <change>` | — | 查看豁免与过期状态 |
-| `archive <change>` | `--force` | 跳过 verified 要求（谨慎） |
+| `arch promote <change>` | `--by <name>`, `--dry-run` | enterprise：结构化沉淀 design 到模块 LLD |
+| `archive <change>` | `--force` | 跳过 verified 要求（谨慎）；enterprise 未 promote 会阻断 |
 | `rebase check <change>` | — | 归档前冲突预检 |
 | `meta verify [change]` | `--all` | 防篡改校验 |
 
@@ -664,7 +698,7 @@ enterprise profile 含 `prototype-complete`、`uat-complete`、统一 `drift` se
 ## 12. 进一步阅读
 
 - [使用说明（按主题）](usage-guide.zh-CN.md)
-- [使用场景示例（18 个，按旅程组织）](examples/README.md)
+- [使用场景示例（19 个，按旅程组织）](examples/README.md)
 - [概念词表](glossary.zh-CN.md)
 - [包边界说明](architecture/package-boundaries.md)
 - [L1 环境契约 JSON Schema](../schemas/l1/agent-env-contract.json)

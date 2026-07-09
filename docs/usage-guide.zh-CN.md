@@ -2,7 +2,7 @@
 
 **English**: [Usage Guide (English)](usage-guide.en.md)
 
-本文档按**主题**介绍 HarnessX 的用法，帮助你在不同角色与项目形态下快速上手并做个性化配置。与 [操作说明](operation-guide.zh-CN.md)（按交付阶段组织）和 [使用场景示例](examples/README.md)（18 个端到端旅程）互补：
+本文档按**主题**介绍 HarnessX 的用法，帮助你在不同角色与项目形态下快速上手并做个性化配置。与 [操作说明](operation-guide.zh-CN.md)（按交付阶段组织）和 [使用场景示例](examples/README.md)（19 个端到端旅程）互补：
 
 | 文档 | 组织方式 | 适合何时读 |
 | --- | --- | --- |
@@ -216,13 +216,14 @@ hx change create <id> --prd <slug> --arch-modules <module> --profile enterprise
 
 Tier 2 适配器（如 Codex、generic `AGENTS.md`）缺少 Cursor hooks 时，HarnessX 通过 **Gate 补偿**自动加强 L3 检查（追加 typecheck/lint，warn 升格为 block）。详见 [config.yaml 的 compensation](operation-guide.zh-CN.md#31-harnessxconfigyaml)。
 
-### 1.10 心智模型（五条）
+### 1.10 心智模型（六条）
 
 1. 行为改动在 **change 工作区**，用 delta spec 描述增量。
 2. **Gate** 全绿 + 前置条件（如人工批准）才 `advance`；sensor 崩溃视为阻断（fail-closed）。
 3. **Guide** 按阶段组装 Context Pack；**Sensor** 检验输出；失败带 `fix_hint`，可进 `hx fix` 回环。
 4. `hx archive` 将 delta 合并进主规格，成为仓库真相。
-5. 反复失败经 **Steering** 蒸馏为新 Guide，经 **Hub** 在组织内共享——harness 自身持续进化。
+5. **组织级 Pre-phase**（`docs/prd/`、`docs/architecture/`）与 **change 级交付** 双轨并存；`hx guide pack` 注入 org 制品，归档前 `hx arch promote` 回写模块 LLD。
+6. 反复失败经 **Steering** 蒸馏为新 Guide，经 **Hub** 在组织内共享——harness 自身持续进化。
 
 ---
 
@@ -484,7 +485,7 @@ hx hooks install && hx ci init && hx adapter sync
 ### 3.2 企业级多角色交付
 
 **适用**：BA → 架构师 → 前后端多人协作  
-**详细 walkthrough**：[场景 14](examples/14-企业全栈多角色交付.md)、[场景 15](examples/15-企业级需求到交付交接.md)
+**详细 walkthrough**：[场景 19](examples/19-组织级PRD与架构设计.md)（组织 Pre-phase）→ [场景 15](examples/15-企业级需求到交付交接.md)、[场景 14](examples/14-企业全栈多角色交付.md)
 
 初始化：
 
@@ -494,12 +495,14 @@ hx init --from-hub enterprise-delivery@1.0.0 --hub ./harness-hub
 
 企业 profile 额外产物：
 
-- `requirements/` 需求分析制品
+- 组织级：`docs/prd/`、`docs/architecture/`（Pre-phase，场景 19）
+- change 级：`requirements/` 需求分析制品
 - `design/` HLD + LLD 包
 - `delivery-trace.yaml` 交接追溯
 - `@design=` 任务标注、`hx guide task-pack` 编码交接
+- 归档前 `hx arch promote` 将 change design 沉淀回模块 LLD
 
-额外 sensor：`requirements-complete`、`design-hld-complete`、`prototype-complete`、`uat-complete`、`design-drift` 等。
+额外 sensor：`prd-complete`、`prd-approved`、`arch-approved`、`arch-change-align`、`requirements-complete`、`design-hld-complete`、`prototype-complete`、`uat-complete`、`design-drift`、`arch-drift` 等。
 
 ### 3.3 多拓扑 / 全栈 monorepo
 
@@ -666,6 +669,7 @@ harness-hub/
 | 类别 | 命令 |
 | --- | --- |
 | 初始化 | `hx init`、`hx bundle list/add`、`hx hooks install`、`hx ci init`、`hx adapter sync` |
+| Pre-phase（组织级） | `hx prd`、`hx arch`、`hx arch lld`、`hx approve prd/arch`、`hx arch promote` |
 | Change 生命周期 | `hx change create/list`、`hx propose/design/plan/apply/verify/archive` |
 | Gate | `hx gate check/advance/approve/replay` |
 | 质量 | `hx trace check`、`hx sync`、`hx fixture approve/verify`、`hx testfirst` |
@@ -689,7 +693,7 @@ harness-hub/
 | 文档 | 说明 |
 | --- | --- |
 | [操作说明](operation-guide.zh-CN.md) | 按阶段查命令与配置字段 |
-| [场景选择指南](examples/00-场景选择指南.md) | 18 个场景快速选型 |
+| [场景选择指南](examples/00-场景选择指南.md) | 19 个场景快速选型 |
 | [概念词表](glossary.zh-CN.md) | 术语定义 |
 | [系统设计](harness-delivery-system-design.html) | 完整设计文档 |
 | [包边界](architecture/package-boundaries.md) | 扩展点与模块边界 |
@@ -709,7 +713,8 @@ flowchart TD
   Q3 -->|是| S11[场景 11+12 模板定制]
   Q3 -->|否| S02[场景 02 第一个功能]
   S02 --> Q4{项目类型?}
-  Q4 -->|企业多角色| S15[场景 15]
+  Q4 -->|企业多角色| S19[场景 19 Pre-phase]
+  S19 --> S15[场景 15]
   Q4 -->|无 Cursor| S18[场景 18]
   Q4 -->|平台治理| S08[场景 08]
 ```

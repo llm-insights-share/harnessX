@@ -3,7 +3,7 @@
 | --- | --- |
 | **Journey** | Enterprise |
 | **Roles** | Full-stack TL |
-| **Prerequisites** | Scenario(s) 01 |
+| **Prerequisites** | Scenario(s) 01; [Scenario 19](19-org-prd-and-architecture.md) (org Pre-phase) |
 | **Related** | [Scenario picker](00-scenario-picker.md) |
 
 ## Background

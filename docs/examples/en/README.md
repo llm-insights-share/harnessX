@@ -15,7 +15,7 @@ Scenarios are organized by **user journey**, not by version number. Each include
 | First-time HarnessX setup | [01 New project onboarding](01-new-project-onboarding.md) |
 | Ship a regular feature | [02 Standard feature](02-standard-feature-development.md) (after 01) |
 | Init from org Hub | [16 Hub blueprint init](16-v0.3-hub-blueprint-init.md) |
-| Enterprise requirements → code handoff | [15 Enterprise handoff](15-enterprise-delivery-handoff.md) |
+| Enterprise requirements → code handoff | [19 Org Pre-phase](19-org-prd-and-architecture.md) → [15 Enterprise handoff](15-enterprise-delivery-handoff.md) |
 | Headless Codex/script delivery | [18 Minimal harness + MCP](18-minimal-harness-headless-mcp.md) |
 | Not sure | [00 Scenario picker](00-scenario-picker.md) |
 
@@ -44,6 +44,7 @@ Scenarios are organized by **user journey**, not by version number. Each include
 
 | Scenario | When |
 | --- | --- |
+| [19 Org PRD/arch](19-org-prd-and-architecture.md) | Pre-phase: `docs/prd/` + `docs/architecture/`, `hx approve`, `hx arch promote` |
 | [14 Full-stack roles](14-enterprise-fullstack-multi-role.md) | API + admin + portal |
 | [15 Enterprise handoff](15-enterprise-delivery-handoff.md) | Requirements → HLD/LLD → task-pack |
 
@@ -98,6 +99,7 @@ Scenarios are organized by **user journey**, not by version number. Each include
 | 16 | [Hub blueprint init](16-v0.3-hub-blueprint-init.md) | Platform | `--from-hub` / sync --apply |
 | 17 | [Platform dashboard](17-v0.4-platform-governance.md) | Platform | prototype/UAT / view |
 | 18 | [Minimal harness + MCP](18-minimal-harness-headless-mcp.md) | Onboarding·Tools | `imports:` / MCP L1 |
+| 19 | [Org PRD/arch](19-org-prd-and-architecture.md) | Enterprise·Pre-phase | `/hx-prd` `/hx-arch` `hx arch promote` |
 
 ---
 
