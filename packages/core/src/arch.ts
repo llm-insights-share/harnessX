@@ -4,6 +4,7 @@ import { Workspace, ensureDir } from "./paths.js";
 import { readMeta, writeMeta } from "./metaStore.js";
 import { readDesignOverview, listDesignLldFiles } from "./designLayout.js";
 import { readArchRegistry, writeArchRegistry, resolveModuleByCapability } from "./archRegistry.js";
+import { extractPromotableContent, mergePromotedIntoLld } from "./archPromote.js";
 import type { ArchModule } from "./schemas.js";
 import { ArchRegistry } from "./schemas.js";
 
@@ -110,16 +111,14 @@ export function promoteArchFromChange(
   const overview = readDesignOverview(ws, change);
   const lldFiles = listDesignLldFiles(ws, change);
   const changeDir = ws.changeDir(change);
-  const snippets: string[] = [];
-  if (overview.trim()) snippets.push(overview.trim());
-  for (const rel of lldFiles) {
-    const abs = path.join(changeDir, rel);
-    if (fs.existsSync(abs)) snippets.push(`### ${rel}\n\n${fs.readFileSync(abs, "utf8").trim()}`);
+  const extraFiles = lldFiles
+    .filter((rel) => fs.existsSync(path.join(changeDir, rel)))
+    .map((rel) => ({ rel, content: fs.readFileSync(path.join(changeDir, rel), "utf8") }));
+  if (!overview.trim() && extraFiles.length === 0) {
+    throw new Error(`no design artifacts to promote for change "${change}"`);
   }
-  if (snippets.length === 0) throw new Error(`no design artifacts to promote for change "${change}"`);
-
+  const content = extractPromotableContent(overview, extraFiles);
   const stamp = new Date().toISOString().slice(0, 10);
-  const block = `\n\n---\n\n## Promoted from change \`${change}\` (${stamp})\n\n${snippets.join("\n\n")}\n`;
   const written: string[] = [];
 
   for (const mod of modules) {
@@ -130,8 +129,7 @@ export function promoteArchFromChange(
       continue;
     }
     const existing = fs.readFileSync(lld, "utf8");
-    const marker = `## Promoted from change \`${change}\``;
-    const next = existing.includes(marker) ? existing.replace(new RegExp(`${marker}[\\s\\S]*$`), block.trim()) : `${existing.trimEnd()}${block}`;
+    const next = mergePromotedIntoLld(existing, change, content, stamp);
     fs.writeFileSync(lld, next, "utf8");
     written.push(lld);
     const registry = readArchRegistry(ws);

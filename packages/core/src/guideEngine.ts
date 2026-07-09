@@ -6,6 +6,8 @@ import { listDeltaFiles } from "./artifactStore.js";
 import { resolveDesignOverview } from "./designLayout.js";
 import { readDeliveryTrace } from "./deliveryTrace.js";
 import { findTask, type Task } from "./plan.js";
+import { resolvePrdSlug } from "./prd.js";
+import { resolveModulesForChange } from "./arch.js";
 import type { GuideDef } from "./schemas.js";
 
 /**
@@ -78,6 +80,33 @@ function pushDesignArtifacts(ws: Workspace, change: string, sections: ContextPac
   visit(designDir, "");
 }
 
+/** Inject org-level PRD and architecture into change phase context packs. */
+function pushOrgPrephaseContext(ws: Workspace, change: string, phaseCmd: string, sections: ContextPack["sections"]) {
+  if (!["propose", "design", "spec", "plan", "apply", "verify"].includes(phaseCmd)) return;
+
+  const slug = resolvePrdSlug(ws, change);
+  if (slug && fs.existsSync(ws.prdFile(slug))) {
+    pushArtifact(sections, `Org PRD: ${slug}`, ws.prdFile(slug));
+  }
+
+  if (!["design", "spec", "plan", "apply", "verify"].includes(phaseCmd)) return;
+
+  if (fs.existsSync(ws.archOverviewFile())) {
+    pushArtifact(sections, "Org architecture HLD", ws.archOverviewFile());
+  }
+  if (fs.existsSync(ws.archRegistryFile())) {
+    pushArtifact(sections, "Org module registry", ws.archRegistryFile());
+  }
+  try {
+    for (const mod of resolveModulesForChange(ws, change)) {
+      const lld = ws.archModuleLld(mod.id);
+      if (fs.existsSync(lld)) pushArtifact(sections, `Org module LLD: ${mod.id}`, lld);
+    }
+  } catch {
+    /* change meta may be incomplete during early scaffolding */
+  }
+}
+
 export function buildContextPack(ws: Workspace, change: string, phaseCmd: string): ContextPack {
   const t0 = Date.now();
   const harness = ws.readHarness();
@@ -96,6 +125,7 @@ export function buildContextPack(ws: Workspace, change: string, phaseCmd: string
   }
 
   if (["propose", "design", "spec"].includes(phaseCmd)) pushRequirements(ws, change, sections);
+  pushOrgPrephaseContext(ws, change, phaseCmd, sections);
   if (["design", "spec", "plan", "apply", "verify"].includes(phaseCmd)) pushDesignArtifacts(ws, change, sections);
 
   const traceFile = ws.deliveryTraceFile(change);

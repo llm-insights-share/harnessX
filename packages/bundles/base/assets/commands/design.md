@@ -4,16 +4,17 @@ You are running the **design** phase. Precondition: proposal is complete.
 
 ## Steps
 
-1. Scaffold: `hx design <change>` — creates `design/overview.md`, `design/ui/pages.md`, and LLD directories.
-2. Fill **HLD** in `design/overview.md` (design-template): Context, API Surface, Data Model, ADR, Architecture Constraints, Observability, Rollback, UI Layout table, Design Tokens table.
-3. Fill **LLD** under `design/`:
+1. Scaffold: `hx design <change>` — renders `design-template` into `design/overview.md` and LLD directories.
+2. Read **Org architecture HLD** and **module LLD** from the Context Pack (`docs/architecture/`).
+3. Fill **HLD** in `design/overview.md` (from design-template): Context, API Surface, Data Model, ADR, Architecture Constraints, Observability, Rollback, UI Layout, Design Tokens.
+4. Fill **LLD** under `design/`:
    - `design/ui/pages.md` — page inventory (route, layout shell);
    - `design/ui/components/<page-slug>.md` — per new page/component (props, states, a11y, tokens);
    - `design/api/*.yaml` — OpenAPI fragments for new endpoints;
    - `design/data/*.sql` — schema/migration notes when needed.
-4. Follow **fe-layout** and **design-tokens** Skills; align API table with delta specs.
-5. Update delta specs if design reveals new scenarios; run `hx gate check <change> --phase design` (enterprise: HLD/LLD/align sensors).
-6. `hx gate advance <change>` when green.
+5. Follow **fe-layout** and **design-tokens** Skills; align API table with delta specs.
+6. Update delta specs if design reveals new scenarios; run `hx gate check <change> --phase design` (enterprise: `arch-approved`, HLD/LLD/align sensors).
+7. `hx gate advance <change>` when green.
 
 ## Guardrails
 

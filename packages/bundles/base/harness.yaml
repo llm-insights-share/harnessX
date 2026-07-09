@@ -34,7 +34,7 @@ suites:
   verification: [spec-validate, spec-trace, drift]
   verification-strict: [spec-validate, spec-trace, unit-changed, mutation-probe, ai-spec-review]
   propose-enterprise: [prd-complete, prd-approved, requirements-complete, spec-validate, typecheck, lint, unit-changed]
-  design-enterprise: [arch-change-align, design-hld-complete, design-lld-complete, design-spec-align, prototype-complete]
+  design-enterprise: [arch-approved, arch-change-align, design-hld-complete, design-lld-complete, design-spec-align, prototype-complete]
   plan-enterprise: [plan-coverage]
   verification-enterprise: [spec-validate, spec-trace, design-drift, arch-drift, drift, uat-complete, unit-changed, mutation-probe, ai-spec-review]
   prd-check: [prd-complete]

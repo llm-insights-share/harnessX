@@ -10,7 +10,7 @@ You are running the **propose** phase. Deliverables: `requirements/*`, `proposal
 4. Fill `requirements/prd-summary.md`, `user-stories.md`, `nfr.md` from the PRD.
 5. Fill EVERY section of `proposal.md` including **PRD Reference**; map each What Changes bullet to a PRD AC id.
 6. Rewrite the delta spec at `harnessX/changes/<change>/specs/<capability>/spec.md` (EARS + scenarios — see spec-writing Skill).
-7. Validate: `hx gate check <change> --phase spec` (and `requirements-complete` on enterprise profile).
+7. Validate: `hx gate check <change> --phase propose` (enterprise: `prd-complete`, `prd-approved`, `requirements-complete`).
 
 ## Guardrails
 

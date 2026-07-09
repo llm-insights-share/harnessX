@@ -85,3 +85,23 @@ T-822,M19-PrePhase2,P0,"hx arch promote","change design 沉淀到模块 LLD；me
 T-823,M19-PrePhase2,P0,"arch-drift 传感器","verify 检测未 promote 与 API/LLD 漂移","M19","T-822",done
 T-824,M19-PrePhase2,P1,"占位符内容校验","prd/arch 传感器拒绝模板占位通过","M19","T-804,T-809",done
 T-825,M19-PrePhase2,P0,"M19 验收","m19-phase2 测试；enterprise propose 批准联动","M19 验收标准","T-820..T-824",done
+T-700,M7-Orchestration,P1,"v0.2 编排","parallel/fan-out/review/watch/runtime","v0.2","T-204",done
+T-701,M8-ProductLib,P1,"产品库与变异测试","design-template/mutation/hub golden","v0.2","T-203",done
+T-702,M9-Enterprise,P1,"企业交付 trace","requirements/design/delivery-trace/task-pack","enterprise","T-203",done
+T-703,M10-Layered,P1,"v0.3 分层升级","imports/hub sync/steer publish","v0.3","T-601",done
+T-704,M11-Platform,P1,"v0.4 平台","prototype/uat/drift/view","v0.4","T-305",done
+T-705,M12-ArchTop5,P2,"架构 Top5 评审","arch review rubric","架构","T-401",done
+T-706,M13-HubSource,P1,"Hub source 解析","git/path hub 源","Hub","T-602",done
+T-707,M14-HubLifecycle,P1,"Hub 生命周期","review/enforce 标记","Hub","T-602",done
+T-708,M15-HubCatalog,P1,"Hub 目录","catalog 索引","Hub","T-602",done
+T-709,M16-HubPolicy,P1,"Hub 策略","policy gate","Hub","T-603",done
+T-710,M17-HubIntegrity,P1,"Hub 完整性","integrity 校验","Hub","T-603",done
+T-830,M20-Integration,P0,"Context Pack org 注入","propose/design 自动注入 PRD/Arch LLD","M20","T-802,T-819",done
+T-831,M20-Integration,P0,"enterprise design arch-approved","design gate + design-enterprise suite","M20","T-821",done
+T-832,M20-Integration,P0,"archive promote 阻断","archPromoteProblems enterprise archive","M20","T-822",done
+T-833,M20-Integration,P1,"结构化 arch promote","archPromote merge API/ADR 节","M20","T-822",done
+T-834,M20-Integration,P1,"文档与 operation-guide","场景19索引、15↔19、Pre-phase 命令表","M20","T-817",done
+T-835,M20-Integration,P1,"hx approve 别名 + process-upgrade","approve prd/arch；docs/process-upgrade 接线","M20","T-820",done
+T-836,M20-Integration,P0,"M20 验收","p0-p2-integration 测试","M20 验收标准","T-830..T-835",done
+T-837,M21-Backlog,P2,"模块 LLD 批准门","hx approve arch-lld <module>","M21 backlog","T-831",planned
+T-838,M21-Backlog,P2,"LLD 双向 sync","change design ↔ org LLD 增量同步","M21 backlog","T-833",planned

@@ -98,6 +98,7 @@
 | 16 | [Hub 蓝图初始化](16-v0.3-hub-blueprint-init.md) | 平台 | `--from-hub` / blueprint / sync --apply |
 | 17 | [平台看板](17-v0.4-平台治理与仪表盘.md) | 平台 | prototype/UAT / drift / `hx view` |
 | 18 | [精简 harness + MCP](18-精简配置与无头Agent-MCP.md) | 入门·工具 | `imports:` / MCP L1 / 无头 apply |
+| 19 | [组织级 PRD/架构](19-组织级PRD与架构设计.md) | 企业·Pre-phase | `/hx-prd` `/hx-arch` `hx arch promote` |
 
 ---
 

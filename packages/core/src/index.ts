@@ -16,6 +16,7 @@ export * from "./archLayout.js";
 export * from "./prd.js";
 export * from "./arch.js";
 export * from "./prephaseStore.js";
+export * from "./archPromote.js";
 export * from "./deliveryTrace.js";
 export * from "./plan.js";
 export * from "./applyLoop.js";

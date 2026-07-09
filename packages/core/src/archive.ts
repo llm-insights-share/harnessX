@@ -2,8 +2,28 @@ import fs from "node:fs";
 import path from "node:path";
 import { Workspace } from "./paths.js";
 import { mergeChangeIntoSpecs, archiveChangeDir, type MergeConflict } from "./artifactStore.js";
-import { readMeta, setStatus } from "./metaStore.js";
+import { readMeta, setStatus, activeWaivers } from "./metaStore.js";
 import { appendRun, readRuns } from "./telemetry.js";
+import { readDesignOverview } from "./designLayout.js";
+import { resolveModulesForChange } from "./arch.js";
+import type { MetaYaml } from "./schemas.js";
+
+/** Enterprise changes with design must promote to org module LLD before archive (unless waived). */
+export function archPromoteProblems(ws: Workspace, change: string, meta: MetaYaml): string[] {
+  if (meta.profile !== "enterprise") return [];
+  let modules: ReturnType<typeof resolveModulesForChange> = [];
+  try {
+    modules = resolveModulesForChange(ws, change);
+  } catch {
+    return [];
+  }
+  if (modules.length === 0) return [];
+  if (!readDesignOverview(ws, change).trim()) return [];
+  if (meta.archPromoted) return [];
+  const waived = activeWaivers(meta).some((w) => w.target === "arch-drift" || w.target === "arch-promote");
+  if (waived) return [];
+  return [`enterprise archive requires hx arch promote ${change} — design not yet沉淀 to docs/architecture/modules/*/lld.md`];
+}
 
 export interface ArchiveResult {
   ok: boolean;
@@ -22,6 +42,10 @@ export function archiveChange(ws: Workspace, change: string, opts: { force?: boo
   const meta = readMeta(ws, change);
   if (meta.status !== "verified" && !opts.force) {
     problems.push(`change is in state "${meta.status}", not "verified" — run hx verify first (or --force for lite profiles)`);
+    return { ok: false, conflicts: [], capabilities: [], problems };
+  }
+  problems.push(...archPromoteProblems(ws, change, meta));
+  if (problems.length > 0) {
     return { ok: false, conflicts: [], capabilities: [], problems };
   }
 

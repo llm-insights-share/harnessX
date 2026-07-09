@@ -10,7 +10,7 @@
 4. 填写 `requirements/prd-summary.md`、`user-stories.md`、`nfr.md`。
 5. 填写 `proposal.md` 每一节（含 **PRD Reference**）；What Changes 每条映射 PRD AC。
 6. 按 spec-writing Skill 重写 delta spec。
-7. 校验：`hx gate check <change> --phase spec`（enterprise 另跑 `requirements-complete`）。
+7. 校验：`hx gate check <change> --phase propose`（enterprise：`prd-complete`、`prd-approved`、`requirements-complete`）。
 
 ## 护栏
 

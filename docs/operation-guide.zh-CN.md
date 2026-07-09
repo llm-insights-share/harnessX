@@ -277,10 +277,28 @@ phases:
 
 | 阶段 | 目标 | 关键命令 |
 | --- | --- | --- |
-| 需求阶段 | 明确业务变更、形成可验证规格 | `change create`、`propose`、`gate check --phase spec`、`gate approve` |
-| 设计阶段 | 形成可落地技术方案 | `design`、`guide pack --phase design`、`gate advance` |
+| **Pre-phase（组织级）** | PRD、全局 HLD、模块 LLD | `hx prd`、`hx arch`、`hx approve prd/arch` |
+| 需求阶段 | 明确业务变更、形成可验证规格 | `change create`、`propose`、`gate check --phase propose`、`gate approve` |
+| 设计阶段 | 形成可落地技术方案 | `design`、`gate check --phase design`、`gate advance` |
 | 开发编码阶段 | 按任务实现并持续自校正 | `plan`、`apply`、`guide task-pack`、`fix` |
-| 测试阶段 | 完整验证、可追溯、归档发布 | `verify`、`trace check`、`fixture verify`、`archive` |
+| 测试阶段 | 完整验证、可追溯、归档发布 | `verify`、`trace check`、`arch promote`、`archive` |
+
+### 4.3 Pre-phase 命令（组织级，`docs/` 制品）
+
+| 命令 | 说明 |
+| --- | --- |
+| `hx prd init <slug> --title <title>` | 脚手架 `docs/prd/<slug>.md` |
+| `hx prd check <slug>` | 运行 `prd-complete` 传感器 |
+| `hx approve prd <slug> --approver <name>` | 人工批准 PRD（等价 `hx gate approve --gate prd --prd <slug>`） |
+| `hx arch init --title <title>` | 脚手架全局 HLD + `registry.yaml` |
+| `hx arch check` | 运行 `arch-check` suite（含 `arch-approved`） |
+| `hx approve arch --approver <name>` | 人工批准全局架构 |
+| `hx arch lld init <module> --title <title>` | 脚手架模块 LLD |
+| `hx arch lld check <module>` | 模块 LLD 校验 |
+| `hx arch promote <change> [--by <name>]` | change design 结构化沉淀到模块 LLD |
+| `hx guide prd-pack <slug>` / `hx guide arch-pack` | Pre-phase Context Pack |
+
+Cursor 斜杠命令：`/hx-prd`、`/hx-arch`、`/hx-arch-lld`（`hx adapter sync` 后可用）。
 
 ---
 
@@ -297,7 +315,7 @@ phases:
 ```bash
 hx change create add-refund --domains orders,payments
 hx propose add-refund --title "支持部分退款"
-hx gate check add-refund --phase spec
+hx gate check add-refund --phase propose
 hx gate approve add-refund --gate spec --approver zhangsan
 hx gate advance add-refund
 ```

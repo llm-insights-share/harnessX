@@ -4,8 +4,9 @@
 
 ## 步骤
 
-1. 预检：`hx rebase check <change>`。若其他 change 先归档且你的 MODIFIED/REMOVED 不再匹配当前主规格，更新 delta 条目指向最新文本；若 spec 门禁批准失效，须人类重新批准后再试。
-2. 归档：`hx archive <change>`。将：
+1. 预检：`hx rebase check <change>`。若其他 change 先归档且你的 MODIFIED/REMOVED 不再匹配当前主规格，更新 delta 条目；若 spec 批准失效，须人类重新批准。
+2. Enterprise：`hx arch promote <change>` — 将 design 沉淀到 `docs/architecture/modules/*/lld.md`（archive 前必需，除非豁免）。
+3. 归档：`hx archive <change>`。将：
    - 把 ADDED/MODIFIED/REMOVED 合并入主 capability 规格；
    - 写入 `retro.md`，汇总门禁历史、豁免与 sensor 失败（供 steering 循环使用）；
    - 将 change 目录移入 `harnessX/archive/`。

@@ -9,13 +9,14 @@ that continuously improves the harness itself.
 diff review annotations → fix hints, guide behavior evals, GitHub issue scaffolding, and `hx notify`.
 **Enterprise delivery** adds `requirements/` analysis artifacts, `design/` HLD+LLD packages,
 `delivery-trace.yaml`, `@design=` task handoff, and `hx guide task-pack` for scoped apply context.
-See [scenario 15](docs/examples/15-企业级需求到交付交接.md).
+**Organization Pre-phase** (M18/M19) adds `/hx-prd`, `/hx-arch`, org-level approvals, and `hx arch promote`.
+See [scenario 19](docs/examples/19-组织级PRD与架构设计.md) → [scenario 15](docs/examples/15-企业级需求到交付交接.md).
 
 Design document: [`docs/harness-delivery-system-design.html`](docs/harness-delivery-system-design.html)
 · Build plan & status: [`docs/build-plan.csv`](docs/build-plan.csv)
 · **Usage guides (by theme)**: [`docs/usage-guide.en.md`](docs/usage-guide.en.md) (English) · [`docs/usage-guide.zh-CN.md`](docs/usage-guide.zh-CN.md) (中文 — 核心概念、初始化配置、特殊项目定制)
 · **Operation guides (by phase)**: [`docs/operation-guide.en.md`](docs/operation-guide.en.md) (English) · [`docs/operation-guide.zh-CN.md`](docs/operation-guide.zh-CN.md) (中文)
-· **Usage scenario examples**: [`docs/examples/`](docs/examples/README.md) (中文) · [`docs/examples/en/`](docs/examples/en/README.md) (English) — **18 user-journey scenarios** ([picker](docs/examples/00-场景选择指南.md)) covering onboarding, daily delivery, enterprise, platform governance, headless MCP, and more
+· **Usage scenario examples**: [`docs/examples/`](docs/examples/README.md) (中文) · [`docs/examples/en/`](docs/examples/en/README.md) (English) — **19 user-journey scenarios** ([picker](docs/examples/00-场景选择指南.md)) covering onboarding, daily delivery, enterprise pre-phase, platform governance, headless MCP, and more
 
 ## Advanced Features & Differentiation
 

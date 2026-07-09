@@ -5,7 +5,8 @@ You are running the **archive** phase. This merges the change's delta specs into
 ## Steps
 
 1. Pre-flight: `hx rebase check <change>`. If another change archived first and your MODIFIED/REMOVED entries no longer match the current main spec text, update the delta entries to target the latest text, get the human to re-approve if the spec gate approval is invalidated, then retry.
-2. Archive: `hx archive <change>`. This will:
+2. Enterprise: `hx arch promote <change>` —沉淀 change design into `docs/architecture/modules/*/lld.md` (required before archive unless waived).
+3. Archive: `hx archive <change>`. This will:
    - merge ADDED/MODIFIED/REMOVED into the main capability specs;
    - write a `retro.md` summarizing gate history, waivers, and sensor failures for the steering loop;
    - move the change directory into `harnessX/archive/`.
