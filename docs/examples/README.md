@@ -102,6 +102,8 @@
 | 17 | [平台看板](17-v0.4-平台治理与仪表盘.md) | 平台 | prototype/UAT / drift / `hx view` |
 | 18 | [精简 harness + MCP](18-精简配置与无头Agent-MCP.md) | 入门·工具 | `imports:` / MCP L1 / 无头 apply |
 | 19 | [组织级 PRD/架构](19-组织级PRD与架构设计.md) | 企业·req/arch | `/hx-prd` `/hx-arch` `hx req prd` `hx arch promote` |
+| 20 | [企业 SDLC 工单全流程](20-企业SDLC工单全流程.md) | 企业·sdlc | `wo/cr/bug/test-cases` 与 req/arch/change 闭环 |
+| 21 | [Hub 双角色与贡献审核](21-hub-双角色与贡献审核.md) | 平台·hub | `hub submit` / `hub contributions` / 双角色治理 |
 
 ---
 

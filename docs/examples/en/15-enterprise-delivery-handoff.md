@@ -128,7 +128,7 @@ $ hx rebase check member-badge
 $ hx archive member-badge
 ```
 
-Without `hx arch promote`, enterprise **archive is blocked** (use `hx waiver add --target arch-drift` to waive).
+Without `hx arch promote`, enterprise **archive is blocked** (use `hx waiver add member-badge --target arch-drift --reason "temporary alignment pending arch promote" --requested-by zhao.fe --approved-by lin.arch` to waive).
 
 ## Key mechanisms
 

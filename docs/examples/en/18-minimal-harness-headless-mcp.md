@@ -43,11 +43,12 @@ imports:
 
 profiles:
   standard:
-    phases: [propose, design, spec, plan, apply, verify, archive]
+    stages: [dev]
+    dev_tasks: [propose, design, plan, apply, verify, archive]
     suites:
-      spec: fast
-      apply: fast
-      verify: verification
+      dev.propose: fast
+      dev.apply: fast
+      dev.verify: verification
 
 guides: []
 sensors: []

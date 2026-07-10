@@ -43,11 +43,12 @@ imports:
 
 profiles:
   standard:
-    phases: [propose, design, spec, plan, apply, verify, archive]
+    stages: [dev]
+    dev_tasks: [propose, design, plan, apply, verify, archive]
     suites:
-      spec: fast
-      apply: fast
-      verify: verification
+      dev.propose: fast
+      dev.apply: fast
+      dev.verify: verification
 
 guides: []
 sensors: []
@@ -149,7 +150,8 @@ wrote harnessX/changes/export-csv/tasks/01b-pack.md (5 sections, 12ms)
   "packFile": "harnessX/changes/export-csv/tasks/01b-pack.md",
   "env": {
     "HX_CHANGE": "export-csv",
-    "HX_PHASE": "apply",
+    "HX_STAGE": "dev",
+    "HX_TASK": "apply",
     "HX_TASK_ID": "01b",
     "HX_TASK_TITLE": "Implement CSV export endpoint",
     "HX_TASK_PACK": ".../01b-pack.md",

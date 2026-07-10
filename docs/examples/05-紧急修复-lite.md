@@ -10,7 +10,7 @@
 
 周五 18:40，告警：优惠券核销接口对"已过期但未落库过期状态"的券返回 500（应返回 422）。值班的李工需要 30 分钟内出修复。走 standard 全流程（design/spec/批准/plan）显然不现实，但**完全绕过 harness 会让这次修复游离在规格体系之外**——三个月后没人知道这个行为是有意的还是巧合。
 
-lite profile 就是为此设计的：`phases: [propose, apply, archive]`，apply 阶段跑 fast-lite 套件。
+lite profile 就是为此设计的：仅启用 `dev` 阶段并收敛到最小任务集（常见为 `propose/apply/archive`），apply 阶段跑 fast-lite 套件。
 
 ## 操作步骤
 
