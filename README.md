@@ -5,6 +5,9 @@ process — requirements → design → coding → testing — with spec-driven 
 feedforward **Guides**, feedback **Sensors**, fail-closed **Gates**, and a **Steering loop**
 that continuously improves the harness itself.
 
+**v0.5** introduces the **four-stage delivery model** (`req` → `arch` → `dev` → `test`), stages gate engine
+(`delivery_mode: stages`), `hx req` / `hx stage status` / `hx migrate`, and
+[delivery-stages.zh-CN.md](docs/delivery-stages.zh-CN.md) as the authoritative phase reference.
 **v0.4** adds native **enterprise SDLC** orchestration: `enterprise-sdlc` profile, work orders (`hx wo`),
 change requests (`hx cr`), test-design phase, bug/retest loop, `hx approve arch-lld`, and
 [scenario 20](docs/examples/20-企业SDLC工单全流程.md) walkthrough.
