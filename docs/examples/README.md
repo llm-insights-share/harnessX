@@ -14,7 +14,7 @@
 | --- | --- |
 | 第一次接入 HarnessX | [01 新项目接入](01-新项目接入.md) |
 | 交付一个常规功能 | [02 标准功能全流程](02-标准功能开发全流程.md)（需先 01） |
-| 从组织 Hub 初始化 | [16 Hub 蓝图初始化](16-v0.3-hub-blueprint-init.md) · **[Hub 资产维护手册](hub-asset-maintenance.zh-CN.md)** · [hxhub 使用手册](../hxhub-usage.zh-CN.md) |
+| 从组织 Hub 初始化 | [16 Hub 蓝图初始化](16-v0.3-hub-blueprint-init.md) · **[hxhub 使用手册](../hxhub-usage.zh-CN.md)** |
 | 企业级需求→编码交接 | [19 组织 Pre-phase](19-组织级PRD与架构设计.md) → [15 enterprise 交接](15-企业级需求到交付交接.md) |
 | 企业 SDLC 工单全流程 | [20 企业 SDLC 工单全流程](20-企业SDLC工单全流程.md)（profile: `enterprise-sdlc`） |
 | Hub 双角色与贡献审核 | [21 Hub 双角色与贡献审核](21-hub-双角色与贡献审核.md) |

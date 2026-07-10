@@ -77,6 +77,6 @@ See `seed-manifest.yaml` for the full catalog.
 
 Packages ship with `.review` status `approved` so they are consumable immediately after seeding.
 
-**Maintenance guide**: [docs/hub-asset-maintenance.zh-CN.md](../../docs/hub-asset-maintenance.zh-CN.md) (中文) · [docs/hub-asset-maintenance.en.md](../../docs/hub-asset-maintenance.en.md) (English)
+**Maintenance guide**: [docs/hxhub-usage.zh-CN.md](../../docs/hxhub-usage.zh-CN.md) (中文) · [docs/hub-asset-maintenance.en.md](../../docs/hub-asset-maintenance.en.md) (English stub)
 
-**Ops project init** (remote Hub already exists): [§9.2 Plan A](../../docs/hub-asset-maintenance.zh-CN.md#92-已有远程-hub运维项目初始化方案-a推荐)
+**Ops project init** (remote Hub already exists): [§6.2 Scenario B](../../docs/hxhub-usage.zh-CN.md#62-场景-b连接已有远程-hub运维项目初始化)

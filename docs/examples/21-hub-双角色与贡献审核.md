@@ -3,7 +3,7 @@
 **角色**：赵平台（运维 / maintainer）、王开发（使用 / consumer）  
 **目标**：业务项目查询 Hub 资产并提交优秀 Skill；运维项目在管理仓库审核后合并到正式 Hub。
 
-> **运维项目初始化（已有远程 hx-hub）**：完整步骤见 [Hub 资产维护手册 §9.2](../hub-asset-maintenance.zh-CN.md#92-已有远程-hub运维项目初始化方案-a推荐)。
+> **运维项目初始化（已有远程 hx-hub）**：完整步骤见 [hxhub 使用手册 §6.2](../hxhub-usage.zh-CN.md#62-场景-b连接已有远程-hub运维项目初始化)。
 
 ---
 
@@ -81,6 +81,6 @@ installRequiresApproval: true
 
 ## 5. 相关文档
 
-- [Hub 资产维护手册 §9.2 运维项目初始化](../hub-asset-maintenance.zh-CN.md#92-已有远程-hub运维项目初始化方案-a推荐)
-- [Hub 资产维护手册](../hub-asset-maintenance.zh-CN.md)
+- [hxhub 使用手册 §6.2 运维项目初始化](../hxhub-usage.zh-CN.md#62-场景-b连接已有远程-hub运维项目初始化)
+- [hxhub 使用手册](../hxhub-usage.zh-CN.md)
 - [场景 08：Hub 资产共享与供应链](08-hub-资产共享与供应链.md)

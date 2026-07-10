@@ -22,7 +22,7 @@ See [scenario 19](docs/examples/19-组织级PRD与架构设计.md) → [scenario
 Design document: [`docs/harness-delivery-system-design.html`](docs/harness-delivery-system-design.html)
 · Build plan & status: [`docs/build-plan.csv`](docs/build-plan.csv)
 · **Usage guides (by theme)**: [`docs/usage-guide.en.md`](docs/usage-guide.en.md) (English) · [`docs/usage-guide.zh-CN.md`](docs/usage-guide.zh-CN.md) (中文 — 核心概念、初始化配置、特殊项目定制)
-· **Hub asset maintenance**: [`docs/hub-asset-maintenance.en.md`](docs/hub-asset-maintenance.en.md) · [`docs/hub-asset-maintenance.zh-CN.md`](docs/hub-asset-maintenance.zh-CN.md)
+· **hxhub usage (Hub ops + asset maintenance)**: [`docs/hxhub-usage.zh-CN.md`](docs/hxhub-usage.zh-CN.md) (中文) · [`docs/hub-asset-maintenance.en.md`](docs/hub-asset-maintenance.en.md) (English stub)
 · **Operation guides (by phase)**: [`docs/operation-guide.en.md`](docs/operation-guide.en.md) (English) · [`docs/operation-guide.zh-CN.md`](docs/operation-guide.zh-CN.md) (中文)
 · **Usage scenario examples**: [`docs/examples/`](docs/examples/README.md) (中文) · [`docs/examples/en/`](docs/examples/en/README.md) (English) — **20 user-journey scenarios** ([picker](docs/examples/00-场景选择指南.md)) covering onboarding, daily delivery, enterprise pre-phase, platform governance, headless MCP, and more
 

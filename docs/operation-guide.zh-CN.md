@@ -560,13 +560,13 @@ hx meta verify --all
 
 当你把 Hub 作为组织级资产仓时，建议使用以下命令完成生命周期、评审、策略与完整性治理。
 
-**专项手册**（资产清单 + 各类维护样例）：[Hub 资产维护手册](hub-asset-maintenance.zh-CN.md) · [hxhub 使用手册](hxhub-usage.zh-CN.md) · [English](hub-asset-maintenance.en.md) · [场景 21 双角色与贡献审核](examples/21-hub-双角色与贡献审核.md)
+**专项手册**（全命令说明 + 端到端场景）：[hxhub 使用手册](hxhub-usage.zh-CN.md) · [English stub](hub-asset-maintenance.en.md) · [场景 21 双角色与贡献审核](examples/21-hub-双角色与贡献审核.md)
 
 配置 `config.yaml` 的 `hub.source` + `hub.role`（`consumer` | `maintainer`）后，多数 `hx hub` 命令可省略 `--hub`。使用角色通过 `hx hub submit` 提交资产到 `contributions/`；运维角色通过 `hx hub contributions accept` 合并到正式目录后 `hx hub push`。
 
 > 从本版本开始，Hub 运维可使用独立命令 **`hxhub`**（与 `hx hub` 长期并存）。推荐在运维项目中优先使用 `hxhub init/help/doctor/asset create`。
 
-**已有远程 hx-hub 时，运维项目如何初始化**：见 [Hub 资产维护手册 §9.2](hub-asset-maintenance.zh-CN.md#92-已有远程-hub运维项目初始化方案-a推荐)（独立 `hx-hub-ops` 仓库 + `role: maintainer`）。
+**已有远程 hx-hub 时，运维项目如何初始化**：见 [hxhub 使用手册 §6.2](hxhub-usage.zh-CN.md#62-场景-b连接已有远程-hub运维项目初始化)（独立 `hx-hub-ops` 仓库 + `role: maintainer`）。
 
 #### `hx hub sync`
 
