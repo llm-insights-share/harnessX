@@ -139,7 +139,7 @@ Cursor ▸ /hx-propose freeze-balance-query
          Requirement: users can query frozen balance. PRD: @docs/prd/freeze-balance.md
 ```
 
-The agent follows the compiled `/hx-propose` prompt: fill all sections, write delta specs with `REQ-ACCT-*` titles, run `hx gate check --phase spec` until green.
+The agent follows the compiled `/hx-propose` prompt: fill all sections, write delta specs with `REQ-ACCT-*` titles, run `hx gate check --stage dev --task propose` until green.
 
 ### 6. Gate behavior: what you can and cannot change
 
@@ -153,7 +153,7 @@ The agent follows the compiled `/hx-propose` prompt: fill all sections, write de
 **Cannot remove or rename (Gate blocks otherwise):**
 
 ```text
-$ hx gate check freeze-balance-query --phase design
+$ hx gate check freeze-balance-query --stage dev --task design
 BLOCKER  proposal.md missing section "## Why"
 GATE BLOCKED (design)
 ```
@@ -171,4 +171,4 @@ For delta specs: `spec-validate` still requires EARS + Scenarios on ADDED/MODIFI
 
 ## Relation to later phases
 
-Custom proposals affect readability and compliance traceability in **propose/design/spec** only. **Human spec→plan approval**, traceability, and archive merge rules are unchanged. In design, agents still read the filled `proposal.md` from the Context Pack — compliance fields in the proposal template naturally become inputs for high-level design.
+Custom proposals affect readability and compliance traceability in **propose/design/spec** only. **Human design→plan approval**, traceability, and archive merge rules are unchanged. In design, agents still read the filled `proposal.md` from the Context Pack — compliance fields in the proposal template naturally become inputs for high-level design.

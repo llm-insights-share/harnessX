@@ -14,23 +14,31 @@ One-page reference for core terms used across HX, the Hub, and delivery orchestr
 
 ### HX (HarnessX)
 
-The outer harness around AI coding agents: spec-driven delivery with **guides** (direction), **sensors** (verification), and **gates** (phase transitions). HX does not replace your IDE; it coordinates what the agent sees and what must pass before work advances.
+The outer harness around AI coding agents: spec-driven delivery with **guides** (direction), **sensors** (verification), and **gates** (stage/task transitions). HX does not replace your IDE; it coordinates what the agent sees and what must pass before work advances.
 
 ### Harness instance
 
-A initialized project workspace: `harnessX/` containing `harness.yaml` (asset registry), `config.yaml` (project choices), `constitution.md`, and per-change artifacts under `changes/`.
+An initialized project workspace: `harnessX/` containing `harness.yaml` (asset registry), `config.yaml` (project choices), `constitution.md`, and per-change artifacts under `changes/`.
 
 ### Change
 
-A unit of delivery work (feature, fix, migration). Each change has `meta.yaml` (phase state), delta specs, optional design/tasks, and an isolated asset overlay under `changes/<id>/assets/`.
+A unit of delivery work (feature, fix, migration). Each change has `meta.yaml` (stage/task state), delta specs, optional design/tasks, and an isolated asset overlay under `changes/<id>/assets/`.
 
 ### Profile
 
-A **workflow profile** in `harness.yaml` (e.g. `standard`, `enterprise`) defining which phases run and which sensor **suites** bind to each phase gate.
+A **workflow profile** in `harness.yaml` (e.g. `standard`, `enterprise`) defining which **stages** run, which **tasks** each stage includes, and which sensor **suites** bind to each task. See [delivery-stages.zh-CN.md](delivery-stages.zh-CN.md) for the authoritative task registry.
+
+### Stage
+
+The four delivery stages: `req` (requirements), `arch` (architecture), `dev` (development), `test` (testing). `req`/`arch` are org-scoped (`docs/`); `dev`/`test` are change-scoped (`harnessX/changes/<id>/`).
+
+### Task
+
+A unit of work within a stage, e.g. `prd-writing` in `req`, `propose`/`design`/`apply` in `dev`. `hx gate check --stage <stage> --task <task>` runs the bound sensor suite at task granularity.
 
 ### Suite
 
-A named list of sensor ids (e.g. `fast`, `verification-enterprise`) executed together during `hx gate check`.
+A named list of sensor ids (e.g. `fast`, `verification-enterprise`) keyed in `harness.yaml` as `dev.apply`, `test.test-case-design`, etc., and executed together during `hx gate check`.
 
 ### Bundle (topology bundle)
 
@@ -38,7 +46,7 @@ A reusable slice of guides/sensors/suites for a topology (e.g. `api-service`). R
 
 ### Blueprint
 
-A delivery path preset (`blueprint.yaml`): extends a profile, declares `hub_deps`, and maps **phases → guides/sensors**. Applying a blueprint wires missing refs into `harness.yaml`.
+A delivery path preset (`blueprint.yaml`): extends a profile, declares `hub_deps`, and maps **stage.task → guides/sensors**. Applying a blueprint wires missing refs into `harness.yaml`.
 
 ### Asset
 

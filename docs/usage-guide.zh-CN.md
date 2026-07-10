@@ -61,12 +61,12 @@ flowchart LR
 | --- | --- | --- |
 | **Harness 实例** | 已初始化的项目工作区 | `harnessX/` |
 | **Change** | 一次交付工作单元（功能、修复、迁移） | `harnessX/changes/<id>/` |
-| **Profile** | 工作流档位（阶段序列 + 各阶段 sensor 套件） | `config.yaml` + `harness.yaml` |
+| **Profile** | 工作流档位（阶段 + 任务 + 各任务 sensor 套件） | `config.yaml` + `harness.yaml` |
 | **Guide** | 前馈资产：Skill、模板、约束 | `harness.yaml` → `assets/guides/` |
 | **Sensor** | 反馈检查：lint、测试、规格校验、架构扫描 | `harness.yaml` → `runs/` 报告 |
-| **Gate** | 阶段推进条件；fail-closed（崩溃也阻断） | `meta.yaml` + `hx gate` |
+| **Gate** | 任务推进条件；fail-closed（崩溃也阻断） | `meta.yaml` + `hx gate check --stage --task` |
 | **Bundle** | 拓扑级 guides/sensors 打包（如 API 服务） | `imports:` 或 `assets/bundles/` |
-| **Blueprint** | 交付路径预设（profile + Hub 依赖 + 阶段映射） | `blueprint.yaml` |
+| **Blueprint** | 交付路径预设（profile + Hub 依赖 + stage.task 映射） | `blueprint.yaml` |
 | **Hub** | 组织级资产注册表（packages / bundles / blueprints） | 独立 Git 仓或本地目录 |
 | **Adapter** | 单源资产 → 多 IDE 目标编译 | `.cursor/`、`AGENTS.md` 等 |
 
@@ -100,7 +100,7 @@ HarnessX 不只约束「代码质量」，还约束架构与行为：
 plan → propose → design → apply → verify → archive
 ```
 
-（`lite` 跳过 design/spec/plan/verify；`strict` / `enterprise` 增加 explore 或企业级检查，见 [1.9](#19-典型场景按风险选择-profile)）
+（`lite` 仅 `dev` 阶段；`strict` / `enterprise` 走四阶段全量，见 [1.9](#19-典型场景按风险选择-profile)）
 
 | 入口 | 适用 | 示例 |
 | --- | --- | --- |
@@ -131,13 +131,16 @@ hx hooks install && hx ci init && hx adapter sync
 
 # 4. 验证 Cursor：/hx 斜杠命令、规则拦截、fixture hook
 
-# 5. 走第一个 change
+# 5. 走第一个 change（dev 阶段）
 hx change create my-feature --domains billing
 # Cursor ▸ /hx-propose my-feature
-hx gate approve my-feature --gate spec --approver alice
+hx gate check my-feature --stage dev --task propose
+hx design my-feature
+hx gate check my-feature --stage dev --task design
+hx gate approve my-feature --gate design-to-plan --approver alice
 hx plan my-feature
 hx apply my-feature --runner "<your-agent-cmd>"
-hx verify my-feature && hx archive my-feature
+hx gate check my-feature --stage dev --task verify && hx archive my-feature
 ```
 
 **关键机制**：
@@ -149,23 +152,23 @@ hx verify my-feature && hx archive my-feature
 ### 1.6 典型场景：日常功能交付（standard）
 
 **角色**：后端/全栈开发  
-**目标**：常规需求从 propose 到 archive  
+**目标**：常规需求从 dev `propose` 到 `archive`  
 **详细 walkthrough**：[场景 02 标准功能全流程](examples/02-标准功能开发全流程.md)
 
 核心循环：
 
 ```text
 Cursor 写 proposal + delta spec
-  → hx gate check --phase spec（spec-validate 自检）
-  → Cursor /hx-design 写 design.md
-  → hx gate advance（阶段推进）
-  → hx gate approve --gate spec（人工批准 spec→plan）
-  → hx plan（双轨 test + impl 任务）
+  → hx gate check --stage dev --task propose（spec-validate 自检）
+  → Cursor /hx-design 写 design
+  → hx gate check --stage dev --task design
+  → hx gate approve --gate design-to-plan（人工批准 design→plan）
+  → hx plan（任务清单）
   → hx apply --runner "<agent>"（带 HX_TASK_* 注入，失败 fix_hint 自校正）
-  → hx verify → hx trace check → hx archive
+  → hx gate check --stage dev --task verify → hx archive
 ```
 
-Delta spec 使用 OpenSpec 格式（ADDED/MODIFIED/REMOVED + GIVEN/WHEN/THEN），由 `spec-validate` 机械校验——**格式错误在 propose 阶段就会被拦住**，不必等到 PR。
+Delta spec 使用 OpenSpec 格式（ADDED/MODIFIED/REMOVED + GIVEN/WHEN/THEN），由 `spec-validate` 在 dev `propose` 任务机械校验。
 
 ### 1.7 典型场景：产品经理撰写与批准 PRD
 
@@ -178,39 +181,31 @@ PM 在 HarnessX 中的职责是维护**组织级 PRD**（跨多个 change 复用
 
 ```text
 Cursor 写 PRD（/hx-prd）
-  → hx prd check <slug>（prd-complete 传感器）
-  → hx approve prd <slug> --approver <pm>（终端人工背书）
+  → hx req prd check <slug>（prd-complete 传感器）
+  → hx gate approve --gate prd --prd <slug> --approver <pm>（终端人工背书）
   → 研发 hx change create ... --prd <slug>（change 自动链接 org PRD）
 ```
 
 **典型命令流**：
 
 ```bash
-# 1. 脚手架（也可在 Cursor 用 /hx-prd 触发）
-hx prd init member-badge --title "会员徽章"
+hx req prd init member-badge --title "会员徽章"
+# 编辑 docs/prd/member-badge.md
+hx req prd check member-badge
+hx gate approve --gate prd --prd member-badge --approver chen.pm
 
-# 2. 在 Cursor 中按 prd-template / prd-writing Skill 填写：
-#    用户故事、AC（GWT）、In/Out Scope、NFR、评审结论
-#    文件落盘：docs/prd/member-badge.md
-
-# 3. 机械校验（格式与必填章节）
-hx prd check member-badge
-
-# 4. 人工批准（须在终端执行，写入 docs/.prephase-approvals.yaml）
-hx approve prd member-badge --approver chen.pm
-
-# 5. （可选）提交 PRD 审核工单（enterprise-sdlc）
-hx prd submit member-badge --by chen.pm
+# （可选）提交 PRD 审核工单（enterprise-sdlc）
+hx req prd submit member-badge --by chen.pm
 ```
 
 **PM 需要知道的机制**：
 
 | 机制 | 说明 |
 | --- | --- |
-| **Pre-phase 与 change 分离** | `docs/prd/` 是组织级制品；单次功能的增量在 `harnessX/changes/<id>/requirements/` |
-| **批准与内容绑定** | PRD 文件改动后，批准记录失效，须重新 `hx prd check` + `hx approve prd` |
-| **自动注入 Context Pack** | change 创建时带 `--prd <slug>`，`hx guide pack` 在 propose/design 阶段自动注入 org PRD，研发不必每次手动 `@` |
-| **enterprise 门禁** | propose 阶段检查 `prd-complete` + `prd-approved`；未批准则 change 无法推进 |
+| **req 与 change 分离** | `docs/prd/` 是组织级制品；单次功能的增量在 `harnessX/changes/<id>/requirements/` |
+| **批准与内容绑定** | PRD 文件改动后，批准记录失效，须重新 `hx req prd check` + `hx gate approve --gate prd` |
+| **自动注入 Context Pack** | change 创建时带 `--prd <slug>`，`hx guide pack` 在 dev `propose`/`design` 自动注入 org PRD |
+| **enterprise 门禁** | dev `propose` 检查 `prd-complete` + `prd-approved` |
 | **模板定制** | 组织可改 `prd-template` 或 Hub 包 `prd-writing@1.0.0`（见场景 11） |
 
 **与研发的交接**：PRD 批准后，PM 通知研发创建 change：
@@ -245,7 +240,7 @@ Cursor 写全局 HLD（/hx-arch）
   → hx arch check（arch-approved 等传感器）
   → hx approve arch --approver <architect>
   → （按需）/hx-arch-lld <module> → hx arch lld check <module>
-  → change design 阶段 arch-change-align 校验对齐
+  → change dev `design` 任务 arch-change-align 校验对齐
   → archive 前 hx arch promote <change> 沉淀回模块 LLD
 ```
 
@@ -276,11 +271,11 @@ hx arch submit --by lin.arch
 
 **change 交付中的架构师触点**：
 
-| 阶段 | 架构师动作 | 相关传感器 |
+| dev 任务 | 架构师动作 | 相关传感器 |
 | --- | --- | --- |
-| design | 审阅 change 的 `design/overview.md` 与 LLD 目录 | `arch-change-align`、`design-hld-complete`、`design-lld-complete` |
-| verify | 关注 `arch-drift`（未 promote 时 warn） | `design-drift`、`uat-complete` |
-| archive 前 | **必须**执行沉淀（enterprise） | `hx arch promote <change> --by lin.arch` |
+| `design` | 审阅 change 的 `design/overview.md` 与 LLD 目录 | `arch-change-align`、`design-hld-complete`、`design-lld-complete` |
+| `verify` | 关注 `arch-drift`（未 promote 时 warn） | `design-drift`、`uat-complete` |
+| `archive` 前 | **必须**执行沉淀（enterprise） | `hx arch promote <change> --by lin.arch` |
 
 ```bash
 # change 验证通过后，将 change design 结构化合并回组织模块 LLD
@@ -302,10 +297,10 @@ hx archive member-badge
 
 | Profile | 阶段 | 何时选 | 场景 |
 | --- | --- | --- | --- |
-| **lite** | propose → apply → archive | 紧急 hotfix、文案/配置小改 | [05 紧急修复](examples/05-紧急修复-lite.md) |
-| **standard** | 完整七阶段（无 explore） | 大多数功能需求 | [02 标准功能](examples/02-标准功能开发全流程.md) |
-| **strict** | + explore；verification-strict 套件 | 支付/库存等核心域，测试先行 | [03 核心域 strict](examples/03-核心域改动-strict-测试先行.md) |
-| **enterprise** | + 组织 Pre-phase + change 内 HLD/LLD/UAT | 多角色企业交付 | [19](examples/19-组织级PRD与架构设计.md) → [15](examples/15-企业级需求到交付交接.md)、[14](examples/14-企业全栈多角色交付.md) |
+| **lite** | `dev` only | 紧急 hotfix、文案/配置小改 | [05 紧急修复](examples/05-紧急修复-lite.md) |
+| **standard** | req, arch, dev, test | 大多数功能需求 | [02 标准功能](examples/02-标准功能开发全流程.md) |
+| **strict** | 四阶段 + verification-strict | 支付/库存等核心域，测试先行 | [03 核心域 strict](examples/03-核心域改动-strict-测试先行.md) |
+| **enterprise** | 四阶段 + org HLD/LLD/UAT | 多角色企业交付 | [19](examples/19-组织级PRD与架构设计.md) → [15](examples/15-企业级需求到交付交接.md)、[14](examples/14-企业全栈多角色交付.md) |
 
 在 `config.yaml` 设默认 profile；创建 change 时可用 `--profile` 覆盖：
 
@@ -316,18 +311,18 @@ hx change create payment-refund --profile strict --domains payments
 
 `constitution.md` 中声明的 `core-domains` 会推荐团队对核心域使用 `strict`。
 
-#### 企业 Pre-phase（组织级制品）
+#### 企业 req / arch 阶段（组织级制品）
 
-在 `enterprise` change 交付之前，建议先完成组织级 Pre-phase（场景 19）：
+在 `enterprise` change 交付之前，建议先完成组织级 req/arch（场景 19）：
 
 ```text
-/hx-prd → hx prd check → hx approve prd <slug> --approver <name>
-/hx-arch → hx arch check → hx approve arch --approver <name>
+/hx-prd → hx req prd check → hx gate approve --gate prd --prd <slug> --approver <name>
+/hx-arch → hx arch check → hx gate approve --gate arch --approver <name>
 /hx-arch-lld <module> → hx arch lld check <module>
 hx change create <id> --prd <slug> --arch-modules <module> --profile enterprise
 ```
 
-`hx guide pack` 在 propose/design 阶段会**自动注入** `docs/prd/` 与 `docs/architecture/` 制品到 Context Pack。归档前执行 `hx arch promote <change>` 将 change design 沉淀回模块 LLD。
+`hx guide pack` 在 dev `propose`/`design` 自动注入 `docs/prd/` 与 `docs/architecture/`。归档前 `hx arch promote <change>` 沉淀回模块 LLD。
 
 ### 1.10 典型场景：平台与组织视角
 
@@ -355,7 +350,7 @@ Tier 2 适配器（如 Codex、generic `AGENTS.md`）缺少 Cursor hooks 时，H
 2. **Gate** 全绿 + 前置条件（如人工批准）才 `advance`；sensor 崩溃视为阻断（fail-closed）。
 3. **Guide** 按阶段组装 Context Pack；**Sensor** 检验输出；失败带 `fix_hint`，可进 `hx fix` 回环。
 4. `hx archive` 将 delta 合并进主规格，成为仓库真相。
-5. **组织级 Pre-phase**（`docs/prd/`、`docs/architecture/`）与 **change 级交付** 双轨并存；`hx guide pack` 注入 org 制品，归档前 `hx arch promote` 回写模块 LLD。
+5. **组织级 req/arch**（`docs/prd/`、`docs/architecture/`）与 **change 级 dev/test** 并存；`hx guide pack` 注入 org 制品，归档前 `hx arch promote` 回写模块 LLD。
 6. 反复失败经 **Steering** 蒸馏为新 Guide，经 **Hub** 在组织内共享——harness 自身持续进化。
 
 ---
@@ -459,11 +454,12 @@ imports:
 
 profiles:
   standard:
-    phases: [propose, design, spec, plan, apply, verify, archive]
+    stages: [req, arch, dev, test]
+    dev_tasks: [plan, propose, design, apply, verify, archive]
     suites:
-      spec: fast
-      apply: fast
-      verify: verification
+      dev.propose: fast
+      dev.apply: fast
+      dev.verify: verification
 
 guides: []
 sensors: []
@@ -488,7 +484,7 @@ overrides:
 
 ### 2.5 交付蓝图 `blueprint.yaml`
 
-Blueprint 描述「这类项目应走哪条交付路径」：继承 profile、声明 Hub 依赖、映射阶段 → guides/sensors。
+Blueprint 描述「这类项目应走哪条交付路径」：继承 profile、声明 Hub 依赖、映射 stage.task → guides/sensors。
 
 ```yaml
 name: standard-delivery
@@ -496,12 +492,12 @@ extends: standard
 hub_deps:
   - prd-writing@1.0.0
   - prototype-wireframe@1.0.0
-phases:
-  propose:
+stages:
+  dev.propose:
     guides: [prd-writing]
-  design:
+  dev.design:
     guides: [prototype-wireframe]
-  verify:
+  dev.verify:
     sensors: [drift, uat-complete]
 ```
 
@@ -542,7 +538,7 @@ hx propose demo --title "演示"
 **详细 walkthrough**：[场景 12 自定义概要设计产出模板](examples/12-自定义概要设计产出模板.md)
 
 1. 创建 `assets/guides/design-template/template.md` + `asset.yaml`
-2. 在 `harness.yaml` 注册为 `guide.template`，`phase: [design]`
+2. 在 `harness.yaml` 注册为 `guide.template`，`stage: dev`, `task: design`
 3. 可选定制 `assets/commands/design.md`（编译为 `/hx-design` 提示词）
 4. `hx adapter sync` 后，Cursor `/hx-design` 会按模板扩写
 
@@ -550,11 +546,11 @@ hx propose demo --title "演示"
 
 ### 2.8 定制编码规范与架构约束
 
-| 资产类型 | 路径示例 | 阶段 |
+| 资产类型 | 路径示例 | stage.task |
 | --- | --- | --- |
-| coding-conventions Skill | `assets/guides/coding-conventions/SKILL.md` | apply |
-| 分层约束 | `assets/bundles/<bundle>/constraints/layering.yaml` | apply, verify |
-| 性能预算 Skill | `assets/guides/.../performance-budget.md` | design, apply, verify |
+| coding-conventions Skill | `assets/guides/coding-conventions/SKILL.md` | dev.apply |
+| 分层约束 | `assets/bundles/<bundle>/constraints/layering.yaml` | dev.apply, dev.verify |
+| 性能预算 Skill | `assets/guides/.../performance-budget.md` | dev.design, dev.apply, dev.verify |
 
 Bundle 自带 constraint + sensor **成对出现**（如前馈 layering.yaml + 反馈 arch-boundary sensor）。
 
@@ -618,7 +614,7 @@ hx hooks install && hx ci init && hx adapter sync
 ### 3.2 企业级多角色交付
 
 **适用**：BA → 架构师 → 前后端多人协作  
-**详细 walkthrough**：[场景 19](examples/19-组织级PRD与架构设计.md)（组织 Pre-phase）→ [场景 15](examples/15-企业级需求到交付交接.md)、[场景 14](examples/14-企业全栈多角色交付.md)
+**详细 walkthrough**：[场景 19](examples/19-组织级PRD与架构设计.md)（组织 req/arch）→ [场景 15](examples/15-企业级需求到交付交接.md)、[场景 14](examples/14-企业全栈多角色交付.md)
 
 按角色速查：[§1.7 产品经理（PRD）](#17-典型场景产品经理撰写与批准-prd) · [§1.8 架构师（HLD）](#18-典型场景架构师维护全局概要设计hld)
 
@@ -630,7 +626,7 @@ hx init --from-hub enterprise-delivery@1.0.0 --hub ./harness-hub
 
 企业 profile 额外产物：
 
-- 组织级：`docs/prd/`、`docs/architecture/`（Pre-phase，场景 19）
+- 组织级：`docs/prd/`、`docs/architecture/`（req/arch 阶段，场景 19）
 - change 级：`requirements/` 需求分析制品
 - `design/` HLD + LLD 包
 - `delivery-trace.yaml` 交接追溯
@@ -689,8 +685,9 @@ sensors:
   - id: secscan
     kind: sensor.script
     execution: computational
-    phase: [verify]
-    trigger: phase              # phase | file-save | schedule
+    stage: dev
+    task: verify
+    trigger: task              # task | file-save | schedule
     plugin: "cmd:python3 harnessX/plugins/secscan_adapter.py"
     on_fail: block
     fix_hint: "修复扫描报告后重跑 hx gate check"
@@ -789,7 +786,7 @@ harness-hub/
 | 存量 OpenSpec | `hx openspec import` | 06 |
 | 金融/支付核心域 | `profile: strict` + testfirst | 03 |
 | 企业 BA+架构+研发 | `enterprise-delivery` 蓝图 | [19](examples/19-组织级PRD与架构设计.md) → 15, 14 |
-| 产品经理（PRD Pre-phase） | `enterprise` + `hx prd` / `/hx-prd` | [19](examples/19-组织级PRD与架构设计.md) · §1.7 |
+| 产品经理（req 阶段） | `enterprise` + `hx req prd` / `/hx-prd` | [19](examples/19-组织级PRD与架构设计.md) · §1.7 |
 | 架构师（HLD / 概要设计） | `enterprise` + `hx arch` / `/hx-arch` | [19](examples/19-组织级PRD与架构设计.md) · §1.8 |
 | 14+ 仓库统一规范 | 中央 Hub + lock | 08, 16 |
 | 无 Cursor、纯 CLI | imports + MCP + Tier 补偿 | 18 |
@@ -806,9 +803,9 @@ harness-hub/
 | 类别 | 命令 |
 | --- | --- |
 | 初始化 | `hx init`、`hx bundle list/add`、`hx hooks install`、`hx ci init`、`hx adapter sync` |
-| Pre-phase（组织级） | `hx prd`、`hx arch`、`hx arch lld`、`hx approve prd/arch`、`hx arch promote` |
+| req / arch（组织级） | `hx req prd`、`hx arch`、`hx approve prd/arch`、`hx arch promote` |
 | Change 生命周期 | `hx change create/list`、`hx propose/design/plan/apply/verify/archive` |
-| Gate | `hx gate check/advance/approve/replay` |
+| Gate | `hx gate check --stage --task`、`hx gate advance/approve/replay` |
 | 质量 | `hx trace check`、`hx sync`、`hx fixture approve/verify`、`hx testfirst` |
 | Hub | `hx hub seed/add/sync/promote/search/eval/review/policy` |
 | 治理 | `hx steer report/distill/publish/coverage`、`hx view`、`hx lock write/verify` |
@@ -820,10 +817,10 @@ harness-hub/
 
 | Profile | 阶段 | verify 套件（示意） |
 | --- | --- | --- |
-| lite | propose, apply, archive | （apply 阶段 fast-lite） |
-| standard | 七阶段 | spec-validate, spec-trace, drift |
-| strict | + explore | + mutation-probe, ai-spec-review |
-| enterprise | + explore | + design-drift, uat-complete, prototype-complete 等 |
+| lite | dev | `dev.apply: fast-lite` |
+| standard | req, arch, dev, test | `dev.verify: verification` |
+| strict | 四阶段 | `dev.verify: verification-strict` |
+| enterprise | 四阶段 | `dev.verify: verification-enterprise` + UAT sensors |
 
 ### C. 文档索引
 
@@ -850,11 +847,11 @@ flowchart TD
   Q3 -->|是| S11[场景 11+12 模板定制]
   Q3 -->|否| S02[场景 02 第一个功能]
   S02 --> Q4{项目类型?}
-  Q4 -->|产品经理| S19PM[场景 19 PRD Pre-phase]
-  Q4 -->|架构师 HLD| S19Arch[场景 19 全局架构]
+  Q4 -->|产品经理| S19PM[场景 19 req 阶段]
+  Q4 -->|架构师 HLD| S19Arch[场景 19 arch 阶段]
   S19PM --> S15[场景 15]
   S19Arch --> S15
-  Q4 -->|企业多角色| S19[场景 19 Pre-phase]
+  Q4 -->|企业多角色| S19[场景 19 req+arch]
   S19 --> S15[场景 15]
   Q4 -->|无 Cursor| S18[场景 18]
   Q4 -->|平台治理| S08[场景 08]

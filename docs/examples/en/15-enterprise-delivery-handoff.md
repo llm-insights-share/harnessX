@@ -3,7 +3,7 @@
 | --- | --- |
 | **Journey** | Enterprise |
 | **Roles** | BA/Architect |
-| **Prerequisites** | Scenario 01; org Pre-phase in [Scenario 19](19-org-prd-and-architecture.md) |
+| **Prerequisites** | Scenario 01; req/arch stages in [Scenario 19](19-org-prd-and-architecture.md) |
 | **Related** | [Scenario picker](00-scenario-picker.md) |
 
 ## Background
@@ -35,9 +35,9 @@ $ hx change create member-badge \
     --arch-modules member
 ```
 
-`hx guide pack member-badge --phase propose` Context Pack already includes **Org PRD** and **Org module LLD** (M20 auto-injection).
+`hx guide pack member-badge --stage dev --task propose` Context Pack already includes **Org PRD** and **Org module LLD** (M20 auto-injection).
 
-## 1. Propose — requirements + proposal
+## 1. dev:propose — requirements + proposal
 
 ```text
 Cursor ▸ /hx-propose member-badge
@@ -54,11 +54,11 @@ wrote harnessX/changes/member-badge/traces/delivery-trace.yaml
 Fill `requirements/user-stories.md`; set **PRD Reference** in `proposal.md`.
 
 ```console
-$ hx gate check member-badge --phase propose
-GATE PASS (propose)
+$ hx gate check member-badge --stage dev --task propose
+GATE PASS (dev/propose)
 ```
 
-## 2. Design — HLD + LLD
+## 2. dev:design — HLD + LLD
 
 ```console
 $ hx design member-badge
@@ -72,18 +72,18 @@ Lin reads **Org architecture HLD** and **module LLD** from the Context Pack and 
 - `design/ui/components/member-badge.md` — props, states, a11y
 
 ```console
-$ hx gate check member-badge --phase design
-GATE PASS (design)
+$ hx gate check member-badge --stage dev --task design
+GATE PASS (dev/design)
 ```
 
 Enterprise design suite includes **`arch-approved`** (global HLD must be `hx approve arch`) and **`arch-change-align`** (touched domains map to module LLD).
 
-## 3. Spec → approve → plan
+## 3. design-to-plan approval → dev:plan
 
-Chen finalizes delta spec via `/hx-spec`; terminal approval:
+Chen finalizes delta spec via `/hx-spec` (still within dev:propose); terminal approval then plan:
 
 ```console
-$ hx gate approve member-badge --gate spec --approver chen.pm
+$ hx gate approve member-badge --gate design-to-plan --approver chen.pm
 $ hx plan member-badge
 wrote harnessX/changes/member-badge/tasks.md (4 tasks)
 ```
@@ -113,7 +113,7 @@ $ hx apply member-badge --runner '<agent>'
 
 ```console
 $ hx verify member-badge
-$ hx gate check member-badge --phase verify
+$ hx gate check member-badge --stage dev --task verify
 ```
 
 Enterprise `verification-enterprise` suite includes `design-drift` and `arch-drift` (warns if not promoted).

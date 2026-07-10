@@ -15,7 +15,7 @@ Scenarios are organized by **user journey**, not by version number. Each include
 | First-time HarnessX setup | [01 New project onboarding](01-new-project-onboarding.md) |
 | Ship a regular feature | [02 Standard feature](02-standard-feature-development.md) (after 01) |
 | Init from org Hub | [16 Hub blueprint init](16-v0.3-hub-blueprint-init.md) |
-| Enterprise requirements → code handoff | [19 Org Pre-phase](19-org-prd-and-architecture.md) → [15 Enterprise handoff](15-enterprise-delivery-handoff.md) |
+| Enterprise requirements → code handoff | [19 req/arch stages](19-org-prd-and-architecture.md) → [15 Enterprise handoff](15-enterprise-delivery-handoff.md) |
 | Headless Codex/script delivery | [18 Minimal harness + MCP](18-minimal-harness-headless-mcp.md) |
 | Not sure | [00 Scenario picker](00-scenario-picker.md) |
 
@@ -44,7 +44,7 @@ Scenarios are organized by **user journey**, not by version number. Each include
 
 | Scenario | When |
 | --- | --- |
-| [19 Org PRD/arch](19-org-prd-and-architecture.md) | Pre-phase: `docs/prd/` + `docs/architecture/`, `hx approve`, `hx arch promote` |
+| [19 Org PRD/arch](19-org-prd-and-architecture.md) | req/arch stages: `docs/prd/` + `docs/architecture/`, `hx req prd`, `hx approve`, `hx arch promote` |
 | [14 Full-stack roles](14-enterprise-fullstack-multi-role.md) | API + admin + portal |
 | [15 Enterprise handoff](15-enterprise-delivery-handoff.md) | Requirements → HLD/LLD → task-pack |
 
@@ -82,7 +82,7 @@ Scenarios are organized by **user journey**, not by version number. Each include
 | --- | --- | --- | --- |
 | 00 | [Scenario picker](00-scenario-picker.md) | — | Role/goal navigation |
 | 01 | [Onboarding](01-new-project-onboarding.md) | Onboarding | `init --bundle` / hooks / CI |
-| 02 | [Standard feature](02-standard-feature-development.md) | Onboarding·Daily | standard loop + self-correction |
+| 02 | [Standard feature](02-standard-feature-development.md) | Onboarding·Daily | four-stage dev tasks + self-correction |
 | 03 | [Strict core](03-core-domain-strict-test-first.md) | Daily | testfirst / waiver |
 | 04 | [Concurrent changes](04-concurrent-change-conflicts.md) | Daily | domain overlap / rebase |
 | 05 | [Emergency hotfix](05-emergency-hotfix-lite.md) | Daily | lite / `archive --force` |
@@ -99,7 +99,7 @@ Scenarios are organized by **user journey**, not by version number. Each include
 | 16 | [Hub blueprint init](16-v0.3-hub-blueprint-init.md) | Platform | `--from-hub` / sync --apply |
 | 17 | [Platform dashboard](17-v0.4-platform-governance.md) | Platform | prototype/UAT / view |
 | 18 | [Minimal harness + MCP](18-minimal-harness-headless-mcp.md) | Onboarding·Tools | `imports:` / MCP L1 |
-| 19 | [Org PRD/arch](19-org-prd-and-architecture.md) | Enterprise·Pre-phase | `/hx-prd` `/hx-arch` `hx arch promote` |
+| 19 | [Org PRD/arch](19-org-prd-and-architecture.md) | Enterprise·req/arch | `/hx-prd` `/hx-arch` `hx req prd` `hx arch promote` |
 
 ---
 
@@ -117,7 +117,7 @@ Rule of thumb: **agent work in Cursor; human-only actions in the terminal** (aud
 
 ## Mental model
 
-1. Changes live in **change workspaces** with delta specs.
+1. Changes live in **change workspaces** with delta specs; `meta.yaml` tracks **stage/task** progress.
 2. **Gates** advance only when sensors pass; fail-closed.
 3. **Guides** assemble input; **Sensors** check output; failures → `hx fix`.
 4. **archive** merges into main specs.

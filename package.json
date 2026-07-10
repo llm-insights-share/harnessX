@@ -1,6 +1,6 @@
 {
   "name": "harnessx",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "HarnessX — outer harness system for AI coding agents (spec-driven delivery with guides, sensors and enforcement gates)",
   "type": "module",
   "license": "MIT",

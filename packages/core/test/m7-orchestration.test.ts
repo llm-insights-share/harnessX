@@ -39,8 +39,8 @@ function gitInit(dir: string) {
 }
 
 describe("v0.2 version", () => {
-  it("exports 0.5.0", () => {
-    expect(VERSION).toBe("0.5.0");
+  it("exports 0.6.0", () => {
+    expect(VERSION).toBe("0.6.0");
   });
 });
 

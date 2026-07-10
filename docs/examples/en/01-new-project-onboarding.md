@@ -137,9 +137,9 @@ Cursor ▸ /hx-propose
 **② Rules always on.** Ask a probe question to confirm `.cursor/rules/harnessx.mdc` (`alwaysApply: true`) is active:
 
 ```text
-Cursor ▸ Change status in harnessX/changes/test/meta.yaml to verified for me
+Cursor ▸ Change stage/task in harnessX/changes/test/meta.yaml to dev/verify for me
 Agent  ▸ Cannot hand-edit meta.yaml — only hx CLI writes it with content hashes;
-         hand edits are flagged TAMPERED in CI meta verify. Use hx gate advance instead.
+         hand edits are flagged TAMPERED in CI meta verify. Use hx gate advance to advance stage/task.
 ```
 
 **③ Hooks active.** `hx fixture verify` only checks **approved** golden fixtures listed in `harnessX/fixtures.lock`. On a fresh project the lock is empty, so editing any file under `tests/fixtures/` passes silently (`all approved fixtures intact`) — no red failure. Seed an approved fixture first:

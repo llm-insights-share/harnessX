@@ -148,7 +148,7 @@ $ hx change create bulk-issue --domains coupon-issuing
 $ hx propose bulk-issue --title "Bulk coupon issuance"
 # … complete proposal and pass gate check …
 
-$ hx guide pack bulk-issue --phase design | head -40
+$ hx guide pack bulk-issue --stage dev --task design | head -40
 # Context Pack — design / bulk-issue
 # …
 # ## Guide: design-template (guide.template)
@@ -165,7 +165,7 @@ The agent:
 
 1. Runs `hx design bulk-issue` (proposal completeness check inside);
 2. Reads **design-template** from the Context Pack and expands `design.md` with all sections;
-3. Updates delta specs if API design implies new Scenarios, then `hx gate check --phase spec`;
+3. Updates delta specs if API design implies new Scenarios, then `hx gate check --stage dev --task propose`;
 4. `hx gate advance bulk-issue` → `designed`.
 
 Excerpt Liu reviews:
@@ -192,8 +192,8 @@ Terminal advancement:
 
 ```console
 $ hx gate advance bulk-issue
-GATE PASS (design)
-advanced: proposed → designed
+GATE PASS (dev/design)
+advanced: dev/propose → dev/design
 ```
 
 ### 7. How downstream phases enforce the template

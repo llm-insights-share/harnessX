@@ -15,7 +15,7 @@
 | 第一次接入 HarnessX | [01 新项目接入](01-新项目接入.md) |
 | 交付一个常规功能 | [02 标准功能全流程](02-标准功能开发全流程.md)（需先 01） |
 | 从组织 Hub 初始化 | [16 Hub 蓝图初始化](16-v0.3-hub-blueprint-init.md) · **[hxhub 使用手册](../hxhub-usage.zh-CN.md)** |
-| 企业级需求→编码交接 | [19 组织 Pre-phase](19-组织级PRD与架构设计.md) → [15 enterprise 交接](15-企业级需求到交付交接.md) |
+| 企业级需求→编码交接 | [19 req/arch 阶段](19-组织级PRD与架构设计.md) → [15 enterprise 交接](15-企业级需求到交付交接.md) |
 | 企业 SDLC 工单全流程 | [20 企业 SDLC 工单全流程](20-企业SDLC工单全流程.md)（profile: `enterprise-sdlc`） |
 | Hub 双角色与贡献审核 | [21 Hub 双角色与贡献审核](21-hub-双角色与贡献审核.md) |
 | Codex/脚本无头交付 | [18 精简 harness + MCP](18-精简配置与无头Agent-MCP.md) |
@@ -46,7 +46,7 @@
 
 | 场景 | 何时选 |
 | --- | --- |
-| [19 组织级 PRD/架构](19-组织级PRD与架构设计.md) | Pre-phase：`docs/prd/` + `docs/architecture/`、`hx approve`、`hx arch promote` |
+| [19 组织级 PRD/架构](19-组织级PRD与架构设计.md) | req/arch stages：`docs/prd/` + `docs/architecture/`、`hx approve`、`hx arch promote` |
 | [14 全栈多角色](14-企业全栈多角色交付.md) | API + B 端 + C 端五人协作 |
 | [15 enterprise 交接](15-企业级需求到交付交接.md) | 需求分析 → HLD/LLD → task-pack |
 
@@ -84,7 +84,7 @@
 | --- | --- | --- | --- |
 | 00 | [场景选择指南](00-场景选择指南.md) | — | 按角色/目标选型 |
 | 01 | [新项目接入](01-新项目接入.md) | 入门 | `init --bundle` / hooks / CI / adapter |
-| 02 | [标准功能全流程](02-标准功能开发全流程.md) | 入门·日常 | standard 全阶段 + apply 自校正 |
+| 02 | [标准功能全流程](02-标准功能开发全流程.md) | 入门·日常 | standard 四阶段 dev 任务 + apply 自校正 |
 | 03 | [核心域 strict](03-核心域改动-strict-测试先行.md) | 日常 | testfirst / waiver / 已批准断言 |
 | 04 | [并发变更冲突](04-并发变更冲突.md) | 日常 | 域重叠 / `rebase check` |
 | 05 | [紧急 hotfix](05-紧急修复-lite.md) | 日常 | lite / `archive --force` |
@@ -101,7 +101,7 @@
 | 16 | [Hub 蓝图初始化](16-v0.3-hub-blueprint-init.md) | 平台 | `--from-hub` / blueprint / sync --apply |
 | 17 | [平台看板](17-v0.4-平台治理与仪表盘.md) | 平台 | prototype/UAT / drift / `hx view` |
 | 18 | [精简 harness + MCP](18-精简配置与无头Agent-MCP.md) | 入门·工具 | `imports:` / MCP L1 / 无头 apply |
-| 19 | [组织级 PRD/架构](19-组织级PRD与架构设计.md) | 企业·Pre-phase | `/hx-prd` `/hx-arch` `hx arch promote` |
+| 19 | [组织级 PRD/架构](19-组织级PRD与架构设计.md) | 企业·req/arch | `/hx-prd` `/hx-arch` `hx req prd` `hx arch promote` |
 
 ---
 
@@ -119,7 +119,7 @@
 
 ## 核心心智模型
 
-1. 改动在 **change 工作区**，用 delta spec 描述增量。
+1. 改动在 **change 工作区**，用 delta spec 描述增量；`meta.yaml` 以 **stage/task** 追踪进度。
 2. **Gate** 全绿 + 前置条件才 `advance`；fail-closed。
 3. **Guide** 组装输入，**Sensor** 检验输出；失败进 `hx fix`。
 4. **archive** 合并进主规格。

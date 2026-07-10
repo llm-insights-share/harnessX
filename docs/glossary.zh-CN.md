@@ -22,23 +22,23 @@
 
 ### Change
 
-一次交付工作单元（功能、修复、迁移）。每个 change 有 `meta.yaml`（阶段状态）、delta spec、可选设计与任务，以及 `changes/<id>/assets/` 下的资产覆盖层。
+一次交付工作单元（功能、修复、迁移）。每个 change 有 `meta.yaml`（阶段/任务状态）、delta spec、可选设计与任务，以及 `changes/<id>/assets/` 下的资产覆盖层。
 
 ### Profile（工作流配置）
 
-`harness.yaml` 中的工作流（如 `standard`、`enterprise`），定义经过哪些**阶段（stage）**或**门禁阶段（phase）**，以及各阶段绑定哪些 sensor **套件（suite）**。v0.5 起支持四阶段 `req/arch/dev/test`（见 [delivery-stages.zh-CN.md](delivery-stages.zh-CN.md)）。
+`harness.yaml` 中的工作流（如 `standard`、`enterprise`），定义经过哪些**阶段（stage）**、各阶段包含哪些**任务（task）**，以及各任务绑定哪些 sensor **套件（suite）**。权威任务清单见 [delivery-stages.zh-CN.md](delivery-stages.zh-CN.md)。
 
 ### Stage（交付阶段）
 
-四阶段交付语义：`req`（需求）、`arch`（设计）、`dev`（开发）、`test`（测试）。每阶段含若干**任务（task）**，含必选/可选标记。
+四阶段交付语义：`req`（需求）、`arch`（设计）、`dev`（开发）、`test`（测试）。`req`/`arch` 为组织级（`docs/`）；`dev`/`test` 为 change 级（`harnessX/changes/<id>/`）。
 
-### Phase（门禁阶段，legacy）
+### Task（阶段任务）
 
-v0.4 以来的技术 gate 命令（`propose`、`design`、`spec` 等）。`delivery_mode: phases` 时为主状态机；`stages` 时映射为 dev/test 子任务。
+阶段内的具体工作单元，如 `req` 阶段的 `prd-writing`、`dev` 阶段的 `propose`/`design`/`apply`。`hx gate check --stage <stage> --task <task>` 在任务粒度运行 sensor 套件。
 
 ### Suite（套件）
 
-具名 sensor id 列表（如 `fast`、`verification-enterprise`），在 `hx gate check` 时一并执行。
+具名 sensor id 列表（如 `fast`、`verification-enterprise`），在 `harness.yaml` 中按 `dev.apply`、`test.test-case-design` 等键绑定到 stage/task，由 `hx gate check` 一并执行。
 
 ### Bundle（拓扑包）
 
@@ -46,7 +46,7 @@ v0.4 以来的技术 gate 命令（`propose`、`design`、`spec` 等）。`deliv
 
 ### Blueprint（交付蓝图）
 
-交付路径预设（`blueprint.yaml`）：继承 profile、声明 `hub_deps`、映射 **阶段 → guides/sensors**。应用 blueprint 会将缺失引用写入 `harness.yaml`。
+交付路径预设（`blueprint.yaml`）：继承 profile、声明 `hub_deps`、映射 **stage.task → guides/sensors**。应用 blueprint 会将缺失引用写入 `harness.yaml`。
 
 ### Asset（资产）
 

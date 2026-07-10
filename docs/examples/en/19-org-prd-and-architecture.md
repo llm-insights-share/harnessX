@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Journey** | Enterprise · Pre-phase |
+| **Journey** | Enterprise · req/arch stages |
 | **Roles** | Product (PM), Architect |
 | **Prerequisite** | [Scenario 01](01-new-project-onboarding.md) |
 | **Next** | [Scenario 15](15-enterprise-delivery-handoff.md) |
@@ -11,19 +11,26 @@
 
 Before each **enterprise** change, **RetailCo** maintains org-level truth under the repo root:
 
-| Layer | Path | Owner |
-| --- | --- | --- |
-| PRD | `docs/prd/<slug>.md` | Product |
-| Global HLD | `docs/architecture/overview.md` + `registry.yaml` | Architect |
-| Module LLD | `docs/architecture/modules/<module>/lld.md` | Architect |
+| Layer | Path | Owner | Stage |
+| --- | --- | --- | --- |
+| PRD | `docs/prd/<slug>.md` | Product | `req` |
+| Global HLD | `docs/architecture/overview.md` + `registry.yaml` | Architect | `arch` |
+| Module LLD | `docs/architecture/modules/<module>/lld.md` | Architect | `arch` |
 
 Per-change `requirements/` and `design/` **distill and extend** these artifacts; after verify, `hx arch promote` **writes back** to module LLD.
 
-## 1. PRD — `/hx-prd`
+## 1. req stage — PRD (`/hx-prd`)
+
+```text
+Cursor ▸ /hx-prd
+         Target slug: member-badge
+```
 
 ```console
-$ hx prd init member-badge --title "Member badge"
-$ hx prd check member-badge
+$ hx req prd init member-badge --title "Member badge"
+Wrote docs/prd/member-badge.md
+
+$ hx req prd check member-badge
 PASS  prd-complete: PRD complete
 ```
 
@@ -31,11 +38,12 @@ Human sign-off (terminal only):
 
 ```console
 $ hx approve prd member-badge --approver chen.pm
+approved PRD "member-badge" by chen.pm (artifact a1b2c3d4e5f6)
 ```
 
-Record stored in `docs/.prephase-approvals.yaml` with content hash binding.
+Record stored in `docs/.stage-approvals.yaml` with content hash binding.
 
-## 2. Global architecture — `/hx-arch`
+## 2. arch stage — global HLD (`/hx-arch`)
 
 ```console
 $ hx arch init --title "Member commerce"
@@ -43,7 +51,7 @@ $ hx arch check
 $ hx approve arch --approver lin.arch
 ```
 
-## 3. Module LLD — `/hx-arch-lld`
+## 3. arch stage — module LLD (`/hx-arch-lld`)
 
 ```console
 $ hx arch lld init member --title "Member module"
@@ -62,9 +70,18 @@ $ hx change create member-badge \
     --arch-modules member
 ```
 
-Context Pack for propose/design **automatically includes** org PRD and module LLD.
+`meta.yaml` records `prdRef`, `archModules`, and initial `stage: dev` / `task: propose`. Context Pack for dev:propose/design **automatically includes** org PRD and module LLD.
 
-## 5. Promote before archive
+## 5. Handoff to change delivery
+
+| dev/test task | Org checks | Change artifacts |
+| --- | --- | --- |
+| dev:propose | `prd-complete` + `prd-approved` | `requirements/`, `proposal.md`, delta spec |
+| dev:design | `arch-approved` + `arch-change-align` | `design/overview.md` + LLD dirs |
+| dev:verify | `arch-drift` (warn if not promoted) | tests + traceability |
+| before archive | — | **`hx arch promote <change>`** (enterprise required unless waived) |
+
+## 6. Promote before archive
 
 ```console
 $ hx arch promote member-badge --by lin.arch
@@ -75,11 +92,14 @@ Enterprise **blocks archive** until promote completes (unless waived).
 
 ## Gates (enterprise)
 
-- propose: `prd-complete`, `prd-approved`, `requirements-complete`
-- design: `arch-approved`, `arch-change-align`, `design-enterprise` suite
-- verify: `arch-drift` (warn if not promoted)
+| stage/task | Sensors |
+| --- | --- |
+| dev:propose | `prd-complete`, `prd-approved`, `requirements-complete` |
+| dev:design | `arch-approved`, `arch-change-align`, `design-enterprise` suite |
+| dev:verify | `arch-drift` (warn if not promoted) |
 
 ## See also
 
 - [Scenario 15 walkthrough](15-enterprise-delivery-handoff.md) · [Chinese full version](../19-组织级PRD与架构设计.md)
-- [Operation guide §4.3 Pre-phase](../operation-guide.en.md)
+- [Operation guide §4.3 req/arch stages](../operation-guide.en.md)
+- [Four-stage model](../../delivery-stages.zh-CN.md)

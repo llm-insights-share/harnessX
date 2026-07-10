@@ -101,7 +101,7 @@ Branch protection requires status check — PR cannot merge. **Local hooks save 
 
 ### 5. Stealthier bypass: hand-edit meta.yaml
 
-Agent (or human) notices gate state in `meta.yaml`, tries changing `status: implementing` to `status: verified`. CI next step blocks this:
+Agent (or human) notices gate state in `meta.yaml`, tries changing `task: apply` to `task: verify`. CI next step blocks this:
 
 ```console
 Verify meta.yaml integrity (FR-050)

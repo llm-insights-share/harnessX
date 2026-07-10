@@ -2,7 +2,7 @@
 
 **中文**: [使用说明（中文）](usage-guide.zh-CN.md)
 
-This guide explains HarnessX **by theme** so you can learn core concepts, pre-init personalization, and special-project customization in one place. It complements the [Operation Guide](operation-guide.en.md) (organized by delivery phase) and [Usage scenario examples](examples/en/README.md) (19 end-to-end journeys).
+This guide explains HarnessX **by theme** so you can learn core concepts, pre-init personalization, and special-project customization in one place. It complements the [Operation Guide](operation-guide.en.md) (organized by delivery stage) and [Usage scenario examples](examples/en/README.md) (19 end-to-end journeys).
 
 | Document | Organization | When to read |
 | --- | --- | --- |
@@ -32,7 +32,7 @@ It models AI software delivery as a **control engineering** problem:
 
 - **Guides (feedforward)**: Skills, templates, constitution — tell the agent *how* to work
 - **Sensors (feedback)**: lint, tests, spec validation — check *whether* output is correct
-- **Gates**: phase advancement only when sensors pass (fail-closed)
+- **Gates**: stage/task advancement only when sensors pass (fail-closed)
 
 See the [README](../README.md) for the full differentiation table vs test frameworks, CI, and OpenSpec alone.
 
@@ -42,10 +42,10 @@ See the [README](../README.md) for the full differentiation table vs test framew
 | --- | --- | --- |
 | **Harness instance** | Initialized project workspace | `harnessX/` |
 | **Change** | One delivery unit | `harnessX/changes/<id>/` |
-| **Profile** | Workflow tier (phases + sensor suites) | `config.yaml` + `harness.yaml` |
+| **Profile** | Workflow tier (stages + tasks + sensor suites) | `config.yaml` + `harness.yaml` |
 | **Guide** | Feedforward asset | `assets/guides/` |
 | **Sensor** | Feedback check | reports in `runs/` |
-| **Gate** | Phase advancement; fail-closed | `meta.yaml`, `hx gate` |
+| **Gate** | Task advancement; fail-closed | `meta.yaml`, `hx gate check --stage --task` |
 | **Bundle** | Topology pack (e.g. API service) | `imports:` or `assets/bundles/` |
 | **Blueprint** | Delivery path preset | `blueprint.yaml` |
 | **Hub** | Org asset registry | separate Git repo or path |
@@ -63,14 +63,20 @@ Full definitions: [Glossary](glossary.md).
 | **Architecture fitness** | Boundaries, performance | performance-budget | arch-boundary, budget |
 | **Behaviour** | Correctness vs specs | spec-writing, delta specs | spec-validate, spec-trace |
 
-### 1.4 Phases and two entry points
+### 1.4 Stages and two entry points
 
-Standard profile: `propose → design → spec → plan → apply → verify → archive`
+Four-stage model (`req` → `arch` → `dev` → `test`): see [delivery-stages.zh-CN.md](delivery-stages.zh-CN.md).
+
+Standard profile dev task sequence:
+
+```text
+plan → propose → design → apply → verify → archive
+```
 
 | Entry | Use for | Examples |
 | --- | --- | --- |
-| **Terminal `$ hx ...`** | Control plane: approve, advance, waive, archive | `hx gate approve`, `hx archive` |
-| **Cursor chat** | Execution: write specs, code, self-correct | `/hx-propose`, `/hx-design`, `/hx-apply` |
+| **Terminal `$ hx ...`** | Control plane: approve, advance, archive | `hx gate approve`, `hx archive` |
+| **Cursor chat** | Execution: write PRD, specs, code | `/hx-prd`, `/hx-propose`, `/hx-apply` |
 
 Rule of thumb: **agent work in Cursor; human accountability in the terminal**.
 
@@ -87,9 +93,12 @@ hx init --bundle api-service
 hx hooks install && hx ci init && hx adapter sync
 hx change create my-feature --domains billing
 # Cursor ▸ /hx-propose my-feature
-hx gate approve my-feature --gate spec --approver alice
+hx gate check my-feature --stage dev --task propose
+hx design my-feature
+hx gate check my-feature --stage dev --task design
+hx gate approve my-feature --gate design-to-plan --approver alice
 hx plan my-feature && hx apply my-feature --runner "<agent>"
-hx verify my-feature && hx archive my-feature
+hx gate check my-feature --stage dev --task verify && hx archive my-feature
 ```
 
 Key mechanisms: change workspace + delta specs; three enforcement layers (IDE rules → hooks → CI); single-source assets in `harnessX/assets/`.
@@ -98,7 +107,9 @@ Key mechanisms: change workspace + delta specs; three enforcement layers (IDE ru
 
 **Walkthrough**: [Scenario 02 — Standard feature development](examples/en/02-standard-feature-development.md)
 
-Delta specs use OpenSpec format; `spec-validate` blocks bad EARS/scenarios in the propose phase.
+Delta specs use OpenSpec format; `spec-validate` blocks bad EARS/scenarios at the dev `propose` task.
+
+Core loop: `gate check --stage dev --task propose` → design → `gate check --stage dev --task design` → `gate approve --gate design-to-plan` → plan → apply → verify → archive.
 
 ### 1.7 Typical scenario: product manager — PRD authoring and approval
 
@@ -111,25 +122,24 @@ PMs own **org-level PRDs** (reused across changes). Change-level `requirements/`
 
 ```text
 Cursor writes PRD (/hx-prd)
-  → hx prd check <slug> (prd-complete sensor)
-  → hx approve prd <slug> --approver <pm> (terminal — human accountability)
+  → hx req prd check <slug> (prd-complete sensor)
+  → hx gate approve --gate prd --prd <slug> --approver <pm>
   → engineering: hx change create ... --prd <slug>
 ```
 
 ```bash
-hx prd init member-badge --title "Member badge"
-# Edit docs/prd/member-badge.md in Cursor (user stories, GWT AC, scope, NFR)
-hx prd check member-badge
-hx approve prd member-badge --approver chen.pm
-# Optional (enterprise-sdlc): hx prd submit member-badge --by chen.pm
+hx req prd init member-badge --title "Member badge"
+# Edit docs/prd/member-badge.md in Cursor
+hx req prd check member-badge
+hx gate approve --gate prd --prd member-badge --approver chen.pm
 ```
 
 | Mechanism | Notes |
 | --- | --- |
-| Pre-phase vs change | `docs/prd/` is org-level; per-feature deltas live in `changes/<id>/requirements/` |
-| Approval binding | Editing the PRD file invalidates approval — re-run check + approve |
-| Context Pack injection | `change create --prd <slug>` auto-injects org PRD in propose/design |
-| Enterprise gates | propose requires `prd-complete` + `prd-approved` |
+| req vs change | `docs/prd/` is org-level; per-feature deltas live in `changes/<id>/requirements/` |
+| Approval binding | Editing the PRD invalidates approval — re-run check + approve |
+| Context Pack injection | `change create --prd <slug>` auto-injects org PRD at dev `propose`/`design` |
+| Enterprise gates | dev `propose` requires `prd-complete` + `prd-approved` |
 | Template customization | See Scenario 11 or Hub `prd-writing@1.0.0` |
 
 Handoff to engineering:
@@ -159,7 +169,7 @@ Cursor writes HLD (/hx-arch)
   → hx arch check
   → hx approve arch --approver <architect>
   → (optional) /hx-arch-lld <module> → hx arch lld check <module>
-  → design phase: arch-change-align
+  → dev `design` task: arch-change-align
   → before archive: hx arch promote <change>
 ```
 
@@ -172,11 +182,11 @@ hx arch lld check member
 # Optional: hx arch submit --by lin.arch
 ```
 
-| Phase | Architect action | Sensors |
+| dev task | Architect action | Sensors |
 | --- | --- | --- |
-| design | review change `design/overview.md` + LLD dirs | `arch-change-align`, `design-hld-complete`, `design-lld-complete` |
-| verify | watch `arch-drift` (warn if not promoted) | `design-drift`, `uat-complete` |
-| before archive | **required** promote (enterprise) | `hx arch promote <change> --by lin.arch` |
+| `design` | review change `design/overview.md` + LLD dirs | `arch-change-align`, `design-hld-complete`, `design-lld-complete` |
+| `verify` | watch `arch-drift` (warn if not promoted) | `design-drift`, `uat-complete` |
+| before `archive` | **required** promote (enterprise) | `hx arch promote <change> --by lin.arch` |
 
 Key mechanisms: org HLD vs change `design/` dual track; `hx guide pack` injects module LLD when `--arch-modules` set; customize via Scenario 12 or Hub `arch-authoring@1.0.0`. Typical order: PRD approved → global HLD approved → module LLD ready → `change create`.
 
@@ -184,23 +194,23 @@ Key mechanisms: org HLD vs change `design/` dual track; `hx guide pack` injects 
 
 | Profile | When | Scenario |
 | --- | --- | --- |
-| **lite** | Hotfix, tiny change | [05 Emergency hotfix](examples/en/05-emergency-hotfix-lite.md) |
-| **standard** | Most features | [02 Standard feature](examples/en/02-standard-feature-development.md) |
-| **strict** | Core domains, test-first | [03 Core domain strict](examples/en/03-core-domain-strict-test-first.md) |
-| **enterprise** | Multi-role delivery | [19](examples/en/19-org-prd-and-architecture.md) → [15](examples/en/15-enterprise-delivery-handoff.md), [14](examples/en/14-enterprise-fullstack-multi-role.md) |
+| **lite** | `dev` only | [05 Emergency hotfix](examples/en/05-emergency-hotfix-lite.md) |
+| **standard** | req, arch, dev, test | [02 Standard feature](examples/en/02-standard-feature-development.md) |
+| **strict** | Four stages + verification-strict | [03 Core domain strict](examples/en/03-core-domain-strict-test-first.md) |
+| **enterprise** | Four stages + org HLD/LLD/UAT | [19](examples/en/19-org-prd-and-architecture.md) → [15](examples/en/15-enterprise-delivery-handoff.md), [14](examples/en/14-enterprise-fullstack-multi-role.md) |
 
-#### Enterprise Pre-phase (org-level artifacts)
+#### Enterprise req / arch stages (org-level artifacts)
 
-Before enterprise change delivery, complete org Pre-phase ([Scenario 19](examples/en/19-org-prd-and-architecture.md)):
+Before enterprise change delivery, complete org req/arch ([Scenario 19](examples/en/19-org-prd-and-architecture.md)):
 
 ```text
-/hx-prd → hx prd check → hx approve prd <slug> --approver <name>
-/hx-arch → hx arch check → hx approve arch --approver <name>
+/hx-prd → hx req prd check → hx gate approve --gate prd --prd <slug> --approver <name>
+/hx-arch → hx arch check → hx gate approve --gate arch --approver <name>
 /hx-arch-lld <module> → hx arch lld check <module>
 hx change create <id> --prd <slug> --arch-modules <module> --profile enterprise
 ```
 
-`hx guide pack` **auto-injects** `docs/prd/` and `docs/architecture/` into Context Packs during propose/design. Before archive, run `hx arch promote <change>` to write change design back into module LLD.
+`hx guide pack` auto-injects org artifacts at dev `propose`/`design`. Before archive, run `hx arch promote <change>`.
 
 ### 1.10 Platform / org scenarios
 
@@ -226,9 +236,9 @@ Tier 2 adapters trigger **gate compensation** (extra sensors, warn→block). See
 
 1. Behaviour changes live in a **change workspace** with delta specs.
 2. **Gates** advance only when sensors pass + preconditions (e.g. human approval); crashes block (fail-closed).
-3. **Guides** assemble phase Context Packs; **Sensors** validate output with `fix_hint` → `hx fix`.
+3. **Guides** assemble stage/task Context Packs; **Sensors** validate output with `fix_hint` → `hx fix`.
 4. **`hx archive`** merges deltas into main specs (source of truth).
-5. **Org Pre-phase** (`docs/prd/`, `docs/architecture/`) and **change-level delivery** coexist; `hx guide pack` injects org artifacts; `hx arch promote` writes back module LLD before archive.
+5. **Org req/arch** (`docs/prd/`, `docs/architecture/`) and **change dev/test** coexist; `hx guide pack` injects org artifacts; `hx arch promote` writes back module LLD before archive.
 6. **Steering + Hub** evolve the harness itself across the org.
 
 ---
@@ -272,18 +282,19 @@ imports:
   - api-service
 profiles:
   standard:
-    phases: [propose, design, spec, plan, apply, verify, archive]
+    stages: [req, arch, dev, test]
+    dev_tasks: [plan, propose, design, apply, verify, archive]
     suites:
-      spec: fast
-      apply: fast
-      verify: verification
+      dev.propose: fast
+      dev.apply: fast
+      dev.verify: verification
 ```
 
 Add team skills under `assets/guides/`; use `overrides:` with `reason` to replace Hub/builtin assets.
 
 ### 2.5 Blueprint `blueprint.yaml`
 
-Presets profile, `hub_deps`, and phase → guide/sensor mapping. Apply via `hx init --from-hub <blueprint>@<ver>`.
+Presets profile, `hub_deps`, and `stage.task` → guide/sensor mapping. Apply via `hx init --from-hub <blueprint>@<ver>`.
 
 ### 2.6 Customize requirements output
 
@@ -297,7 +308,7 @@ Presets profile, `hub_deps`, and phase → guide/sensor mapping. Apply via `hx i
 
 **Walkthrough**: [Scenario 12 — Custom design template](examples/en/12-custom-design-output-template.md)
 
-Register `design-template` as `guide.template` for the design phase; customize `/hx-design` via `assets/commands/design.md`.
+Register `design-template` as `guide.template` for dev `design` task; customize `/hx-design` via `assets/commands/design.md`.
 
 ### 2.8 Coding conventions and architecture constraints
 
@@ -340,7 +351,7 @@ Optional `compat_mode: openspec` in `config.yaml` for short-term parallel use.
 
 ### 3.2 Enterprise multi-role delivery
 
-**Walkthrough**: [19](examples/en/19-org-prd-and-architecture.md) (org Pre-phase) → [15](examples/en/15-enterprise-delivery-handoff.md), [14](examples/en/14-enterprise-fullstack-multi-role.md)
+**Walkthrough**: [19](examples/en/19-org-prd-and-architecture.md) (org req/arch) → [15](examples/en/15-enterprise-delivery-handoff.md), [14](examples/en/14-enterprise-fullstack-multi-role.md)
 
 By role: [§1.7 PM (PRD)](#17-typical-scenario-product-manager--prd-authoring-and-approval) · [§1.8 Architect (HLD)](#18-typical-scenario-architect--global-hld-overview-design)
 
@@ -348,7 +359,7 @@ By role: [§1.7 PM (PRD)](#17-typical-scenario-product-manager--prd-authoring-an
 hx init --from-hub enterprise-delivery@1.0.0 --hub ./harness-hub
 ```
 
-`enterprise-delivery` blueprint adds org-level `docs/prd/` + `docs/architecture/` (Pre-phase), change-level `requirements/`, `design/` HLD+LLD, `delivery-trace.yaml`, `@design=` handoff, `hx guide task-pack`, and `hx arch promote` before archive.
+`enterprise-delivery` blueprint adds org-level `docs/prd/` + `docs/architecture/` (req/arch stages), change-level `requirements/`, `design/` HLD+LLD, `delivery-trace.yaml`, `@design=` handoff, `hx guide task-pack`, and `hx arch promote` before archive.
 
 Extra sensors: `prd-complete`, `prd-approved`, `arch-approved`, `arch-change-align`, `requirements-complete`, `design-hld-complete`, `prototype-complete`, `uat-complete`, `design-drift`, `arch-drift`, etc.
 
@@ -417,7 +428,7 @@ Hub layout: `packages/`, `bundles/`, `blueprints/`, `evals/`. See built-in `pack
 | Legacy OpenSpec | `openspec import` | 06 |
 | Payments / core | `strict` + testfirst | 03 |
 | Enterprise BA+arch+dev | `enterprise-delivery` | [19](examples/en/19-org-prd-and-architecture.md) → 15, 14 |
-| Product manager (PRD Pre-phase) | `enterprise` + `hx prd` / `/hx-prd` | [19](examples/en/19-org-prd-and-architecture.md) · §1.7 |
+| Product manager (req stage) | `enterprise` + `hx req prd` / `/hx-prd` | [19](examples/en/19-org-prd-and-architecture.md) · §1.7 |
 | Architect (HLD / overview) | `enterprise` + `hx arch` / `/hx-arch` | [19](examples/en/19-org-prd-and-architecture.md) · §1.8 |
 | Many repos | Central Hub + lock | 08, 16 |
 | No Cursor | imports + MCP | 18 |
@@ -432,9 +443,9 @@ Hub layout: `packages/`, `bundles/`, `blueprints/`, `evals/`. See built-in `pack
 ### A. Common commands
 
 Init: `hx init`, `hx bundle`, `hx hooks install`, `hx ci init`, `hx adapter sync`  
-Pre-phase (org): `hx prd`, `hx arch`, `hx arch lld`, `hx approve prd/arch`, `hx arch promote`  
-Change lifecycle: `hx change`, `hx propose/design/plan/apply/verify/archive`  
-Gates: `hx gate check/advance/approve/replay`  
+req / arch (org): `hx req prd`, `hx arch`, `hx approve prd/arch`, `hx arch promote`  
+Change lifecycle: `hx change`, `hx propose/design/plan/apply/archive`  
+Gates: `hx gate check --stage --task`, `hx gate advance/approve/replay`  
 Quality: `hx trace check`, `hx sync`, `hx fixture`, `hx testfirst`  
 Hub: `hx hub seed/add/sync/promote/search/eval/review`  
 Governance: `hx steer`, `hx view`, `hx lock`  
@@ -446,7 +457,7 @@ Full options: [Operation Guide](operation-guide.en.md).
 
 | Doc | Purpose |
 | --- | --- |
-| [Operation Guide](operation-guide.en.md) | Phase-based commands |
+| [Operation Guide](operation-guide.en.md) | Stage-based commands |
 | [Scenario picker](examples/en/00-scenario-picker.md) | Choose among 19 scenarios |
 | [Glossary](glossary.md) | Terms |
 | [Design doc](harness-delivery-system-design.html) | Full design |

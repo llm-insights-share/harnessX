@@ -9,7 +9,7 @@
 
 ## 背景
 
-在 [场景 19](19-组织级PRD与架构设计.md) 的 Pre-phase 之上，本场景用 **工单（Work Order）** 串联技术经理审核、变更单、测试用例审核与 Bug/复测闭环。
+在 [场景 19](19-组织级PRD与架构设计.md) 的 req/arch stages 之上，本场景用 **工单（Work Order）** 串联技术经理审核、变更单、测试用例审核与 Bug/复测闭环。
 
 ## 0. 初始化
 
@@ -23,8 +23,8 @@ $ hx adapter sync
 ## 1. 需求审核（产品 → 技术经理）
 
 ```console
-$ hx prd init member-badge --title "会员徽章"
-$ hx prd submit member-badge --by pm.chen
+$ hx req prd init member-badge --title "会员徽章"
+$ hx req prd submit member-badge --by pm.chen
 $ hx wo inbox --role tech-manager
 $ hx wo extract WO-00001 --out /tmp/review.md
 $ hx wo approve WO-00001 --by tm.zhang --note "范围清晰"
@@ -37,7 +37,7 @@ $ hx approve prd member-badge --approver tm.zhang
 $ hx change create member-badge --domains member --profile enterprise-sdlc --prd member-badge
 $ hx propose member-badge --title "会员徽章展示"
 # 填写 requirements/ 扩展制品（调研、业务流程、集成）
-$ hx gate check member-badge --phase propose
+$ hx gate check member-badge --stage dev --task propose
 ```
 
 ## 3. 需求变更（可选）
@@ -61,10 +61,13 @@ $ hx wo done WO-00004 --by dev.zhao
 $ hx approve arch-lld member --approver lin.arch
 ```
 
-## 5. 测试用例设计 → 审核 → 编码 → 测试
+## 5. test 阶段：测试用例设计 → 审核 → dev:apply → 测试执行
+
+v0.6 将原 `test-design` phase 并入 **test** stage（`test-case-design` → `test-execution`）：
 
 ```console
 $ hx test-cases init member-badge
+$ hx gate check member-badge --stage test --task test-case-design
 $ hx test-cases submit member-badge --by qa.zhou
 $ hx wo approve WO-00005 --by tm.zhang
 $ hx plan member-badge
@@ -73,6 +76,7 @@ $ hx bug create member-badge --title "徽章未显示" --by qa.zhou --scenario "
 $ hx bug fix member-badge BUG-001 --commit abc123 --by dev.zhao
 $ hx bug close member-badge BUG-001 --by qa.zhou
 $ hx verify member-badge
+$ hx gate check member-badge --stage test --task test-execution
 $ hx archive member-badge
 ```
 
@@ -82,7 +86,7 @@ $ hx archive member-badge
 | --- | --- |
 | 工单 | `hx wo create/submit/approve/reject/done/inbox/extract` |
 | 变更单 | `hx cr create/submit/show/list` |
-| 测试用例 | `hx test-cases init/check/submit` |
+| 测试用例 | `hx test-cases init/check/submit`；`hx gate check --stage test --task test-case-design` |
 | Bug | `hx bug create/list/fix/close` |
 | 模块 LLD 批准 | `hx approve arch-lld <module>` |
 

@@ -106,8 +106,8 @@ Note: **MODIFIED must carry the full latest requirement content** (including oth
 Re-verify:
 
 ```console
-$ hx gate check bulk-reserve --phase spec
-GATE PASS (spec)
+$ hx gate check bulk-reserve --stage dev --task propose
+GATE PASS (dev/propose)
 $ hx rebase check bulk-reserve
 deltas apply cleanly against current specs
 $ hx archive bulk-reserve
@@ -115,7 +115,7 @@ Archived to harnessX/archive/2026-07-08-bulk-reserve
 Merged capabilities: stock-reservation, api-gateway
 ```
 
-Delta content changed — CI `meta verify` finds approval artifact hash mismatch — Zheng must **re-request Zhang's spec gate approval**. Not bureaucracy: spec substance changed, approval must repeat.
+Delta content changed — CI `meta verify` finds approval artifact hash mismatch — Zheng must **re-request Zhang's design-to-plan gate approval**. Not bureaucracy: spec substance changed, approval must repeat.
 
 ## Key mechanisms
 

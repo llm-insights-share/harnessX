@@ -16,7 +16,7 @@ core-domains: [payment-charging, payment-settlement]
 
 This requirement: **pre-authorization (freeze then charge)**, touching `payment-charging` directly. Team rule: core-domain changes must use strict profile — extra explore phase, verification-strict suite, and **test-first** (human approves test assertions before agent writes implementation).
 
-Roles: **Zhou** (payment dev), **Chen** (QA, approves test assertions), **Zhang** (architect, spec approver).
+Roles: **Zhou** (payment dev), **Chen** (QA, approves test assertions), **Zhang** (architect, design-to-plan approver).
 
 ## Steps
 
@@ -46,9 +46,9 @@ hx: profile "standard" is below the recommended "strict" — provide --override-
 
 (downgrade reason goes to `meta.yaml` `profileRecommendation.overrideReason` — auditable who skipped strict on core domain and why.)
 
-### 2. explore: read-only investigation
+### 2. req:requirements-research — read-only investigation
 
-strict profile's first phase is explore. Zhou drives in Cursor:
+strict profile may complete the **requirements-research** task in the `req` stage before dev:propose. Zhou drives in Cursor:
 
 ```text
 Cursor ▸ /hx-explore pre-auth
@@ -57,11 +57,11 @@ Cursor ▸ /hx-explore pre-auth
 
 `/hx-explore` defines **strictly read-only**: agent runs `hx explore pre-auth --topic "existing charge state machine and idempotency key design"` for note scaffold, then follows prompt investigation order — read relevant main specs in `harnessX/specs/` first (specs are source of truth before code), then modules and tests to touch, then search `harnessX/archive/` for historical changes on same capability. Findings go to explore.md Questions / Findings / Recommendation — **every conclusion must cite file paths**; Guardrails: "output is understanding not design"; Recommendation lists options with tradeoffs only.
 
-Double lock: `hx guide pack pre-auth --phase explore` Context Pack declares **READ-ONLY** permissions; gate check flags staged code edits — discipline violations caught even if agent forgets. Exploration conclusions ("state machine is CREATED→CHARGED two states, need FROZEN; idempotency key reusable") feed design phase.
+Double lock: `hx guide pack pre-auth --stage req --task requirements-research` Context Pack declares **READ-ONLY** permissions; gate check flags staged code edits — discipline violations caught even if agent forgets. Exploration conclusions ("state machine is CREATED→CHARGED two states, need FROZEN; idempotency key reusable") feed dev:design.
 
-### 3. propose / design / spec / approval (same as scenario 02, abbreviated)
+### 3. dev:propose / dev:design / design-to-plan approval (same as scenario 02, abbreviated)
 
-Zhou runs `/hx-propose pre-auth`, `/hx-design pre-auth`, `/hx-spec pre-auth` in Cursor (agent drafts delta spec, Zhou reviews). Terminal `hx gate advance` per phase. Note `/hx-spec` prompt's last step **requires agent to stop and ask for human approval** — explicitly must not run `hx gate approve` (human-only). Zhang reviews and runs `hx gate approve pre-auth --gate spec --approver zhang.arch` in terminal.
+Zhou runs `/hx-propose pre-auth`, `/hx-design pre-auth`, `/hx-spec pre-auth` in Cursor (agent drafts delta spec, Zhou reviews). Terminal `hx gate advance` per task. Note `/hx-spec` prompt's last step **requires agent to stop and ask for human approval** — explicitly must not run `hx gate approve` (human-only). Zhang reviews and runs `hx gate approve pre-auth --gate design-to-plan --approver zhang.arch` in terminal.
 
 ### 4. Test-first: generate → human review → approve lock
 

@@ -153,7 +153,7 @@ compensation:
 
 资产注册表：profiles、suites、guides、sensors、Hub 依赖与拓扑 imports。
 
-**精简样例（靠 imports 展开拓扑，v0.5+）：**
+**精简样例（靠 imports 展开拓扑，v0.6）：**
 
 ```yaml
 version: "1.0"
@@ -164,11 +164,12 @@ imports:
 
 profiles:
   standard:
-    phases: [propose, design, spec, plan, apply, verify, archive]
+    stages: [req, arch, dev, test]
+    dev_tasks: [plan, propose, design, apply, verify, archive]
     suites:
-      spec: fast
-      apply: fast
-      verify: verification
+      dev.propose: fast
+      dev.apply: fast
+      dev.verify: verification
 
 suites: {}                   # imports 会合并 verification 等套件
 guides: []                   # imports / hub 可自动填充
@@ -184,15 +185,17 @@ guides:
   - id: team-api-style
     kind: guide.skill
     execution: inferential
-    phase: [apply]
+    stage: dev
+    task: apply
     source: assets/guides/team-api-style/SKILL.md
 
 sensors:
   - id: secscan
     kind: sensor.script
     execution: computational
-    phase: [verify]
-    trigger: phase              # phase | file-save | schedule
+    stage: dev
+    task: verify
+    trigger: task              # task | file-save | schedule
     builtin: lint                 # 或 plugin: ./plugins/secscan.mjs
     on_fail: block                # block | warn | retry
     max_retries: 0
@@ -212,10 +215,11 @@ overrides:
 | 顶层 | `imports` | 拓扑 Bundle 引用（`bundle-id` 或 `bundle-id@1.0.0`），`readHarness()` 时展开，不修改磁盘上的 guides/sensors |
 | 顶层 | `dependencies` | Hub 包列表（`pkg@version`），由 `hx hub add` 维护 |
 | 顶层 | `overrides` | 跨层覆盖资产时必须声明 `reason` |
-| `profiles.<name>` | `phases` | 该 profile 经过的阶段命令列表 |
-| `profiles.<name>` | `suites` | 阶段 → 套件名映射 |
+| `profiles.<name>` | `stages` | 该 profile 经过的交付阶段（`req`/`arch`/`dev`/`test`） |
+| `profiles.<name>` | `dev_tasks` / `test_tasks` | change 级 dev/test 任务序列 |
+| `profiles.<name>` | `suites` | `stage.task` → 套件名映射（如 `dev.apply: fast`） |
 | `suites.<name>` | （数组） | sensor id 列表 |
-| `guides[]` | `id`, `kind`, `source`, `phase`, `execution` | 指南注册 |
+| `guides[]` | `id`, `kind`, `source`, `stage`, `task`, `execution` | 指南注册 |
 | `sensors[]` | `builtin` / `plugin` / `run` | 三选一指定执行方式 |
 
 **配置步骤 — 追加团队 Skill：**
@@ -227,7 +231,7 @@ overrides:
 
 ### 3.3 `harnessX/blueprint.yaml`
 
-交付路径预设（profile + Hub 依赖 + 阶段资产映射）。
+交付路径预设（profile + Hub 依赖 + stage/task 资产映射）。
 
 **样例：**
 
@@ -237,12 +241,12 @@ extends: standard                    # 应用时写入 config.yaml 的 profile
 hub_deps:
   - prd-writing@1.0.0
   - prototype-wireframe@1.0.0
-phases:
-  propose:
+stages:
+  dev.propose:
     guides: [prd-writing]            # 缺失时自动解析并写入 harness.yaml
-  design:
+  dev.design:
     guides: [prototype-wireframe]
-  verify:
+  dev.verify:
     sensors: [drift, uat-complete]
 ```
 
@@ -260,286 +264,245 @@ phases:
 
 ---
 
-## 4. 四阶段操作模型（本手册主轴）
+## 4. 需求阶段（req）
 
-> 权威定义见 [delivery-stages.zh-CN.md](delivery-stages.zh-CN.md)。四阶段：**req（需求）→ arch（设计）→ dev（开发）→ test（测试）**。
+> 权威定义：[delivery-stages.zh-CN.md](delivery-stages.zh-CN.md)。`req` 为**组织级**阶段，制品位于 `docs/prd/`。
 
-### 4.1 操作入口
+### 4.1 目标与产物
 
-| 入口 | 适用场景 | 示例 |
+| 产物 | 路径 | 说明 |
 | --- | --- | --- |
-| **终端命令** | gate 推进、人工批准、归档、Hub/CI 管控 | `hx gate approve`、`hx archive` |
-| **Cursor 对话框** | 写提案、写设计、写代码、自校正 | `/hx-propose`、`/hx-design`、`/hx-apply` |
+| PRD 文档 | `docs/prd/<slug>.md` | 产品需求真相源 |
+| 原型（可选） | PRD 内章节或附件 | `prototype-wireframe` guide |
+| 审批记录 | `docs/.stage-approvals.yaml` | `hx gate approve --gate prd` 写入 |
 
-经验法则：**agent 能自己完成的走 Cursor；必须人工背书的走终端**。
+### 4.2 推荐流程
 
-### 4.2 阶段总览
+```bash
+hx req prd init member-badge --title "会员徽章"
+# Cursor：/hx-prd 按 prd-writing Skill 填写 docs/prd/member-badge.md
+hx req prd check member-badge
+hx gate approve --gate prd --prd member-badge --approver chen.pm
+hx req status                              # 查看 req 阶段任务完成情况
+```
 
-| 阶段 | ID | 目标 | 关键命令 |
-| --- | --- | --- | --- |
-| 需求 | `req` | PRD、原型、需求分析 | `hx req prd`、`hx approve prd`、`hx stage status --stage req` |
-| 设计 | `arch` | 全局 HLD、模块 LLD | `hx arch`、`hx arch lld`、`hx approve arch` |
-| 开发 | `dev` | change 流水线：plan → propose → design → apply → verify → archive | `hx plan`、`hx propose`、`hx apply`、`hx dev status` |
-| 测试 | `test` | 测试用例设计、正式测试执行 | `hx test-cases`、`hx test status` |
+enterprise-sdlc 可选提交审核工单：`hx req prd submit member-badge --by chen.pm`
 
-### 4.3 Pre-phase 命令（组织级，`docs/` 制品）
+### 4.3 本阶段命令与全部选项
 
-| 命令 | 说明 |
-| --- | --- |
-| `hx prd init <slug> --title <title>` | 脚手架 `docs/prd/<slug>.md` |
-| `hx prd check <slug>` | 运行 `prd-complete` 传感器 |
-| `hx approve prd <slug> --approver <name>` | 人工批准 PRD（等价 `hx gate approve --gate prd --prd <slug>`） |
-| `hx arch init --title <title>` | 脚手架全局 HLD + `registry.yaml` |
-| `hx arch check` | 运行 `arch-check` suite（含 `arch-approved`） |
-| `hx approve arch --approver <name>` | 人工批准全局架构 |
-| `hx approve arch-lld <module> --approver <name>` | 人工批准模块 LLD（enterprise-sdlc） |
-| `hx prd submit <slug> --by <name>` | 提交 PRD 需求审核工单 |
-| `hx arch submit --by <name> [--change <id>]` | 提交概要设计审核工单 |
-| `hx arch lld init <module> --title <title>` | 脚手架模块 LLD |
-| `hx arch lld check <module>` | 模块 LLD 校验 |
-| `hx arch promote <change> [--by <name>]` | change design 结构化沉淀到模块 LLD |
-| `hx guide prd-pack <slug>` / `hx guide arch-pack` | Pre-phase Context Pack |
+| 命令 | 选项 | 含义 |
+| --- | --- | --- |
+| `req status` | — | 列出 req 阶段任务及完成状态 |
+| `req prd init <slug>` | `--title <title>` | 脚手架 `docs/prd/<slug>.md` |
+| `req prd check <slug>` | — | 运行 `prd-complete` sensor |
+| `req prd list` | — | 列出已有 PRD slug |
+| `req prd submit <slug>` | `--by <name>`, `--title <title>` | 提交 PRD 审核工单（enterprise-sdlc） |
+| `gate approve` | `--gate prd`, `--approver <name>`, `--prd <slug>` | 人工批准 PRD |
+| `approve prd <slug>` | `--approver <name>` | PRD 批准简写 |
+| `guide prd-pack <slug>` | `--out <file>` | 输出 PRD Context Pack |
 
-Cursor 斜杠命令：`/hx-prd`、`/hx-arch`、`/hx-arch-lld`（`hx adapter sync` 后可用）。
+Cursor 斜杠命令：`/hx-prd`（`hx adapter sync` 后可用）。
 
-### 4.4 双轨制品模型
+### 4.4 门禁与传感器
 
-| 轨道 | 路径 | 生命周期 | 人工批准 |
-| --- | --- | --- | --- |
-| **组织级（Pre-phase）** | `docs/prd/`、`docs/architecture/` | 跨多个 change 复用 | `hx approve prd/arch` → `docs/.prephase-approvals.yaml` |
-| **Change 级（交付）** | `harnessX/changes/<id>/requirements/`、`design/`、`specs/` | 单次交付 | `hx gate approve <change> --gate spec` → `meta.yaml` |
+| 任务 | 典型 sensor | 说明 |
+| --- | --- | --- |
+| `requirements-analysis` | `requirements-complete` | 需求分析章节完整 |
+| `prototype-design` | （guide） | 原型线框 |
+| `prd-writing` | `prd-complete`, `prd-approved` | 格式校验 + 人工批准 |
 
-`hx guide pack` 在 propose/design 阶段将组织级制品**自动注入** Context Pack。归档前 `hx arch promote` 将 change design **回写**组织模块 LLD。
-
-### 4.5 企业 SDLC 工单层（profile: `enterprise-sdlc`）
-
-使用 `hx init --from-hub enterprise-sdlc@1.0.0` 或 `config.yaml` 设置 `profile: enterprise-sdlc`。在 `harnessX/roles.yaml` 映射成员角色。
-
-| 命令组 | 说明 |
-| --- | --- |
-| `hx wo *` | 工单：create/submit/approve/reject/done/inbox/extract |
-| `hx cr *` | 变更单：create/submit/show/list（需求/设计变更） |
-| `hx test-cases *` | 测试用例设计：init/check/submit |
-| `hx bug *` | Bug：create/list/fix/close |
-
-完整 walkthrough：[场景 20](examples/20-企业SDLC工单全流程.md)。
+`lite` profile 跳过 req/arch gate，直接进入 `dev`。
 
 ---
 
-## 5. 需求阶段（Requirements）
+## 5. 设计阶段（arch）
+
+> `arch` 为**组织级**阶段，制品位于 `docs/architecture/`。
 
 ### 5.1 目标与产物
 
-- `harnessX/changes/<id>/proposal.md`
-- `harnessX/changes/<id>/specs/**`（delta spec）
--（enterprise）`requirements/`（PRD 蒸馏）
-- `meta.yaml` 中的状态与审批记录
-- Context Pack 含链接的 **org PRD**（`meta.prdRef` 或 `docs/prd/<change>.md`）
+| 产物 | 路径 | 说明 |
+| --- | --- | --- |
+| 全局 HLD | `docs/architecture/overview.md` | 子系统划分、技术选型、外部接口 |
+| 模块注册表 | `docs/architecture/registry.yaml` | 模块 id、能力、LLD 路径 |
+| 模块 LLD | `docs/architecture/modules/<module>/lld.md` | 内部接口、ADR |
+| 审批记录 | `docs/.stage-approvals.yaml` | `hx gate approve --gate arch` / `arch-lld` |
 
 ### 5.2 推荐流程
 
-**standard / strict**：
-
 ```bash
-hx change create add-refund --domains orders,payments
-hx propose add-refund --title "支持部分退款"
-hx gate check add-refund --phase propose
-# spec 阶段定稿后再批准 spec→plan：
-hx gate check add-refund --phase spec
-hx gate approve add-refund --gate spec --approver zhangsan
-hx gate advance add-refund
-```
-
-**enterprise**（需先完成 [场景 19](examples/19-组织级PRD与架构设计.md) Pre-phase）：
-
-```bash
-hx change create add-refund --domains orders --profile enterprise \
-  --prd orders-refund --arch-modules order
-hx propose add-refund --title "支持部分退款"
-hx gate check add-refund --phase propose   # 含 prd-complete、prd-approved
+hx arch init --title "会员 commerce"
+# Cursor：/hx-arch 填写 overview.md
+hx arch check
+hx gate approve --gate arch --approver lin.arch
+hx arch lld init member --title "会员模块"
+hx arch lld check member
+hx gate approve --gate arch-lld --module member --approver lin.arch
+hx stage status --stage arch
 ```
 
 ### 5.3 本阶段命令与全部选项
 
 | 命令 | 选项 | 含义 |
 | --- | --- | --- |
-| `change create <id>` | `--domains <list>` | 触及域列表（逗号分隔） |
-|  | `--profile <name>` | 覆盖默认 profile |
-|  | `--prd <slug>` | 链接组织 PRD（enterprise） |
-|  | `--arch-modules <list>` | 链接组织模块 LLD（enterprise） |
-|  | `--from-issue <url>` | 从 GitHub issue 脚手架（可推断域） |
-| `change list` | — | 查看活跃 change |
-| `propose <change>` | `--title <title>` | proposal 标题（默认 `Untitled`） |
-| `gate check <change>` | `--phase <cmd>` | 检查指定阶段（不填则默认下一阶段） |
-| `gate approve [change]` | `--gate <gate>` | change 级：`spec` 等；org 级：`prd`/`arch` |
-|  | `--approver <name>` | 必填，审批人 |
-|  | `--prd <slug>` | org 级 PRD 批准时必填 |
-| `approve prd <slug>` | `--approver <name>` | PRD 批准简写 |
+| `arch init` | `--title <title>` | 脚手架全局 HLD + `registry.yaml` |
+| `arch check` | — | 运行 `arch-check` 套件（含 `arch-hld-complete`、`arch-approved`） |
+| `arch lld init <module>` | `--title <title>` | 脚手架模块 LLD |
+| `arch lld check <module>` | — | 模块 LLD 校验 |
+| `arch submit` | `--by <name>`, `--change <id>` | 提交概要设计审核工单 |
+| `gate approve` | `--gate arch` / `arch-lld`, `--approver <name>`, `--module <id>` | 人工批准 HLD / 模块 LLD |
 | `approve arch` | `--approver <name>` | 全局架构批准简写 |
-| `gate advance <change>` | — | 在当前阶段全绿时推进 |
+| `approve arch-lld <module>` | `--approver <name>` | 模块 LLD 批准简写 |
+| `guide arch-pack` | `--out <file>` | 输出架构 Context Pack |
 
-### 5.4 需求阶段配置建议
+Cursor 斜杠命令：`/hx-arch`、`/hx-arch-lld`。
 
-1. `config.yaml`：确保 `profile` 与团队风险等级一致（`standard` / `strict` / `enterprise`）。
-2. `harness.yaml`：确保 `spec` 阶段套件存在（如 `fast`）。
-3. 高合规团队建议启用：
+### 5.4 门禁与传感器
 
-```yaml
-compensation:
-  enabled: true
-  escalate_warn_to_block: true
-```
+| 任务 | 典型 sensor | 说明 |
+| --- | --- | --- |
+| `subsystem-division` | `arch-hld-complete` | HLD 结构完整 |
+| `internal-interface` | `arch-lld-complete`, `arch-lld-approved` | 模块 LLD 完整且已批准 |
+
+归档前 `hx arch promote <change>` 将 change 级 design 结构化沉淀回模块 LLD（enterprise）。
 
 ---
 
-## 6. 设计阶段（Design）
+## 6. 开发阶段（dev）
+
+> `dev` 为 **change 级**阶段。标准 profile 任务序列：`plan → propose → design → apply → verify → archive`。
 
 ### 6.1 目标与产物
 
-- `design/overview.md`（由 `design-template` 渲染）
--（enterprise）`design/ui/pages.md`、LLD 文件
-- Context Pack 含 **org HLD**、**registry**、**模块 LLD**
-- 设计阶段 gate 记录（enterprise：`arch-approved`、`prototype-complete` 等）
+| 产物 | 路径 |
+| --- | --- |
+| 提案与 delta spec | `changes/<id>/proposal.md`, `specs/**` |
+| 设计包 | `changes/<id>/design/` |
+| 任务清单 | `changes/<id>/tasks.md` |
+| 状态与 gate 历史 | `changes/<id>/meta.yaml` |
+|（enterprise）需求分析 | `changes/<id>/requirements/` |
+
+组织级 `docs/prd/`、`docs/architecture/` 在 `dev.propose` / `dev.design` 经 Context Pack **自动注入**（`--prd`、`--arch-modules`）。
 
 ### 6.2 推荐流程
 
+**standard**：
+
 ```bash
-# enterprise：确保已 hx approve arch
+hx change create add-refund --domains orders,payments
+hx propose add-refund --title "支持部分退款"
+hx gate check add-refund --stage dev --task propose
 hx design add-refund
-hx guide pack add-refund --phase design --out /tmp/design-pack.md
-hx gate check add-refund --phase design
-hx gate advance add-refund
+hx guide pack add-refund --stage dev --task design --out /tmp/design-pack.md
+hx gate check add-refund --stage dev --task design
+hx gate approve add-refund --gate design-to-plan --approver zhangsan
+hx plan add-refund
+hx apply add-refund --runner "<agent-cmd>"
+hx gate check add-refund --stage dev --task verify
+hx arch promote add-refund --by architect    # enterprise：归档前沉淀
+hx archive add-refund
+hx gate advance add-refund                   # 推进至 test 阶段（profile 含 test 时）
+```
+
+**enterprise**（先完成 req/arch，见 [场景 19](examples/19-组织级PRD与架构设计.md)）：
+
+```bash
+hx change create add-refund --domains orders --profile enterprise \
+  --prd orders-refund --arch-modules order
+hx propose add-refund --title "支持部分退款"
+hx gate check add-refund --stage dev --task propose   # 含 prd-complete、prd-approved
 ```
 
 ### 6.3 本阶段命令与全部选项
 
 | 命令 | 选项 | 含义 |
 | --- | --- | --- |
-| `design <change>` | — | 先检查 design gate，再生成设计脚手架 |
-| `guide pack <change>` | `--phase <cmd>` | 必填，通常 `design` |
-|  | `--out <file>` | 输出到文件 |
-| `gate check <change>` | `--phase design` | 检查设计阶段套件 |
-| `gate advance <change>` | — | 设计阶段通过后推进 |
+| `change create <id>` | `--domains <list>` | 触及域列表（逗号分隔） |
+|  | `--profile <name>` | 覆盖默认 profile |
+|  | `--prd <slug>` | 链接组织 PRD |
+|  | `--arch-modules <list>` | 链接组织模块 LLD |
+|  | `--from-issue <url>` | 从 GitHub issue 脚手架 |
+| `change list` | — | 查看活跃 change（输出 `stage/task`） |
+| `dev status <change>` | — | dev 阶段任务进度 |
+| `propose <change>` | `--title <title>` | 生成 proposal + 初始 delta spec |
+| `design <change>` | — | 设计脚手架 |
+| `plan <change>` | — | 从 delta spec 生成任务清单 |
+| `apply <change>` | `--runner <cmd>` | 逐任务执行；注入 `HX_TASK_*` / `HX_FIX_HINTS` / `HX_TASK_PACK` |
+|  | `--max-retries <n>` | 失败后自校正重试（默认 `3`） |
+|  | `--limit <n>` | 最多处理 N 个任务 |
+|  | `--parallel <n>` | 同一并行组并发数 |
+|  | `--fan-out <n>` | N 个 worktree 并行，选最优结果 |
+| `gate check <change>` | `--stage dev`, `--task <id>` | 检查 dev 任务门禁（`propose`/`design`/`plan`/`apply`/`verify`/`archive`） |
+| `gate approve <change>` | `--gate design-to-plan`, `--approver <name>` | **design→plan** 人工批准门 |
+| `gate advance <change>` | — | 当前任务通过后推进至下一任务/阶段 |
+| `guide pack <change>` | `--stage dev`, `--task <id>`, `--out <file>` | 输出 Context Pack |
+| `guide task-pack <change> <taskId>` | `--out <file>` | 单任务交接包 |
+| `fix` | `--change <id>`, `--sensor <id>`, `--runner <cmd>` | 带 fix_hint 的修复会话 |
+| `arch promote <change>` | `--by <name>`, `--dry-run` | change design → 模块 LLD |
 
-### 6.4 设计阶段配置建议
+### 6.4 开发阶段配置建议
 
-- 在 `blueprint.yaml` 中声明 design 所需 guides/sensors，自动收口到 `harness.yaml`：
-
-```yaml
-phases:
-  design:
-    guides: [prototype-wireframe]
-```
-
-- 若团队有统一设计模板，将其注册为 `guide.template` 并在 `guides` 中绑定 `phase: [design]`。
+- `suites` 键使用 `dev.<task>` 格式，例如 `dev.verify: verification`。
+- `design-to-plan` 批准记录在 `meta.yaml`；修改 design 后须重新批准。
+- Tier 2 适配器建议启用 `compensation`（见 §3.1）。
 
 ---
 
-## 7. 开发编码阶段（Implementation）
+## 7. 测试阶段（test）
+
+> `test` 为 **change 级**阶段，产出测试用例与测试报告。`standard` profile 在 dev `archive` 后进入 test；`enterprise-sdlc` 含 `test-case-design` 与 `test-execution` 全量任务。
 
 ### 7.1 目标与产物
 
-- `tasks.md`（双轨 test/impl）
-- 每任务 task-pack（`tasks/<taskId>-pack.md`）
-- 代码实现与 apply 阶段 gate 记录
+| 产物 | 路径 |
+| --- | --- |
+| 测试用例 | `changes/<id>/test-cases/` |
+| 测试报告 / UAT 记录 | sensor 报告、`runs/` |
+| 可追溯映射 | `changes/<id>/traces/traceability.yaml` |
 
 ### 7.2 推荐流程
 
 ```bash
-hx plan add-refund
-hx apply add-refund --runner "<agent-cmd>"
-hx guide task-pack add-refund 01b
+hx test status add-refund
+hx test-cases init add-refund              # enterprise-sdlc
+hx gate check add-refund --stage test --task test-case-design
+hx gate approve add-refund --gate test-cases --approver qa.lead
+# UAT 执行、bug 闭环
+hx bug create add-refund --title "退款金额显示错误" ...
+hx gate check add-refund --stage test --task test-execution
+hx trace check add-refund
+hx fixture verify
+hx meta verify add-refund
 ```
 
 ### 7.3 本阶段命令与全部选项
 
 | 命令 | 选项 | 含义 |
 | --- | --- | --- |
-| `plan <change>` | — | 从 delta spec 生成双轨任务 |
-| `apply <change>` | `--runner <cmd>` | 每任务执行命令；注入 `HX_TASK_*` / `HX_FIX_HINTS` / `HX_TASK_PACK` |
-|  | `--max-retries <n>` | 失败后自校正重试次数（默认 `3`） |
-|  | `--limit <n>` | 最多处理 N 个任务 |
-|  | `--parallel <n>` | 同一并行组并发数（默认 `1`） |
-|  | `--fan-out <n>` | N 个 worktree 并行执行，选最优结果 |
-| `guide task-pack <change> <taskId>` | `--out <file>` | 输出任务交接包 |
-| `fix` | `--change <id>` | 必填，change id |
-|  | `--sensor <id>` | 必填，失败 sensor |
-|  | `--runner <cmd>` | 可选，带 `HX_FIX_PACK` 拉起修复会话 |
-| `runtime worktree <action> [change]` | `--slot <id>` / `--path <path>` | v0.2 隔离执行 |
-
-### 7.4 编码阶段配置建议
-
-- 无 Cursor / 弱 IDE（Codex/OpenCode）建议：
-
-```bash
-hx adapter sync --targets codex,generic
-```
-
-- 对应 `config.yaml` 可设：
-
-```yaml
-adapter:
-  target: codex
-compensation:
-  enabled: true
-```
-
----
-
-## 8. 测试阶段（Testing & Verification）
-
-### 8.1 目标与产物
-
-- verify 套件全绿
-- 场景→测试可追溯
-- fixture / meta 完整性校验
-- 归档后的主规格更新
-
-### 8.2 推荐流程
-
-```bash
-hx verify add-refund
-hx trace check add-refund
-hx fixture verify
-hx rebase check add-refund
-# enterprise：archive 前沉淀 change design 到组织模块 LLD
-hx arch promote add-refund --by architect
-hx archive add-refund
-```
-
-### 8.3 本阶段命令与全部选项
-
-| 命令 | 选项 | 含义 |
-| --- | --- | --- |
-| `verify <change>` | — | 跑完整验证套件与状态推进 |
-| `trace check [change]` | `--all` | 检查可追溯覆盖 |
-| `sync` | — | spec↔code 漂移检测 |
+| `test status <change>` | — | test 阶段任务进度 |
+| `test-cases init <change>` | — | 脚手架测试用例目录 |
+| `test-cases check <change>` | — | 运行 `test-cases-complete` |
+| `test-cases submit <change>` | `--by <name>` | 提交测试用例审核工单 |
+| `gate check <change>` | `--stage test`, `--task <id>` | `test-case-design` / `test-execution` |
+| `gate approve <change>` | `--gate test-cases`, `--approver <name>` | 测试用例人工批准 |
+| `bug create/list/fix/close` | — | Bug 闭环（enterprise-sdlc） |
+| `trace check [change]` | `--all` | 场景→测试可追溯 |
 | `fixture approve <file>` | `--by <name>` | 批准 fixture 快照 |
 | `fixture verify` | — | 校验批准 fixture 未漂移 |
-| `testfirst generate <change>` | — | strict 测试桩生成 |
-| `testfirst approve <change>` | `--files <list>`, `--by <name>` | 批准测试基线 |
-| `waiver add <change>` | `--target <target>` | 必填（sensor / `scenario:` / `tests:`） |
-|  | `--reason <reason>` | 必填，豁免原因 |
-|  | `--requested-by <name>` | 必填，申请人 |
-|  | `--approved-by <name>` | 必填，批准人 |
-|  | `--expires <iso>` | 过期时间（默认 +14 天） |
-| `waiver list <change>` | — | 查看豁免与过期状态 |
-| `arch promote <change>` | `--by <name>`, `--dry-run` | enterprise：结构化沉淀 design 到模块 LLD |
-| `archive <change>` | `--force` | 跳过 verified 要求（谨慎）；enterprise 未 promote 会阻断 |
+| `waiver add <change>` | `--target`, `--reason`, `--requested-by`, `--approved-by`, `--expires` | 有时限豁免 |
 | `rebase check <change>` | — | 归档前冲突预检 |
 | `meta verify [change]` | `--all` | 防篡改校验 |
 
-### 8.4 测试阶段配置样例
+### 7.4 测试阶段配置样例
 
-常见豁免（有时限）：
-
-```bash
-hx waiver add add-refund \
-  --target lint \
-  --reason "第三方 SDK 误报，已人工确认" \
-  --requested-by zhangsan \
-  --approved-by lisi \
-  --expires 2026-04-01T00:00:00Z
+```yaml
+profiles:
+  enterprise-sdlc:
+    stages: [req, arch, dev, test]
+    test_tasks: [test-case-design, test-execution]
+    suites:
+      test.test-case-design: test-design-sdlc
+      test.test-execution: verification-sdlc
 ```
 
 CI 侧建议固定执行：
@@ -551,11 +514,31 @@ hx fixture verify
 hx meta verify --all
 ```
 
+### 7.5 企业 SDLC 工单层（profile: `enterprise-sdlc`）
+
+| 命令组 | 说明 |
+| --- | --- |
+| `hx wo *` | 工单：create/submit/approve/reject/done/inbox/extract |
+| `hx cr *` | 变更单：create/submit/show/list |
+| `hx test-cases *` | 测试用例设计 |
+| `hx bug *` | Bug 闭环 |
+
+完整 walkthrough：[场景 20](examples/20-企业SDLC工单全流程.md)。
+
+### 7.6 操作入口速查
+
+| 入口 | 适用场景 | 示例 |
+| --- | --- | --- |
+| **终端命令** | gate 推进、人工批准、归档、Hub/CI | `hx gate approve`、`hx archive` |
+| **Cursor 对话框** | 写 PRD、设计、代码、自校正 | `/hx-prd`、`/hx-propose`、`/hx-apply` |
+
+经验法则：**agent 能自己完成的走 Cursor；必须人工背书的走终端**。
+
 ---
 
-## 9. 跨阶段平台能力（可选但推荐）
+## 8. 跨阶段平台能力（可选但推荐）
 
-### 9.1 Hub 资产管理命令（本次升级新增）
+### 8.1 Hub 资产管理命令（本次升级新增）
 
 当你把 Hub 作为组织级资产仓时，建议使用以下命令完成生命周期、评审、策略与完整性治理。
 
@@ -611,7 +594,7 @@ hx hub eval <id@version> --hub <path-or-git-url> [--local <dir>] [--golden <name
 #### `hx hub search` 与 catalog
 
 ```bash
-hx hub search [query] --hub <path-or-git-url> [--kind <kind>] [--phase <phase>] [--category <cat>] [--index]
+hx hub search [query] --hub <path-or-git-url> [--kind <kind>] [--stage <stage>] [--category <cat>] [--index]
 hx hub catalog rebuild --hub <path-or-git-url>
 ```
 
@@ -620,7 +603,7 @@ hx hub catalog rebuild --hub <path-or-git-url>
 | `query` | 否 | 按 id/version/kind/description 模糊匹配 |
 | `--hub <path>` | 是 | Hub 来源 |
 | `--kind <kind>` | 否 | 按资产类型过滤（如 `guide.skill`） |
-| `--phase <phase>` | 否 | 按阶段过滤（`propose/design/apply/verify` 等） |
+| `--stage <stage>` | 否 | 按交付阶段过滤（`req`/`arch`/`dev`/`test`） |
 | `--category <cat>` | 否 | `package` \| `bundle` \| `blueprint` |
 | `--index` | 否 | 重建 `index.json` 后退出 |
 
@@ -686,7 +669,7 @@ hx hub policy check --hub git@github.com:your-org/hx-hub.git --strict
 hx hub eval secure-api@1.2.0 --hub git@github.com:your-org/hx-hub.git --out /tmp/secure-api-eval.json
 
 # 5) 检索/重建索引/缓存回收
-hx hub search secure --hub git@github.com:your-org/hx-hub.git --kind guide.skill --phase apply
+hx hub search secure --hub git@github.com:your-org/hx-hub.git --kind guide.skill --stage dev
 hx hub catalog rebuild --hub git@github.com:your-org/hx-hub.git
 hx hub cache gc --older-than-days 14
 ```
@@ -700,7 +683,7 @@ hx hub cache gc --older-than-days 14
 
 ---
 
-## 10. 核心心智模型
+## 9. 核心心智模型
 
 1. 行为改动在 **change 工作区**（`harnessX/changes/<id>/`），用 delta spec 描述增量。
 2. **Gate**：`hx gate advance` 仅当 sensor 全绿且满足前置条件（如人工批准）；sensor 崩溃视为阻断（fail-closed）。
@@ -708,7 +691,7 @@ hx hub cache gc --older-than-days 14
 4. `hx archive` 将 delta 合并进主规格。
 5. 反复失败经 **Steering** 蒸馏为新 Guide，经 **Hub** 共享。
 
-## 11. v0.3 / v0.4 / v0.5 分层架构速览
+## 10. v0.3 / v0.4 / v0.6 分层架构速览
 
 | 层级 | 能力 | 典型命令 / 配置 |
 | --- | --- | --- |
@@ -718,7 +701,7 @@ hx hub cache gc --older-than-days 14
 
 enterprise profile 含 `prototype-complete`、`uat-complete`、统一 `drift` sensor。概念词表见 [glossary.md](glossary.zh-CN.md)。
 
-## 12. 进一步阅读
+## 11. 进一步阅读
 
 - [使用说明（按主题）](usage-guide.zh-CN.md)
 - [使用场景示例（19 个，按旅程组织）](examples/README.md)

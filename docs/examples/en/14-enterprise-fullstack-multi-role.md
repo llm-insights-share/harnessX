@@ -3,7 +3,7 @@
 | --- | --- |
 | **Journey** | Enterprise |
 | **Roles** | Full-stack TL |
-| **Prerequisites** | Scenario(s) 01; [Scenario 19](19-org-prd-and-architecture.md) (org Pre-phase) |
+| **Prerequisites** | Scenario(s) 01; [Scenario 19](19-org-prd-and-architecture.md) (req/arch stages) |
 | **Related** | [Scenario picker](00-scenario-picker.md) |
 
 ## Background
@@ -34,17 +34,17 @@ Retail company **RetailCo** delivers a **member points center** in one monorepo:
 
 ## Execution timeline (in order)
 
-| Step | Phase | Lead | Collaborators | Artifacts | Gate |
+| Step | stage/task | Lead | Collaborators | Artifacts | Gate |
 | --- | --- | --- | --- | --- | --- |
 | 0 | Repo onboarding (once) | Li + Zhao | All | `harnessX/`, multi-bundle | — |
-| 1 | Propose | Chen (PM) | Lin (Design) | `proposal.md`, draft deltas | propose |
-| 2 | Design | Lin | Chen, Li | `design.md` | design |
-| 3 | Spec | Chen | Li, Zhou | EARS delta specs | spec |
-| 4 | Human approval | Chen | Zhou | approval in `meta.yaml` | spec→plan |
-| 5 | Plan | Li | Zhao, Zhou | dual-track `tasks.md` | plan |
-| 6 | Apply | Zhao + Li | Zhou | code, tests, traceability | apply fast suite |
-| 7 | Verify | Zhou | All | full verification green | verify |
-| 8 | Archive | Chen | Li | merged main specs | archive |
+| 1 | dev:propose | Chen (PM) | Lin (Design) | `proposal.md`, draft deltas | `hx gate check --stage dev --task propose` |
+| 2 | dev:design | Lin | Chen, Li | `design.md` | `hx gate check --stage dev --task design` |
+| 3 | dev:propose (finalize) | Chen | Li, Zhou | EARS delta specs | `hx gate check --stage dev --task propose` |
+| 4 | Human approval | Chen | Zhou | approval in `meta.yaml` | design→plan |
+| 5 | dev:plan | Li | Zhao, Zhou | dual-track `tasks.md` | `hx gate check --stage dev --task plan` |
+| 6 | dev:apply | Zhao + Li | Zhou | code, tests, traceability | apply fast suite |
+| 7 | dev:verify | Zhou | All | full verification green | `hx gate check --stage dev --task verify` |
+| 8 | dev:archive | Chen | Li | merged main specs | archive |
 
 > **Rule**: agent work (proposals, design, specs, code, lint fixes) in **Cursor**; human-only actions (approval, sign-off) in the **terminal `hx`** for audit trails.
 
@@ -75,8 +75,10 @@ Cursor ▸ /hx-propose member-points
 
 ```console
 $ hx gate advance member-points
-advanced: → proposed
+GATE PASS (dev/propose)
 ```
+
+> After `change create`, `meta.yaml` starts at `stage: dev`, `task: propose`.
 
 ---
 
@@ -90,13 +92,14 @@ Cursor ▸ /hx-design member-points
 Li reviews API/layering; Chen confirms scope.
 
 ```console
-$ hx gate advance member-points    # → designed
-$ hx gate advance member-points    # → specified
+$ hx gate advance member-points    # → dev/design
+GATE PASS (dev/design)
+advanced: dev/propose → dev/design
 ```
 
 ---
 
-## 3. Spec — Chen (with Li, Zhou)
+## 3. dev:propose — delta spec finalize (Chen, Li, Zhou)
 
 ```text
 Cursor ▸ /hx-spec member-points
@@ -110,7 +113,7 @@ Zhou requires every scenario to map to a test title containing `Scenario: <name>
 ## 4. Approval — Chen (PM)
 
 ```console
-$ hx gate approve member-points --gate spec --approver chen.pm
+$ hx gate approve member-points --gate design-to-plan --approver chen.pm
 ```
 
 ---
@@ -132,12 +135,13 @@ Example `tasks.md` with parallel groups:
 
 ```console
 $ hx gate advance member-points
-advanced: specified → planned
+GATE PASS (dev/plan)
+advanced: dev/design → dev/plan
 ```
 
 ---
 
-## 6. Apply — Zhao (FE) + Li (BE) in parallel
+## 6. dev:apply — Zhao (FE) + Li (BE) in parallel
 
 **Zhou (QA)** — optional test-first approval:
 
@@ -159,18 +163,18 @@ Each task runs the **fast suite** (typecheck, lint, unit-changed). Verify layeri
 
 ---
 
-## 7. Verify — Zhou (QA)
+## 7. dev:verify — Zhou (QA)
 
 ```console
 $ hx verify member-points
 $ hx trace check member-points
 $ hx gate advance member-points
-advanced: implementing → verified
+advanced: dev/apply → dev/verify
 ```
 
 ---
 
-## 8. Archive — Chen + Li
+## 8. dev:archive — Chen + Li
 
 ```console
 $ hx archive member-points

@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **旅程** | 企业交付 · Pre-phase |
+| **旅程** | 企业交付 · req/arch 阶段 |
 | **适用角色** | 产品（陈产品）、架构师（林架构） |
 | **前置** | [场景 01](01-新项目接入.md)（`hx init`、`hx adapter sync`） |
 | **后续** | [场景 15](15-企业级需求到交付交接.md)（`change create` 后进入 propose→archive） |
@@ -27,14 +27,14 @@ Cursor ▸ /hx-prd
 ```
 
 ```console
-$ hx prd init member-badge --title "会员徽章"
+$ hx req prd init member-badge --title "会员徽章"
 Wrote docs/prd/member-badge.md
 
-$ hx prd check member-badge
+$ hx req prd check member-badge
 PASS  prd-complete: PRD complete
 ```
 
-陈产品填写用户故事、AC（GWT）、In/Out Scope、NFR、评审结论后再次 `hx prd check`。
+陈产品填写用户故事、AC（GWT）、In/Out Scope、NFR、评审结论后再次 `hx req prd check`。
 
 **人工批准**（终端，非 Agent）：
 
@@ -43,7 +43,7 @@ $ hx approve prd member-badge --approver chen.pm
 approved PRD "member-badge" by chen.pm (artifact a1b2c3d4e5f6)
 ```
 
-批准记录写入 `docs/.prephase-approvals.yaml`，并与 PRD 文件内容哈希绑定；PRD 改动后需重新批准。
+批准记录写入 `docs/.stage-approvals.yaml`，并与 PRD 文件内容哈希绑定；PRD 改动后需重新批准。
 
 ## 2. 全局架构 — `/hx-arch`
 
@@ -92,11 +92,11 @@ $ hx change create member-badge \
 
 ## 5. 与 change 交付的衔接
 
-| 阶段 | 组织级检查 | change 级制品 |
+| dev/test 任务 | 组织级检查 | change 级制品 |
 | --- | --- | --- |
-| propose | `prd-complete` + `prd-approved` | `requirements/`、`proposal.md` |
-| design | `arch-approved` + `arch-change-align` | `design/overview.md` + LLD 目录 |
-| verify | `arch-drift`（未 promote 时 warn） | 测试 + traceability |
+| dev:propose | `prd-complete` + `prd-approved` | `requirements/`、`proposal.md`、delta spec |
+| dev:design | `arch-approved` + `arch-change-align` | `design/overview.md` + LLD 目录 |
+| dev:verify | `arch-drift`（未 promote 时 warn） | 测试 + traceability |
 | archive 前 | — | **`hx arch promote <change>`**（enterprise 必需，除非 waiver） |
 
 完整 change  walkthrough 见 [场景 15](15-企业级需求到交付交接.md)。
@@ -113,22 +113,22 @@ promoted change "member-badge" → modules [member]
 
 ## 门禁（enterprise）
 
-| 阶段 | 套件 / 传感器 |
+| stage/task | 套件 / 传感器 |
 | --- | --- |
-| propose | `prd-complete`、`prd-approved`、`requirements-complete` |
-| design | `arch-approved`、`arch-change-align`、`design-hld-complete`、`design-lld-complete`、… |
-| verify | `arch-drift`（warn）、`design-drift`、`uat-complete`、… |
+| dev:propose | `prd-complete`、`prd-approved`、`requirements-complete` |
+| dev:design | `arch-approved`、`arch-change-align`、`design-hld-complete`、`design-lld-complete`、… |
+| dev:verify | `arch-drift`（warn）、`design-drift`、`uat-complete`、… |
 
 ## 常见 BLOCKER
 
 | 现象 | 修复 |
 | --- | --- |
-| `PRD not approved` on propose | `hx approve prd <slug> --approver <name>` |
-| `global architecture not approved` on design | `hx approve arch --approver <name>` |
+| `PRD not approved` on dev:propose | `hx approve prd <slug> --approver <name>` |
+| `global architecture not approved` on dev:design | `hx approve arch --approver <name>` |
 | `archive requires hx arch promote` | 验证后执行 `hx arch promote <change>` |
 
 ## 延伸阅读
 
 - [场景 15：enterprise 交接](15-企业级需求到交付交接.md)
-- [操作说明 §4.3 Pre-phase](../operation-guide.zh-CN.md)
-- [用户指南 §1.7 企业 Pre-phase](../usage-guide.zh-CN.md)
+- [操作说明 §4.3 req/arch stages](../operation-guide.zh-CN.md)
+- [用户指南 §1.7 req/arch 阶段](../usage-guide.zh-CN.md)

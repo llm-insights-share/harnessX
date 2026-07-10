@@ -652,7 +652,7 @@
           <text x="345" y="165" text-anchor="middle" fill="#e7ecf3" font-size="10">Skills / Context Pack</text>
           <rect x="450" y="120" width="170" height="70" rx="6" fill="#1a2332" stroke="#2d3f56"/>
           <text x="535" y="145" text-anchor="middle" fill="#94a3b8" font-size="11">Gate Orchestrator</text>
-          <text x="535" y="165" text-anchor="middle" fill="#e7ecf3" font-size="10">Phase / Quality Gates</text>
+          <text x="535" y="165" text-anchor="middle" fill="#e7ecf3" font-size="10">Stage / Quality Gates</text>
           <rect x="640" y="120" width="190" height="70" rx="6" fill="#1a2332" stroke="#2d3f56"/>
           <text x="735" y="145" text-anchor="middle" fill="#94a3b8" font-size="11">Sensor Runner</text>
           <text x="735" y="165" text-anchor="middle" fill="#e7ecf3" font-size="10">Lint / Test / Spec / AI Judge</text>
@@ -693,12 +693,12 @@
             <tr>
               <td><strong>Guide Engine</strong></td>
               <td>按阶段组装 Context Pack：规格片段、Skills、AGENTS.md、拓扑模板</td>
-              <td><code>guide.pack(phase, changeId)</code></td>
+              <td><code>guide.pack(stage, task, changeId)</code></td>
             </tr>
             <tr>
               <td><strong>Gate Orchestrator</strong></td>
               <td>定义阶段转换条件；阻断未通过 Quality Gate 的推进</td>
-              <td><code>gate.check(phase)</code>, <code>gate.advance()</code></td>
+              <td><code>gate.check(stage, task)</code>, <code>gate.advance()</code></td>
             </tr>
             <tr>
               <td><strong>Sensor Runner</strong></td>
@@ -723,7 +723,7 @@
       <ul>
         <li><strong>Shift Quality Left</strong> — 便宜快速的 Computational Sensor 前置到每次 Agent 迭代；昂贵 Inferential Sensor 后置到 PR/CI。</li>
         <li><strong>Spec as Source of Truth</strong> — 行为需求持久化于仓库，而非聊天历史；编码与测试均 Trace 到 Spec Scenario。</li>
-        <li><strong>Soft Gates, Hard Sensors</strong> — 阶段可灵活回退（OpenSpec 无 rigid phase gate），但 Sensor 失败必须阻断归档与合并。</li>
+        <li><strong>Soft Gates, Hard Sensors</strong> — 阶段可灵活回退，但 Sensor 失败必须阻断归档与合并。</li>
         <li><strong>Harness Coherence</strong> — Guides 与 Sensors 统一注册于 <code>harness.yaml</code>，避免矛盾指令。</li>
         <li><strong>Brownfield First</strong> — 支持增量接入；小改动走 Lite Profile，跳过多余制品。</li>
       </ul>
@@ -804,7 +804,7 @@
         实现过程不得修改已批准的测试断言（显式 waiver 除外）。测试与实现的独立性是防「假绿」的关键。</p>
 
       <p><span class="req-id">FR-027</span><span class="priority p1">P1</span>
-        Sensor SHALL 支持<strong>事件驱动触发</strong>（<code>trigger: phase | file-save | schedule</code>）：
+        Sensor SHALL 支持<strong>事件驱动触发</strong>（<code>trigger: task | file-save | schedule</code>）：
         除命令流挂载外，可由文件保存等事件触发轻量检查（如 fixtures 目录变动即校验哈希），
         或定时调度巡检（借鉴 Kiro Agent Hooks）。</p>
 
@@ -940,54 +940,41 @@
     <!-- Delivery Phases -->
     <section id="delivery-phases">
       <h2>6. 交付阶段详解</h2>
+      <p>HarnessX v0.6 采用四阶段模型（权威定义见 <code>docs/delivery-stages.zh-CN.md</code>）：</p>
 
       <div class="timeline">
         <div class="timeline-item">
-          <h4>Phase 0 — Explore（可选）</h4>
-          <p><strong>输入：</strong>模糊需求、问题域。 <strong>输出：</strong><code>explore.md</code>（选项分析、风险、推荐路径）。</p>
-          <p><strong>Gates：</strong>无硬门；只读 Sensor 确认未修改代码。</p>
+          <h4>req — 需求（组织级）</h4>
+          <p><strong>输出：</strong><code>docs/prd/&lt;slug&gt;.md</code> — 产品需求文档、原型、需求分析。</p>
+          <p><strong>命令：</strong><code>hx req prd init/check</code>、<code>hx gate approve --gate prd</code>。</p>
+          <p><strong>Gates：</strong><code>prd-complete</code>、<code>prd-approved</code>；可选 <code>requirements-complete</code>。</p>
         </div>
         <div class="timeline-item">
-          <h4>Phase 1 — Propose（需求）</h4>
-          <p><strong>输出：</strong><code>proposal.md</code> — Intent、Scope、Out-of-Scope、Acceptance Criteria、Stakeholders。</p>
-          <p><strong>Gates：</strong>Proposal Completeness Sensor；可选 Inferential「需求歧义审查」。</p>
+          <h4>arch — 设计（组织级）</h4>
+          <p><strong>输出：</strong><code>docs/architecture/overview.md</code>（HLD）+ 模块 <code>lld.md</code>。</p>
+          <p><strong>命令：</strong><code>hx arch init/check</code>、<code>hx arch lld</code>、<code>hx gate approve --gate arch</code>。</p>
+          <p><strong>Gates：</strong><code>arch-hld-complete</code>、<code>arch-lld-complete</code>、<code>arch-approved</code>。</p>
         </div>
         <div class="timeline-item">
-          <h4>Phase 2 — Design（设计）</h4>
-          <p><strong>输出：</strong><code>design.md</code> + ADR；组件图、数据流、错误策略、可观测性设计。</p>
-          <p><strong>Gates：</strong>Architecture Fitness Sensors（模块边界、性能预算、日志标准）。</p>
+          <h4>dev — 开发（change 级）</h4>
+          <p><strong>任务序列：</strong><code>plan → propose → design → apply → verify → archive</code>。</p>
+          <p><strong>输出：</strong><code>proposal.md</code>、delta specs、<code>design/</code>、<code>tasks.md</code>、可运行代码。</p>
+          <p><strong>Gates：</strong><code>hx gate check --stage dev --task &lt;id&gt;</code>；
+            <strong>人工批准门</strong>：<code>design-to-plan</code>（<code>hx gate approve --gate design-to-plan</code>）。</p>
         </div>
         <div class="timeline-item">
-          <h4>Phase 3 — Spec（规格）</h4>
-          <p><strong>输出：</strong>Delta specs（ADDED/MODIFIED/REMOVED + Scenarios）。</p>
-          <p><strong>Gates：</strong>OpenSpec validate；Scenario 覆盖率；与 proposal 追溯一致性；
-            <strong>人工批准门</strong>（standard/strict：specs/ 的 PR review 即批准，CODEOWNERS 强制，见 §12.3）。</p>
-        </div>
-        <div class="timeline-item">
-          <h4>Phase 4 — Plan（任务分解）</h4>
-          <p><strong>输出：</strong><code>tasks.md</code> — 实现轨 + 测试轨；每项标注关联 Requirement ID。</p>
-          <p><strong>Gates：</strong>每个 Requirement 至少一条 task；测试 task 不可缺失（可 waiver）。</p>
-        </div>
-        <div class="timeline-item">
-          <h4>Phase 5 — Apply（编码）</h4>
-          <p><strong>行为：</strong>Agent 逐 task 执行；每 task 后运行 Fast Sensor Suite；失败则自校正循环（上限 N 次）。
-            strict profile 下<strong>测试轨先行</strong>：先从 Scenario 生成测试并人审，再由独立 session 执行实现轨（FR-026）。</p>
-          <p><strong>Gates：</strong>Lint、TypeCheck、相关单元测试、Spec-Task 状态同步。</p>
-        </div>
-        <div class="timeline-item">
-          <h4>Phase 6 — Verify（测试验证）</h4>
-          <p><strong>行为：</strong>全量测试、Spec Traceability、结构测试、可选 Mutation / AI Review。</p>
-          <p><strong>Gates：</strong>所有 P0 Sensor 通过；<strong>CI 重放为 merge 最终裁决</strong>（FR-051）；人工 Sign-off 记录（可选）。</p>
-        </div>
-        <div class="timeline-item">
-          <h4>Phase 7 — Archive（归档）</h4>
-          <p><strong>行为：</strong>合并 Spec；归档 Change；生成 Retro 摘要；Steering Loop 输入。</p>
+          <h4>test — 测试（change 级）</h4>
+          <p><strong>任务：</strong><code>test-case-design</code>、<code>test-execution</code>（UAT、bug 闭环）。</p>
+          <p><strong>输出：</strong>测试用例、测试报告、可追溯映射。</p>
+          <p><strong>Gates：</strong><code>hx gate check --stage test --task &lt;id&gt;</code>；
+            <code>test-cases-complete</code>、<code>uat-complete</code>。</p>
         </div>
       </div>
 
       <div class="callout callout-warn">
-        <strong>与 OpenSpec 的差异：</strong>HarnessX 显式拆分 <code>design</code> 与 <code>spec</code> 阶段门，
-        新增 <code>verify</code> 阶段及三类 Harness 传感器配置。Core 模式下可合并 propose+design+spec 为单次 <code>/hx:propose --full</code> 以兼容 OpenSpec 快速路径。
+        <strong>状态机：</strong><code>req (org) → arch (org) → change create → dev (change) → test (change) → 交付完成</code>。
+        <code>lite</code> profile 跳过 req/arch，直接进入 <code>dev</code>。
+        Core 模式下可合并 dev <code>propose</code>+<code>design</code> 为单次 <code>/hx:propose --full</code> 以兼容 OpenSpec 快速路径（<code>compat_mode: openspec</code>）。
       </div>
     </section>
 
@@ -1106,16 +1093,19 @@ THE SYSTEM SHALL return the original refund result without creating a new charge
       <pre><code>version: "1.0"
 constitution: harnessX/constitution.md   # 最高优先级 Guide（FR-034）
 
-profiles:                     # Workflow Profile：阶段组合 + 各阶段使用的 Sensor Suite
+profiles:                     # Workflow Profile：四阶段 + dev/test 任务 + Sensor Suite
   lite:
-    phases: [propose, apply, archive]
-    suites: { apply: fast-lite }
+    stages: [dev]
+    dev_tasks: [propose, apply, archive]
+    suites: { dev.apply: fast-lite }
   standard:
-    phases: [propose, design, spec, plan, apply, verify, archive]
-    suites: { apply: fast, verify: verification }
+    stages: [req, arch, dev, test]
+    dev_tasks: [plan, propose, design, apply, verify, archive]
+    suites: { dev.apply: fast, dev.verify: verification }
   strict:
-    phases: [explore, propose, design, spec, plan, apply, verify, archive]
-    suites: { apply: fast, verify: verification-strict }
+    stages: [req, arch, dev, test]
+    dev_tasks: [plan, propose, design, apply, verify, archive]
+    suites: { dev.apply: fast, dev.verify: verification-strict }
 
 suites:                       # Sensor Suite：可复用的传感器套件（与 Workflow Profile 是两个概念）
   fast-lite:            [lint, unit-changed]
@@ -1127,44 +1117,51 @@ guides:
   - id: coding-conventions
     kind: guide.skill
     execution: inferential
-    phase: [apply]
-    source: harnessX/assets/guides/coding-conventions/SKILL.md   # 单源，.cursor/ 等为编译产物
+    stage: dev
+    task: apply
+    source: harnessX/assets/guides/coding-conventions/SKILL.md
   - id: api-design
     kind: guide.skill
     execution: inferential
-    phase: [design, apply]
+    stage: dev
+    task: design
     source: harnessX/assets/bundles/api-service/skills/api-design.md
   - id: proposal-template
     kind: guide.template
     execution: computational
-    phase: [propose]
+    stage: dev
+    task: propose
     source: harnessX/assets/guides/proposal-template/template.md
 
 sensors:
   - id: spec-validate
     kind: sensor.script
     execution: computational
-    phase: [spec, verify, archive]
+    stage: dev
+    task: verify
     run: hx sensor spec-validate --change $CHANGE
     on_fail: block
     fix_hint: "Fix delta spec format; ensure each Requirement has ≥1 Scenario"
   - id: lint
     kind: sensor.rule
     execution: computational
-    phase: [apply, verify]
+    stage: dev
+    task: apply
     run: npm run lint
     on_fail: retry
     max_retries: 3
   - id: spec-trace
     kind: sensor.script
     execution: computational
-    phase: [verify]
+    stage: dev
+    task: verify
     run: hx sensor trace --change $CHANGE
     on_fail: block
   - id: ai-spec-review
     kind: sensor.rubric
     execution: inferential
-    phase: [propose, verify]
+    stage: dev
+    task: propose
     run: hx sensor ai-review --target specs
     on_fail: warn
     budget_tokens: 8000
@@ -1322,7 +1319,8 @@ sensors:
 id: proposal-template
 kind: guide.template          # guide.* | sensor.* | orch.*（完整分类见下方全景表）
 category: behaviour           # maintainability | architecture | behaviour
-phase: [propose]
+stage: dev
+task: propose
 version: 1.3.0
 owner: platform-team
 origin: hub                   # builtin | local | team | hub
@@ -1813,12 +1811,14 @@ docs/
           </thead>
           <tbody>
             <tr><td><code>hx init [--bundle api-service]</code></td><td>初始化 harnessX/ 目录与配置</td></tr>
-            <tr><td><code>hx change create &lt;name&gt;</code></td><td>创建 change 工作区</td></tr>
-            <tr><td><code>hx change status [name]</code></td><td>查看阶段与 Gate 状态</td></tr>
-            <tr><td><code>hx gate check --phase verify</code></td><td>运行当前阶段 Sensors</td></tr>
-            <tr><td><code>hx gate advance</code></td><td>通过后推进阶段</td></tr>
-            <tr><td><code>hx sensor run &lt;id&gt;</code></td><td>运行单个 Sensor</td></tr>
-            <tr><td><code>hx guide pack --phase apply</code></td><td>输出 Context Pack（JSON/Markdown）</td></tr>
+            <tr><td><code>hx req prd init/check &lt;slug&gt;</code></td><td>req 阶段：组织 PRD 脚手架与校验</td></tr>
+            <tr><td><code>hx arch init/check</code></td><td>arch 阶段：组织 HLD 脚手架与校验</td></tr>
+            <tr><td><code>hx change create &lt;name&gt;</code></td><td>创建 change 工作区（dev/test 阶段载体）</td></tr>
+            <tr><td><code>hx stage status [change]</code></td><td>查看四阶段与任务进度</td></tr>
+            <tr><td><code>hx gate check --stage dev --task verify</code></td><td>运行指定 stage/task 的 Sensors</td></tr>
+            <tr><td><code>hx gate approve --gate design-to-plan</code></td><td>dev design→plan 人工批准门</td></tr>
+            <tr><td><code>hx gate advance</code></td><td>通过后推进至下一任务/阶段</td></tr>
+            <tr><td><code>hx guide pack --stage dev --task apply</code></td><td>输出 Context Pack（JSON/Markdown）</td></tr>
             <tr><td><code>hx spec validate &lt;change&gt;</code></td><td>校验 Delta specs</td></tr>
             <tr><td><code>hx spec merge &lt;change&gt;</code></td><td>归档合并（也可由 archive 调用）</td></tr>
             <tr><td><code>hx trace check &lt;change&gt;</code></td><td>Spec-Test 追溯检查</td></tr>
@@ -1866,39 +1866,40 @@ docs/
       <h2>15. 运行时引擎设计</h2>
 
       <h3>15.1 Gate 状态机</h3>
-      <pre><code>type Phase =
-  | "explore" | "proposed" | "designed" | "specified"
-  | "planned" | "implementing" | "verified" | "archived";
+      <pre><code>type DeliveryStage = "req" | "arch" | "dev" | "test";
+
+interface MetaState {
+  stage: DeliveryStage;
+  task: string;              // e.g. dev: "propose" | "design" | "apply"
+  stageProgress?: Record&lt;DeliveryStage, { completed: string[] }&gt;;
+}
 
 interface GateResult {
   passed: boolean;
   sensorResults: SensorResult[];
-  blockers: string[];      // 必须修复
-  warnings: string[];      // 可继续但需记录
-  fixHints: string[];      // 聚合给 Agent 的修正指令
+  blockers: string[];
+  warnings: string[];
+  fixHints: string[];
 }
 
-// 阶段推进规则：仅当 blockers 为空
-function advance(change: Change): Phase | null</code></pre>
+// 任务推进：hx gate check --stage &lt;stage&gt; --task &lt;task&gt; 全绿后 hx gate advance
+function advance(change: Change): { stage: DeliveryStage; task: string } | null</code></pre>
 
-      <p>三套命名的唯一映射（显示名 / meta.yaml 状态名 / 命令名），避免混用：</p>
+      <p>四阶段与 dev/test 任务映射（显示名 / meta.yaml / CLI）：</p>
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>阶段显示名</th><th>状态名（meta.yaml）</th><th>命令</th></tr>
+            <tr><th>阶段</th><th>作用域</th><th>典型任务</th><th>CLI 示例</th></tr>
           </thead>
           <tbody>
-            <tr><td>Explore</td><td><code>explore</code></td><td><code>/hx:explore</code></td></tr>
-            <tr><td>Propose</td><td><code>proposed</code></td><td><code>/hx:propose</code></td></tr>
-            <tr><td>Design</td><td><code>designed</code></td><td><code>/hx:design</code></td></tr>
-            <tr><td>Spec</td><td><code>specified</code></td><td><code>/hx:spec</code></td></tr>
-            <tr><td>Plan</td><td><code>planned</code></td><td><code>/hx:plan</code></td></tr>
-            <tr><td>Apply</td><td><code>implementing</code></td><td><code>/hx:apply</code></td></tr>
-            <tr><td>Verify</td><td><code>verified</code></td><td><code>/hx:verify</code></td></tr>
-            <tr><td>Archive</td><td><code>archived</code></td><td><code>/hx:archive</code></td></tr>
+            <tr><td>req</td><td>组织 <code>docs/prd/</code></td><td>prd-writing</td><td><code>hx req prd check &lt;slug&gt;</code></td></tr>
+            <tr><td>arch</td><td>组织 <code>docs/architecture/</code></td><td>subsystem-division, internal-interface</td><td><code>hx arch check</code></td></tr>
+            <tr><td>dev</td><td>change</td><td>plan, propose, design, apply, verify, archive</td><td><code>hx gate check --stage dev --task propose</code></td></tr>
+            <tr><td>test</td><td>change</td><td>test-case-design, test-execution</td><td><code>hx gate check --stage test --task test-execution</code></td></tr>
           </tbody>
         </table>
       </div>
+      <p>人工批准门：<code>design-to-plan</code>（change）、<code>prd</code> / <code>arch</code> / <code>arch-lld</code>（组织级，写入 <code>docs/.stage-approvals.yaml</code>）。</p>
 
       <h3>15.2 Apply 循环（核心）</h3>
       <pre><code>async function applyLoop(changeId: string) {
@@ -2059,7 +2060,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: npm ci
-      - run: hx gate check --phase verify --change ${{ env.CHANGE_ID }}   # 重放，不信任本地结果
+      - run: hx gate check --stage dev --task verify --change ${{ env.CHANGE_ID }}   # 重放，不信任本地结果
       - run: hx trace check ${{ env.CHANGE_ID }}
       - run: hx meta verify ${{ env.CHANGE_ID }}    # 校验状态与 sensor 日志哈希一致性
 

@@ -16,7 +16,7 @@ core-domains: [payment-charging, payment-settlement]
 
 本次需求：**支持预授权（先冻结后扣款）**，直接动 `payment-charging`。团队规则：核心域改动必须走 strict profile——多一个 explore 阶段、verification-strict 套件、以及**测试先行**（人先批准测试断言，agent 才能写实现）。
 
-角色：**周工**（支付组开发）、**陈老师**（QA，负责批准测试断言）、**张架构师**（spec 批准人）。
+角色：**周工**（支付组开发）、**陈老师**（QA，负责批准测试断言）、**张架构师**（design-to-plan 批准人）。
 
 ## 操作步骤
 
@@ -46,9 +46,9 @@ hx: profile "standard" is below the recommended "strict" — provide --override-
 
 （降级理由会写入 `meta.yaml` 的 `profileRecommendation.overrideReason`，审计时一目了然——谁在核心域上跳过了严格流程、为什么。）
 
-### 2. explore：只读探索
+### 2. req:requirements-research — 只读探索
 
-strict profile 的第一个阶段是 explore。周工在 Cursor 里驱动：
+strict profile 在 dev:propose 之前可先完成 req 阶段的**需求调研**任务。周工在 Cursor 里驱动：
 
 ```text
 Cursor ▸ /hx-explore pre-auth
@@ -57,11 +57,11 @@ Cursor ▸ /hx-explore pre-auth
 
 `/hx-explore` 的提示词把本阶段定义为**严格只读**：agent 先跑 `hx explore pre-auth --topic "现有扣款状态机与幂等键设计"` 生成笔记脚手架，然后按提示词的调查顺序工作——先读 `harnessX/specs/` 里的相关主规格（规格是事实源，先于代码），再看要动的模块与测试，最后搜 `harnessX/archive/` 里动过同一 capability 的历史 change。发现全部写入 explore.md 的 Questions / Findings / Recommendation 三节，**每条结论必须带文件路径引证**；Guardrails 明确"本阶段产出是理解不是方案"，Recommendation 只列带权衡的选项。
 
-双保险：`hx guide pack pre-auth --phase explore` 组装的 Context Pack 中权限声明也是 **READ-ONLY**，且 gate check 会标记暂存区里的代码改动——agent 忘了纪律也会被抓。探索结论（"现有状态机有 CREATED→CHARGED 两态，需插入 FROZEN 态；幂等键可复用"）成为 design 阶段的输入。
+双保险：`hx guide pack pre-auth --stage req --task requirements-research` 组装的 Context Pack 中权限声明也是 **READ-ONLY**，且 gate check 会标记暂存区里的代码改动——agent 忘了纪律也会被抓。探索结论（"现有状态机有 CREATED→CHARGED 两态，需插入 FROZEN 态；幂等键可复用"）成为 dev:design 任务的输入。
 
-### 3. propose / design / spec / 批准（同场景 02，略）
+### 3. dev:propose / dev:design / design-to-plan 批准（同场景 02，略）
 
-周工在 Cursor 里依次 `/hx-propose pre-auth`、`/hx-design pre-auth`、`/hx-spec pre-auth`（delta spec 由 agent 起草、周工审改），终端里 `hx gate advance` 逐阶段推进。注意 `/hx-spec` 提示词的最后一步是**要求 agent 停下来请人批准**——它被明确告知不许自己跑 `hx gate approve`（那是人类专用命令）。张架构师 review 后在终端执行 `hx gate approve pre-auth --gate spec --approver zhang.arch`。
+周工在 Cursor 里依次 `/hx-propose pre-auth`、`/hx-design pre-auth`、`/hx-spec pre-auth`（delta spec 由 agent 起草、周工审改），终端里 `hx gate advance` 逐任务推进。注意 `/hx-spec` 提示词的最后一步是**要求 agent 停下来请人批准**——它被明确告知不许自己跑 `hx gate approve`（那是人类专用命令）。张架构师 review 后在终端执行 `hx gate approve pre-auth --gate design-to-plan --approver zhang.arch`。
 
 ### 4. 测试先行：生成 → 人工评审 → 批准锁定
 

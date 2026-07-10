@@ -9,11 +9,6 @@
       "type": "string",
       "description": "Active change id"
     },
-    "HX_PHASE": {
-      "type": "string",
-      "enum": ["explore", "propose", "design", "spec", "plan", "test-design", "apply", "verify", "archive"],
-      "description": "Legacy phase command (deprecated — use HX_STAGE + HX_TASK)"
-    },
     "HX_STAGE": {
       "type": "string",
       "enum": ["req", "arch", "dev", "test"],

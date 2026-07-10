@@ -86,7 +86,7 @@ Tier 2 adds extra verify sensors when hooks are unavailable.
 ```console
 $ hx change create export-csv --domains metrics
 $ hx propose export-csv --title "Export metrics CSV"
-$ hx gate approve export-csv --gate spec --approver sun
+$ hx gate approve export-csv --gate design-to-plan --approver sun
 $ hx gate advance export-csv
 $ hx plan export-csv
 ```
