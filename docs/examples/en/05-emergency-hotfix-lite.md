@@ -10,7 +10,7 @@
 
 Friday 18:40, alert: coupon redemption API returns 500 for coupons "expired but expiry status not persisted" (should return 422). On-call Li needs a fix within 30 minutes. Standard full flow (design/spec/approval/plan) is unrealistic, but **fully bypassing harness leaves this fix outside the spec system** — three months later nobody knows if the behavior was intentional or accidental.
 
-lite profile exists for this: `phases: [propose, apply, archive]`, apply runs fast-lite suite.
+lite profile exists for this: keep only the `dev` stage with a minimal task set (commonly `propose/apply/archive`), and run fast-lite in apply.
 
 ## Steps
 
