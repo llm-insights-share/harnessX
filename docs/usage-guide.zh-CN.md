@@ -410,6 +410,15 @@ hx adapter sync     # 编译到 .cursor/ 等 IDE 目录
 1. 编辑 `harnessX/constitution.md`
 2. 运行 `hx harness lint` 确认与 Bundle Skill 无矛盾
 
+**完整示例**（按项目类型，含设计说明与可复制正文）：[宪法示例目录](examples/constitutions/README.md)
+
+| 示例 | 适用场景 |
+| --- | --- |
+| [01 优惠券 API](examples/constitutions/01-coupon-service.md) | 营销后端、金额精度、lite 紧急留痕 |
+| [02 支付网关](examples/constitutions/02-payment-gateway.md) | 金融核心域、strict + testfirst |
+| [03 B2B SaaS](examples/constitutions/03-b2b-saas-platform.md) | 多租户、enterprise Pre-phase |
+| [04 遗留迁移](examples/constitutions/04-legacy-migration.md) | OpenSpec 存量、改哪补哪 |
+
 ```markdown
 ## Core domains
 core-domains: [coupon-issuing, coupon-redemption]

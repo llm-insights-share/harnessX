@@ -252,7 +252,7 @@ phases:
 
 项目最高优先级原则（域边界、不可妥协约束）。Agent 的 Context Pack 始终包含此文件。
 
-**配置步骤：** 初始化后立即编辑，写明核心域、禁止事项、测试/安全底线；`hx harness lint` 会检测 Skill 与宪法矛盾。
+**配置步骤：** 初始化后立即编辑，写明核心域、禁止事项、测试/安全底线；`hx harness lint` 会检测 Skill 与宪法矛盾。完整示例见 [宪法示例目录](examples/constitutions/README.md)。
 
 ### 3.5 `harnessX/harness.lock`
 

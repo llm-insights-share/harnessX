@@ -259,6 +259,23 @@ hx hooks install && hx ci init && hx adapter sync
 
 Highest-priority guide: 5–10 immutable principles + `core-domains:` for strict recommendations. Run `hx harness lint` after edits.
 
+**Full examples** (by project type, with rationale and copy-paste bodies): [constitution examples](examples/constitutions/README.md)
+
+| Example | Scenario |
+| --- | --- |
+| [01 Coupon API](examples/constitutions/01-coupon-service.md) | Marketing backend, money precision, lite hotfix trail |
+| [02 Payment gateway](examples/constitutions/02-payment-gateway.md) | Fintech core domains, strict + testfirst |
+| [03 B2B SaaS](examples/constitutions/03-b2b-saas-platform.md) | Multi-tenant, enterprise Pre-phase |
+| [04 Legacy migration](examples/constitutions/04-legacy-migration.md) | OpenSpec import, incremental spec debt |
+
+```markdown
+## Core domains
+core-domains: [coupon-issuing, coupon-redemption]
+
+## Principles
+6. All coupon amounts use integer cents; floating-point arithmetic is a defect.
+```
+
 ### 2.3 Workflow `config.yaml`
 
 Set `profile`, `locale`, optional `hub`, `adapter.target`, and `compensation` for Tier 2 IDEs. See [Operation Guide §3.1](operation-guide.en.md#31-harnessxconfigyaml).

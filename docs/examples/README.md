@@ -13,6 +13,7 @@
 | 你此刻的目标 | 从这里开始 |
 | --- | --- |
 | 第一次接入 HarnessX | [01 新项目接入](01-新项目接入.md) |
+| 编写项目宪法 `constitution.md` | [宪法示例目录](constitutions/README.md) · [使用说明 §2.2](../usage-guide.zh-CN.md#22-项目宪法-constitutionmd) |
 | 交付一个常规功能 | [02 标准功能全流程](02-标准功能开发全流程.md)（需先 01） |
 | 从组织 Hub 初始化 | [16 Hub 蓝图初始化](16-v0.3-hub-blueprint-init.md) · **[hxhub 使用手册](../hxhub-usage.zh-CN.md)** |
 | 企业级需求→编码交接 | [19 组织 Pre-phase](19-组织级PRD与架构设计.md) → [15 enterprise 交接](15-企业级需求到交付交接.md) |
