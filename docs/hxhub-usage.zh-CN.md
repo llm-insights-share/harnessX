@@ -104,7 +104,7 @@ harness-hub/
 
 | kind | 类别 | 典型文件 | 用途 |
 | --- | --- | --- | --- |
-| `guide.skill` | Guide · 推断型 | `SKILL.md` | Agent 写作/编码规范 |
+| `guide.skill` | Guide · 推断型 | `SKILL.md` + 可选 `references/`、`examples/` 等 | Agent 写作/编码规范（目录型 skill 包） |
 | `guide.template` | Guide · 计算型 | `template.md` | 脚手架模版（UAT 清单、调研报告） |
 | `sensor.rubric` | Sensor · 推断型 | `rules.yaml` | 评审 Rubric 规则集 |
 | `guide.constraint` | Guide · 计算型 | `*.yaml` | 架构分层等硬约束（多在 Bundle 内） |
@@ -284,7 +284,7 @@ hxhub asset create --interactive
 
 | `--kind` | 主内容文件 | 典型 `stage.task` |
 | --- | --- | --- |
-| `guide.skill` | `SKILL.md` | `dev.apply`、`dev.design` |
+| `guide.skill` | `SKILL.md` + 可选子目录 | `dev.apply`、`dev.design` |
 | `guide.template` | `template.md` | `dev.propose`、`dev.design` |
 | `sensor.rubric` | `rules.yaml` | `dev.verify` |
 | `harness.bundle` | `bundle.yaml` + `assets/` | （Bundle 内 guides 各自声明） |
@@ -297,6 +297,27 @@ created /path/to/assets/clock-safety
   + asset.yaml
   + SKILL.md
 ```
+
+**`guide.skill` 目录包约定**（`asset.yaml` 与 `SKILL.md` 位于包根目录）：
+
+```text
+assets/guides/business-insight/
+├── asset.yaml
+├── SKILL.md              # 主入口，可在正文中链接 references/、examples/
+├── references/
+│   └── market-framework.md
+└── examples/
+    └── sample-report.md
+```
+
+`harness.yaml` 中 `source` 可写目录（推荐）或 `SKILL.md` 路径（兼容旧写法）：
+
+```yaml
+source: assets/guides/business-insight
+# 或 source: assets/guides/business-insight/SKILL.md
+```
+
+`hxhub asset create --source-dir` 会复制源目录内除 `asset.yaml` 外的全部附属文件。`hx adapter sync` 将整包同步到 `.cursor/skills/<id>/`。
 
 #### 3.3.3 按 kind 的完整样例
 
@@ -811,6 +832,7 @@ hxhub catalog rebuild [--hub <path>]
 
 ```bash
 hxhub eval <id>@<version> [选项]
+hxhub eval --local <dir>              # 本地目录预检，无需 pkg 参数
 ```
 
 | 选项 | 说明 |
@@ -820,7 +842,7 @@ hxhub eval <id>@<version> [选项]
 | `--list` | 列出 Hub 中可用的 golden eval 集 |
 | `--out <file>` | 将报告写入 JSON 文件 |
 
-**作用**：对资产执行结构、注入扫描、golden-repo 等检查。发布前默认会触发 eval；失败时 `promote` 会中止（除非 `--skip-eval`）。
+**作用**：对资产执行结构、注入扫描、golden-repo 等检查。`guide.skill` 额外校验 `skill package layout`（`SKILL.md` 位于包根目录）。发布前默认会触发 eval；失败时 `promote` 会中止（除非 `--skip-eval`）。
 
 ---
 

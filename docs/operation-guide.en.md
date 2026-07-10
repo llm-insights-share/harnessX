@@ -175,7 +175,8 @@ guides:
     execution: inferential
     stage: dev
     task: apply
-    source: assets/guides/team-api-style/SKILL.md
+    source: assets/guides/team-api-style
+    # 兼容旧写法：assets/guides/team-api-style/SKILL.md
 
 sensors:
   - id: secscan
@@ -212,7 +213,7 @@ overrides:
 
 **Setup — add a team skill:**
 
-1. Create `harnessX/assets/guides/<id>/` with `asset.yaml` and `SKILL.md`.
+1. Create `harnessX/assets/guides/<id>/` with `asset.yaml`, `SKILL.md`, and optional `references/` or `examples/` subdirectories.
 2. Append to `harness.yaml` `guides` (or let blueprint / `hx hub add` wire it).
 3. Run `hx lock write` to pin content hashes.
 4. Run `hx harness lint` for constitution/skill conflicts.

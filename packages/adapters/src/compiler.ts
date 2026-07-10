@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { Workspace, ensureDir, sha256, STAGE_TASKS, type DeliveryStage } from "@harnessx/core";
+import { Workspace, ensureDir, sha256, STAGE_TASKS, loadSkillPackage, formatSkillResourceAppendix, type DeliveryStage } from "@harnessx/core";
 import { computeTier, TARGETS, type Tier } from "./capability.js";
 
 /**
@@ -86,9 +86,22 @@ export function commandBody(c: CommandDef): string {
   return `# ${c.name}\n\n${c.description}\n\nRun:\n\n\`\`\`bash\n${c.run}\n\`\`\`\n`;
 }
 
+export interface SkillFile {
+  rel: string;
+  content: string;
+}
+
 export interface SkillSource {
   id: string;
+  root: string;
   content: string;
+  files: SkillFile[];
+}
+
+/** Inline SKILL.md plus resource appendix for flat rule/skill targets. */
+export function skillInlineBody(skill: SkillSource): string {
+  const appendix = formatSkillResourceAppendix(skill.id, { files: skill.files, entryRel: "SKILL.md" });
+  return appendix ? `${skill.content.trimEnd()}\n\n${appendix}` : skill.content;
 }
 
 export function collectSkills(ws: Workspace): SkillSource[] {
@@ -96,8 +109,23 @@ export function collectSkills(ws: Workspace): SkillSource[] {
   const out: SkillSource[] = [];
   for (const g of harness.guides) {
     if (g.kind !== "guide.skill") continue;
+    try {
+      const pkg = loadSkillPackage(ws.base, g.source);
+      out.push({
+        id: g.id,
+        root: pkg.rootRel,
+        content: pkg.entryContent,
+        files: pkg.files
+      });
+      continue;
+    } catch {
+      /* legacy single-file source */
+    }
     const f = path.join(ws.base, g.source);
-    if (fs.existsSync(f)) out.push({ id: g.id, content: fs.readFileSync(f, "utf8") });
+    if (!fs.existsSync(f) || !fs.statSync(f).isFile()) continue;
+    const content = fs.readFileSync(f, "utf8");
+    const root = path.dirname(path.relative(ws.base, f)).replace(/\\/g, "/");
+    out.push({ id: g.id, root, content, files: [{ rel: "SKILL.md", content }] });
   }
   return out;
 }
@@ -152,7 +180,7 @@ export interface EmitContext {
   commands: CommandDef[];
   skills: SkillSource[];
   rules: string;
-  write: (rel: string, content: string, style?: "html" | "hash" | "raw") => string;
+  write: (rel: string, content: string, style?: "html" | "hash" | "raw", sourceNote?: string) => string;
 }
 
 export function makeEmitContext(ws: Workspace): Omit<EmitContext, "write"> {
@@ -165,10 +193,10 @@ export function compileTarget(ws: Workspace, target: string, emitter: TargetEmit
   const files: string[] = [];
   const ctx: EmitContext = {
     ...makeEmitContext(ws),
-    write: (rel, content, style = "html") => {
+    write: (rel, content, style = "html", sourceNote = "harnessX/assets") => {
       const abs = path.join(ws.root, rel);
       ensureDir(path.dirname(abs));
-      fs.writeFileSync(abs, withHeader(content, "harnessX/assets", style));
+      fs.writeFileSync(abs, withHeader(content, sourceNote, style));
       files.push(rel);
       return rel;
     }

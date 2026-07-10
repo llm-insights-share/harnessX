@@ -129,5 +129,10 @@ export function createAssetScaffold(opts: CreateAssetOptions): CreateAssetResult
       copyDirRecursive(sourceAssets, targetAssets, files, "assets");
     }
   }
+
+  if (opts.kind === "guide.skill" && sourceDir) {
+    copyDirRecursive(sourceDir, dir, files, "");
+  }
+
   return { dir, files };
 }

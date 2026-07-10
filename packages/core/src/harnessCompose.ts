@@ -13,6 +13,7 @@ import {
 import { BUILTIN_BUNDLES_DIR } from "./init.js";
 import { hubBundleDir, type HubRef } from "./hub.js";
 import { loadAssetDir } from "./assets.js";
+import { SKILL_ENTRY } from "./skill.js";
 
 export interface ResolveOpts {
   hubRoot?: string;
@@ -65,17 +66,22 @@ function findAssetContentFile(assetDir: string): string {
 }
 
 export function guideDefFromHubAsset(ws: Workspace, assetDir: string, manifest: AssetManifest): GuideDef {
-  const content = findAssetContentFile(assetDir);
-  const rel = path.relative(ws.base, path.join(assetDir, content)).replace(/\\/g, "/");
   const kind = GUIDE_KINDS.find((k) => k === manifest.kind);
   if (!kind) throw new Error(`asset ${manifest.id} is not a guide kind`);
+  const source =
+    manifest.kind === "guide.skill"
+      ? path.relative(ws.base, assetDir).replace(/\\/g, "/")
+      : path.relative(ws.base, path.join(assetDir, findAssetContentFile(assetDir))).replace(/\\/g, "/");
+  if (manifest.kind === "guide.skill" && !fs.existsSync(path.join(assetDir, SKILL_ENTRY))) {
+    throw new Error(`guide.skill asset ${manifest.id} missing ${SKILL_ENTRY}`);
+  }
   return {
     id: manifest.id,
     kind,
     execution: manifest.execution ?? "inferential",
     stage: manifest.stage,
     task: manifest.task,
-    source: rel
+    source
   };
 }
 

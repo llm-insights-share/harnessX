@@ -66,6 +66,30 @@ describe("hxhub e2e", () => {
     expect(help).toContain("suggestions");
   });
 
+  it("copies skill resource files from source-dir", () => {
+    const repo = makeRepo();
+    hxhub(repo, ["init", ".", "--hub", "./hub", "--actor", "ops"]);
+    const sourceDir = path.join(repo, "skill-source");
+    fs.mkdirSync(path.join(sourceDir, "examples"), { recursive: true });
+    fs.writeFileSync(path.join(sourceDir, "SKILL.md"), "# Biz\n", "utf8");
+    fs.writeFileSync(path.join(sourceDir, "examples", "sample.md"), "# Sample\n", "utf8");
+    hxhub(repo, [
+      "asset",
+      "create",
+      "--kind",
+      "guide.skill",
+      "--id",
+      "business-insight",
+      "--source-dir",
+      sourceDir,
+      "--out",
+      "./assets/business-insight"
+    ]);
+    expect(fs.existsSync(path.join(repo, "assets/business-insight/examples/sample.md"))).toBe(true);
+    const evalOut = hxhub(repo, ["eval", "--local", "./assets/business-insight"]);
+    expect(evalOut).toContain("PASS\tskill package layout");
+  });
+
   it("accepts source file path for asset create", () => {
     const repo = makeRepo();
     const sourceFile = path.join(repo, "功能需求模版.md");

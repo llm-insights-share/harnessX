@@ -187,7 +187,8 @@ guides:
     execution: inferential
     stage: dev
     task: apply
-    source: assets/guides/team-api-style/SKILL.md
+    source: assets/guides/team-api-style
+    # 兼容旧写法：assets/guides/team-api-style/SKILL.md
 
 sensors:
   - id: secscan
@@ -224,7 +225,7 @@ overrides:
 
 **配置步骤 — 追加团队 Skill：**
 
-1. 在 `harnessX/assets/guides/<id>/` 创建 `asset.yaml` 与 `SKILL.md`。
+1. 在 `harnessX/assets/guides/<id>/` 创建 `asset.yaml`、`SKILL.md`，以及可选的 `references/`、`examples/` 等附属目录。
 2. 在 `harness.yaml` 的 `guides` 追加条目（或 `hx hub add` 后由 blueprint 自动写入）。
 3. 运行 `hx lock write` 固定版本哈希。
 4. `hx harness lint` 检查与宪法/其他 Skill 是否冲突。

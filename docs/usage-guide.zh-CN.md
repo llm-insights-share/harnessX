@@ -469,8 +469,8 @@ overrides: []
 
 **追加团队 Skill 的步骤**：
 
-1. 创建 `harnessX/assets/guides/<id>/asset.yaml` + `SKILL.md`
-2. 在 `harness.yaml` 的 `guides` 追加条目
+1. 创建 `harnessX/assets/guides/<id>/` 目录包：`asset.yaml` + `SKILL.md`（可选 `references/`、`examples/` 等附属文件）
+2. 在 `harness.yaml` 的 `guides` 追加条目（`source` 推荐指向目录，如 `assets/guides/<id>`）
 3. `hx harness lint` → `hx lock write` → `hx adapter sync`
 
 **覆盖 Hub/内置资产**（须写 reason）：

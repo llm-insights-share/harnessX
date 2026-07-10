@@ -261,6 +261,31 @@ describe("T-605..T-608 target emitters", () => {
     }
   });
 
+  it("emits multi-file skill packages to cursor and inlines resources for trae", () => {
+    const dir = tmp();
+    const { ws } = initWorkspace(dir);
+    const skillDir = path.join(ws.assetsDir, "guides", "packaged-skill");
+    fs.mkdirSync(path.join(skillDir, "examples"), { recursive: true });
+    makeAsset(skillDir, "packaged-skill", {}, "# Packaged\n");
+    fs.writeFileSync(path.join(skillDir, "examples", "note.md"), "# Extra\n", "utf8");
+    const harness = ws.readHarness();
+    harness.guides.push({
+      id: "packaged-skill",
+      kind: "guide.skill",
+      execution: "inferential",
+      stage: "dev",
+      task: "apply",
+      source: "assets/guides/packaged-skill"
+    });
+    writeYaml(ws.harnessFile, harness);
+
+    compileAdapters(ws, ["cursor", "trae"]);
+    expect(fs.existsSync(path.join(ws.root, ".cursor/skills/packaged-skill/examples/note.md"))).toBe(true);
+    const traeRules = fs.readFileSync(path.join(ws.root, ".trae/rules/project_rules.md"), "utf8");
+    expect(traeRules).toContain("Skill resources: packaged-skill");
+    expect(traeRules).toContain("examples/note.md");
+  });
+
   it("cursor fixture hook blocks StrReplace preToolUse and reports violations on postToolUse", () => {
     const ws = initWorkspace(tmp()).ws;
     compileAdapters(ws, ["cursor"]);

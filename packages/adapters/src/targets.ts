@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
 import { Workspace, ensureDir, readTasks, listDeltaFiles } from "@harnessx/core";
-import { commandBody, type TargetEmitter } from "./compiler.js";
+import { commandBody, skillInlineBody, type TargetEmitter } from "./compiler.js";
 
 /**
  * T-605..T-608: target emitters. All content comes from the shared EmitContext
@@ -142,7 +142,13 @@ export const cursorEmitter: TargetEmitter = (ws, ctx) => {
     files.push(ctx.write(`.cursor/commands/${c.name}.md`, commandBody(c)));
   }
   for (const s of ctx.skills) {
-    files.push(ctx.write(`.cursor/skills/${s.id}/SKILL.md`, s.content));
+    for (const f of s.files) {
+      const rel = f.rel.replace(/\\/g, "/");
+      const outRel = `.cursor/skills/${s.id}/${rel}`;
+      const sourceNote = `${s.root}/${rel}`;
+      const style = outRel.endsWith(".json") ? "raw" : "html";
+      ctx.write(outRel, f.content, style, sourceNote);
+    }
   }
   files.push(ctx.write(`.cursor/rules/harnessx.mdc`, `---\ndescription: HarnessX ground rules\nalwaysApply: true\n---\n\n${ctx.rules}\n`));
   const hookRel = ".cursor/hooks/fixture-verify.mjs";
@@ -181,7 +187,10 @@ export const cursorEmitter: TargetEmitter = (ws, ctx) => {
 /* ── T-606 Trae: project rules + planner/executor agents + MCP ── */
 
 export const traeEmitter: TargetEmitter = (_ws, ctx) => {
-  ctx.write(`.trae/rules/project_rules.md`, `${ctx.rules}\n\n## Skills\n\n${ctx.skills.map((s) => s.content).join("\n\n---\n\n")}\n`);
+  ctx.write(
+    `.trae/rules/project_rules.md`,
+    `${ctx.rules}\n\n## Skills\n\n${ctx.skills.map((s) => skillInlineBody(s)).join("\n\n---\n\n")}\n`
+  );
   ctx.write(
     `.trae/agents.yaml`,
     YAML.stringify({
@@ -210,7 +219,7 @@ export const traeEmitter: TargetEmitter = (_ws, ctx) => {
 
 export const qoderEmitter: TargetEmitter = (_ws, ctx) => {
   ctx.write(`.qoder/rules/harnessx.md`, ctx.rules);
-  for (const s of ctx.skills) ctx.write(`.qoder/skills/${s.id}.md`, s.content);
+  for (const s of ctx.skills) ctx.write(`.qoder/skills/${s.id}.md`, skillInlineBody(s));
   for (const c of ctx.commands) ctx.write(`.qoder/commands/${c.name}.md`, commandBody(c));
   ctx.write(
     `.qoder/mcp.json`,
@@ -252,7 +261,13 @@ export function exportQoderQuest(ws: Workspace, change: string): string {
 /* ── T-608 Claude Code + generic AGENTS.md fallback ── */
 
 export const claudeEmitter: TargetEmitter = (_ws, ctx) => {
-  ctx.write(`CLAUDE.md`, `${ctx.rules}\n\n## Commands\n\n${ctx.commands.map((c) => `- \`/${c.name}\` → \`${c.run}\``).join("\n")}\n`);
+  const skillSection = ctx.skills.length
+    ? `\n\n## Skills\n\n${ctx.skills.map((s) => skillInlineBody(s)).join("\n\n---\n\n")}\n`
+    : "";
+  ctx.write(
+    `CLAUDE.md`,
+    `${ctx.rules}${skillSection}\n## Commands\n\n${ctx.commands.map((c) => `- \`/${c.name}\` → \`${c.run}\``).join("\n")}\n`
+  );
   for (const c of ctx.commands) {
     ctx.write(`.claude/commands/${c.name}.md`, commandBody(c));
   }
@@ -283,7 +298,7 @@ export const claudeEmitter: TargetEmitter = (_ws, ctx) => {
 export const genericEmitter: TargetEmitter = (_ws, ctx) => {
   ctx.write(
     `AGENTS.md`,
-    `${ctx.rules}\n\n## Skills\n\n${ctx.skills.map((s) => s.content).join("\n\n---\n\n")}\n\n## Commands\n\n${ctx.commands
+    `${ctx.rules}\n\n## Skills\n\n${ctx.skills.map((s) => skillInlineBody(s)).join("\n\n---\n\n")}\n\n## Commands\n\n${ctx.commands
       .map((c) => `- ${c.description}: \`${c.run}\``)
       .join("\n")}\n`
   );

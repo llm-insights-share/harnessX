@@ -89,6 +89,7 @@ export * from "./testCases.js";
 export * from "./mcp.js";
 export * from "./l1Contract.js";
 export * from "./harnessCompose.js";
+export * from "./skill.js";
 export * as orchestration from "./boundaries/orchestration.js";
 export * as hub from "./boundaries/hub.js";
 export * as adaptersBoundary from "./boundaries/adapters.js";

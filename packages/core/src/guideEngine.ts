@@ -10,6 +10,7 @@ import { resolvePrdSlug } from "./prd.js";
 import { resolveModulesForChange } from "./arch.js";
 import type { GuideDef } from "./schemas.js";
 import type { DeliveryStage } from "./stages.js";
+import { loadSkillPackage } from "./skill.js";
 
 /**
  * T-202 (FR-030/NFR-002): assembles the per-task Context Pack an agent
@@ -57,6 +58,26 @@ function taskKey(stage: DeliveryStage, task: string): string {
 
 function pushArtifact(sections: ContextPack["sections"], title: string, file: string) {
   if (fs.existsSync(file)) sections.push({ title, source: file, content: fs.readFileSync(file, "utf8") });
+}
+
+function pushSkillArtifacts(ws: Workspace, sections: ContextPack["sections"], g: GuideDef) {
+  try {
+    const pkg = loadSkillPackage(ws.base, g.source);
+    const skillRoot = path.join(ws.base, pkg.rootRel);
+    for (const f of pkg.files) {
+      const rel = f.rel.replace(/\\/g, "/");
+      const abs = path.join(skillRoot, f.rel);
+      const title = rel === pkg.entryRel ? `Guide: ${g.id} (${g.kind})` : `Guide resource: ${g.id}/${rel}`;
+      sections.push({ title, source: abs, content: f.content });
+    }
+  } catch {
+    pushArtifact(sections, `Guide: ${g.id} (${g.kind})`, path.join(ws.base, g.source));
+  }
+}
+
+function pushGuideArtifacts(ws: Workspace, sections: ContextPack["sections"], g: GuideDef) {
+  if (g.kind === "guide.skill") pushSkillArtifacts(ws, sections, g);
+  else pushArtifact(sections, `Guide: ${g.id} (${g.kind})`, path.join(ws.base, g.source));
 }
 
 function pushRequirements(ws: Workspace, change: string, sections: ContextPack["sections"]) {
@@ -119,7 +140,7 @@ export function buildContextPack(ws: Workspace, change: string, stage: DeliveryS
   pushArtifact(sections, "Constitution (highest priority)", ws.constitutionFile);
 
   for (const g of guidesForTask(ws, stage, task)) {
-    pushArtifact(sections, `Guide: ${g.id} (${g.kind})`, path.join(ws.base, g.source));
+    pushGuideArtifacts(ws, sections, g);
   }
 
   for (const artifact of TASK_ARTIFACTS[key] ?? []) {
@@ -164,7 +185,7 @@ export function buildTaskPack(ws: Workspace, change: string, task: Task): Contex
 
   const harness = ws.readHarness();
   for (const g of harness.guides.filter((x) => x.kind === "guide.skill" && x.stage === "dev" && x.task === "apply")) {
-    pushArtifact(sections, `Guide: ${g.id}`, path.join(ws.base, g.source));
+    pushSkillArtifacts(ws, sections, g);
   }
 
   pushArtifact(sections, "Task", path.join(ws.changeDir(change), "tasks.md"));
@@ -242,7 +263,7 @@ export function buildPrdPack(ws: Workspace, slug: string): ContextPack {
   const sections: ContextPack["sections"] = [];
   pushArtifact(sections, "Constitution (highest priority)", ws.constitutionFile);
   for (const g of guidesForTask(ws, "req", "prd-writing")) {
-    pushArtifact(sections, `Guide: ${g.id}`, path.join(ws.base, g.source));
+    pushGuideArtifacts(ws, sections, g);
   }
   pushArtifact(sections, "PRD document", ws.prdFile(slug));
   return {
@@ -263,7 +284,7 @@ export function buildArchPack(ws: Workspace, moduleId?: string): ContextPack {
   pushArtifact(sections, "Constitution (highest priority)", ws.constitutionFile);
   if (moduleId) {
     for (const g of guidesForTask(ws, "arch", "internal-interface")) {
-      pushArtifact(sections, `Guide: ${g.id}`, path.join(ws.base, g.source));
+      pushGuideArtifacts(ws, sections, g);
     }
     pushArtifact(sections, "Global HLD", ws.archOverviewFile());
     pushArtifact(sections, "Module registry", ws.archRegistryFile());
@@ -279,7 +300,7 @@ export function buildArchPack(ws: Workspace, moduleId?: string): ContextPack {
     };
   }
   for (const g of guidesForTask(ws, "arch", "subsystem-division")) {
-    pushArtifact(sections, `Guide: ${g.id}`, path.join(ws.base, g.source));
+    pushGuideArtifacts(ws, sections, g);
   }
   pushArtifact(sections, "Global HLD", ws.archOverviewFile());
   pushArtifact(sections, "Module registry", ws.archRegistryFile());

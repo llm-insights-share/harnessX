@@ -5,6 +5,7 @@ import { AssetManifest } from "./schemas.js";
 import { scanAssetDir, hubBundleDir, resolveHubPackage, type HubRef } from "./hub.js";
 import { resolveHubPackageDir } from "./hubPackagePaths.js";
 import { loadAssetDir } from "./assets.js";
+import { resolveSkillRoot, SKILL_ENTRY } from "./skill.js";
 
 /**
  * Hub asset evaluation — validates packages before promote/consume (v0.3 closed loop).
@@ -45,7 +46,19 @@ function evalDir(dir: string, label: string): HubEvalResult {
   checks.push({ name: "injection scan", ok: injection.length === 0, detail: injection[0] });
 
   if (manifest.kind === "guide.skill") {
-    checks.push({ name: "SKILL.md present", ok: fs.existsSync(path.join(dir, "SKILL.md")) });
+    checks.push({ name: "SKILL.md present", ok: fs.existsSync(path.join(dir, SKILL_ENTRY)) });
+    let layoutOk = false;
+    try {
+      resolveSkillRoot(dir, ".");
+      layoutOk = true;
+    } catch {
+      layoutOk = false;
+    }
+    checks.push({
+      name: "skill package layout",
+      ok: layoutOk,
+      detail: layoutOk ? undefined : `${SKILL_ENTRY} must be at package root`
+    });
   } else if (manifest.kind === "guide.template") {
     checks.push({ name: "template.md present", ok: fs.existsSync(path.join(dir, "template.md")) });
   } else if (manifest.kind === "sensor.rubric") {

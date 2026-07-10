@@ -308,20 +308,26 @@ export function registerHubCommands(program: Command, opts: RegisterHubCommandsO
     });
 
   root
-    .command("eval <pkg>")
+    .command("eval [pkg]")
     .option("--hub <path>", "hub source (defaults to config.yaml hub)")
     .option("--local <dir>", "evaluate a local asset directory")
     .option("--golden <name>", "evaluate a golden-repo eval set")
     .option("--list", "list golden eval sets in hub")
     .option("--out <file>", "write eval report json")
-    .action((pkg: string, cmdOpts: { hub?: string; local?: string; golden?: string; list?: boolean; out?: string }) => {
+    .action((pkg: string | undefined, cmdOpts: { hub?: string; local?: string; golden?: string; list?: boolean; out?: string }) => {
+      if (cmdOpts.local) {
+        const res = hubEvalLocal(path.resolve(cmdOpts.local));
+        for (const c of res.checks) console.log(`${c.ok ? "PASS" : "FAIL"}\t${c.name}${c.detail ? `\t${c.detail}` : ""}`);
+        if (cmdOpts.out) console.log(`report\t${writeHubEvalReport(path.resolve(cmdOpts.out), res)}`);
+        if (!res.passed) process.exit(1);
+        return;
+      }
       const { hubRoot } = hubCtx(cmdOpts, "hub.eval");
       if (cmdOpts.list) return void listHubEvalSets(hubRoot).forEach((n) => console.log(n));
       const res = cmdOpts.golden
         ? hubEvalGoldenRepo(hubRoot, cmdOpts.golden)
-        : cmdOpts.local
-        ? hubEvalLocal(path.resolve(cmdOpts.local))
         : (() => {
+            if (!pkg) throw new Error("missing <id>@<version>; use --local <dir> to evaluate a local asset directory");
             const [id, version] = pkg.split("@");
             if (!version) throw new Error("use <id>@<version>");
             return hubEvalAsset(hubRoot, { id, version });

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Workspace } from "./paths.js";
 import type { GuideDef } from "./schemas.js";
+import { loadSkillPackage } from "./skill.js";
 
 /**
  * T-403 (FR-034): constitution precedence chain + `hx harness lint`.
@@ -29,6 +30,27 @@ export function guideLayer(g: GuideDef): GuideLayer {
   return "asset";
 }
 
+function guideLintContent(ws: Workspace, g: GuideDef): string {
+  if (g.kind === "guide.skill") {
+    try {
+      return loadSkillPackage(ws.base, g.source).entryContent;
+    } catch {
+      /* fall through */
+    }
+  }
+  const file = path.join(ws.base, g.source);
+  if (!fs.existsSync(file)) return "";
+  const stat = fs.statSync(file);
+  if (stat.isDirectory()) {
+    try {
+      return loadSkillPackage(ws.base, g.source).entryContent;
+    } catch {
+      return "";
+    }
+  }
+  return fs.readFileSync(file, "utf8");
+}
+
 /** Returns guides ordered by decreasing precedence; constitution always first. */
 export function resolveGuides(ws: Workspace): ResolvedGuide[] {
   const out: ResolvedGuide[] = [];
@@ -49,7 +71,7 @@ export function resolveGuides(ws: Workspace): ResolvedGuide[] {
       layer: guideLayer(g),
       source: file,
       priority: g.priority ?? 0,
-      content: fs.existsSync(file) ? fs.readFileSync(file, "utf8") : ""
+      content: guideLintContent(ws, g)
     });
   }
   return out.sort((a, b) => LAYER_RANK[b.layer] - LAYER_RANK[a.layer] || b.priority - a.priority);
