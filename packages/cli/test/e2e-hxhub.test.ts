@@ -108,4 +108,29 @@ describe("hxhub e2e", () => {
     const policy = YAML.parse(fs.readFileSync(policyPath, "utf8")) as { maintainers?: string[] };
     expect(policy.maintainers).toContain("zhangsan");
   });
+
+  it("eval --local does not require pkg argument", () => {
+    const repo = makeRepo();
+    hxhub(repo, ["init", ".", "--hub", "./hub", "--actor", "ops"]);
+    const sourceDir = path.join(repo, "skill-source");
+    fs.mkdirSync(sourceDir, { recursive: true });
+    fs.writeFileSync(path.join(sourceDir, "SKILL.md"), "# Test Skill\n", "utf8");
+    hxhub(repo, [
+      "asset",
+      "create",
+      "--kind",
+      "guide.skill",
+      "--id",
+      "business-insight",
+      "--asset-version",
+      "1.0.0",
+      "--source-dir",
+      sourceDir,
+      "--out",
+      "./assets/business-insight"
+    ]);
+    const out = hxhub(repo, ["eval", "--local", "./assets/business-insight"]);
+    expect(out).toContain("PASS\tasset.yaml exists");
+    expect(out).toContain("PASS\tSKILL.md present");
+  });
 });

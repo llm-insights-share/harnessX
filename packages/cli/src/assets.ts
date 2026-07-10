@@ -297,13 +297,20 @@ export function registerAssetCommands(program: Command): void {
       console.log(`${pkg} review approved by ${opts.reviewer}`);
     });
   hub
-    .command("eval <pkg>")
+    .command("eval [pkg]")
     .option("--hub <path>", "hub source (defaults to config.yaml hub)")
     .option("--local <dir>", "evaluate a local asset directory instead of a hub package")
     .option("--golden <name>", "evaluate a golden-repo eval set")
     .option("--list", "list golden eval sets in hub")
     .option("--out <file>", "write eval report json")
-    .action((pkg: string, opts: { hub?: string; local?: string; golden?: string; list?: boolean; out?: string }) => {
+    .action((pkg: string | undefined, opts: { hub?: string; local?: string; golden?: string; list?: boolean; out?: string }) => {
+      if (opts.local) {
+        const res = hubEvalLocal(path.resolve(opts.local));
+        for (const c of res.checks) console.log(`${c.ok ? "PASS" : "FAIL"}\t${c.name}${c.detail ? `\t${c.detail}` : ""}`);
+        if (opts.out) console.log(`report\t${writeHubEvalReport(path.resolve(opts.out), res)}`);
+        if (!res.passed) process.exit(1);
+        return;
+      }
       const { hubRoot } = hubCtx(opts, "hub.eval");
       if (opts.list) {
         for (const name of listHubEvalSets(hubRoot)) console.log(name);
@@ -316,13 +323,7 @@ export function registerAssetCommands(program: Command): void {
         if (!res.passed) process.exit(1);
         return;
       }
-      if (opts.local) {
-        const res = hubEvalLocal(path.resolve(opts.local));
-        for (const c of res.checks) console.log(`${c.ok ? "PASS" : "FAIL"}\t${c.name}${c.detail ? `\t${c.detail}` : ""}`);
-        if (opts.out) console.log(`report\t${writeHubEvalReport(path.resolve(opts.out), res)}`);
-        if (!res.passed) process.exit(1);
-        return;
-      }
+      if (!pkg) throw new Error("missing <id>@<version>; use --local <dir> to evaluate a local asset directory");
       const [id, version] = pkg.split("@");
       if (!version) throw new Error("use <id>@<version>");
       const res = hubEvalAsset(hubRoot, { id, version });
