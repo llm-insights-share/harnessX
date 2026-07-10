@@ -11,6 +11,8 @@ export const L1_AGENT_ENV_SCHEMA_ID = "https://harnessx.dev/schemas/l1/agent-env
 export interface ApplyTaskEnv {
   HX_CHANGE: string;
   HX_PHASE: "apply";
+  HX_STAGE: "dev";
+  HX_TASK: "apply";
   HX_TASK_ID: string;
   HX_TASK_TRACK: Task["track"];
   HX_TASK_TITLE: string;
@@ -31,6 +33,8 @@ export function buildApplyTaskEnv(change: string, task: Task, taskPackPath: stri
   return {
     HX_CHANGE: change,
     HX_PHASE: "apply",
+    HX_STAGE: "dev",
+    HX_TASK: "apply",
     HX_TASK_ID: task.id,
     HX_TASK_TRACK: task.track,
     HX_TASK_TITLE: task.title,

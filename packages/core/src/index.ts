@@ -8,6 +8,18 @@ export * from "./change.js";
 export * from "./openspecImport.js";
 export * from "./archive.js";
 export * from "./sensorRunner.js";
+export * from "./stages.js";
+export {
+  profileStages,
+  profileDevTasks,
+  profileTestTasks,
+  resolveSuiteName,
+  normalizeHarnessProfiles,
+  phasesToStages,
+  stagesToPhases
+} from "./profileResolve.js";
+export * from "./stageMigration.js";
+export * from "./stageGate.js";
 export * from "./gate.js";
 export * from "./guideEngine.js";
 export * from "./designLayout.js";

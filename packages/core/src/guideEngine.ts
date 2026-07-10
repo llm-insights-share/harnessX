@@ -23,6 +23,7 @@ const PHASE_ARTIFACTS: Record<string, string[]> = {
   design: ["proposal.md"],
   spec: ["proposal.md"],
   plan: ["tasks.md"],
+  "test-design": ["tasks.md"],
   apply: ["tasks.md"],
   verify: ["tasks.md"],
   archive: []
@@ -37,6 +38,7 @@ const PHASE_PERMISSIONS: Record<string, string> = {
   design: "You may edit changes/<id>/design/**, design.md, and changes/<id>/specs/**.",
   spec: "You may edit only changes/<id>/specs/**.",
   plan: "You may edit only changes/<id>/tasks.md and traces/delivery-trace.yaml.",
+  "test-design": "You may edit changes/<id>/test-cases/** and tasks.md test-track items only.",
   apply: "You may edit source code and tests for unchecked tasks in tasks.md. Never edit meta.yaml, fixtures, or approved test assertions.",
   verify: "You may fix code to satisfy sensors. Never weaken tests or specs to make sensors pass.",
   archive: "No edits. Archival is performed by the hx CLI."
@@ -82,7 +84,7 @@ function pushDesignArtifacts(ws: Workspace, change: string, sections: ContextPac
 
 /** Inject org-level PRD and architecture into change phase context packs. */
 function pushOrgPrephaseContext(ws: Workspace, change: string, phaseCmd: string, sections: ContextPack["sections"]) {
-  if (!["propose", "design", "spec", "plan", "apply", "verify"].includes(phaseCmd)) return;
+  if (!["propose", "design", "spec", "plan", "apply", "verify", "test-design"].includes(phaseCmd)) return;
 
   const slug = resolvePrdSlug(ws, change);
   if (slug && fs.existsSync(ws.prdFile(slug))) {
@@ -133,7 +135,7 @@ export function buildContextPack(ws: Workspace, change: string, phaseCmd: string
     pushArtifact(sections, "Delivery trace", traceFile);
   }
 
-  if (["spec", "plan", "apply", "verify"].includes(phaseCmd)) {
+  if (["spec", "plan", "apply", "verify", "test-design"].includes(phaseCmd)) {
     const dir = ws.deltaSpecsDir(change);
     if (fs.existsSync(dir)) {
       for (const cap of fs.readdirSync(dir)) {

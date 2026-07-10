@@ -5,6 +5,9 @@ import {
   gateCheck,
   gateAdvance,
   nextPhase,
+  nextTask,
+  stageAdvance,
+  stageGateCheck,
   buildContextPack,
   renderContextPack,
   writeTaskPack,
@@ -31,10 +34,11 @@ const runnerOpts = (w: Workspace): RunnerOptions => ({
   changedFiles: gitChangedFiles(w.root)
 });
 
-function printGate(res: { blockers: string[]; warnings: string[]; passed: boolean; phase: string }) {
+function printGate(res: { blockers: string[]; warnings: string[]; passed: boolean; phase?: string; stage?: string; task?: string }) {
   for (const b of res.blockers) console.error(`BLOCKER  ${b}`);
   for (const w of res.warnings) console.warn(`warning  ${w}`);
-  console.log(res.passed ? `GATE PASS (${res.phase})` : `GATE BLOCKED (${res.phase})`);
+  const label = res.stage && res.task ? `${res.stage}/${res.task}` : res.phase ?? "-";
+  console.log(res.passed ? `GATE PASS (${label})` : `GATE BLOCKED (${label})`);
 }
 
 export function registerGateCommands(program: Command): void {
@@ -42,10 +46,21 @@ export function registerGateCommands(program: Command): void {
 
   gate
     .command("check <change>")
-    .option("--phase <cmd>", "phase to check (defaults to next phase)")
-    .action(async (change: string, opts: { phase?: string }) => {
+    .option("--phase <cmd>", "legacy phase to check")
+    .option("--stage <stage>", "delivery stage: req|arch|dev|test")
+    .option("--task <task>", "task within stage")
+    .action(async (change: string, opts: { phase?: string; stage?: string; task?: string }) => {
       const w = ws();
       const meta = readMeta(w, change);
+      const stagesMode = w.readConfig().delivery_mode === "stages";
+      if (stagesMode) {
+        const stage = (opts.stage ?? meta.stage ?? "dev") as "req" | "arch" | "dev" | "test";
+        const task = opts.task ?? meta.task ?? "propose";
+        const res = await stageGateCheck(w, change, stage, task, runnerOpts(w));
+        printGate(res);
+        if (!res.passed) process.exit(1);
+        return;
+      }
       const phase = opts.phase ?? nextPhase(w.readHarness(), meta) ?? "verify";
       const res = await gateCheck(w, change, phase, runnerOpts(w));
       printGate(res);
@@ -54,6 +69,13 @@ export function registerGateCommands(program: Command): void {
 
   gate.command("advance <change>").action(async (change: string) => {
     const w = ws();
+    if (w.readConfig().delivery_mode === "stages") {
+      const res = await stageAdvance(w, change, runnerOpts(w));
+      printGate(res);
+      if (res.toTask) console.log(`advanced: ${res.fromStage}/${res.fromTask} → ${res.toStage}/${res.toTask}`);
+      if (!res.passed) process.exit(1);
+      return;
+    }
     const res = await gateAdvance(w, change, runnerOpts(w));
     printGate(res);
     if (res.to) console.log(`advanced: ${res.from} → ${res.to}`);

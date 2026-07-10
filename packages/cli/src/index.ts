@@ -11,6 +11,7 @@ import { registerPrdCommands } from "./prd.js";
 import { registerArchCommands } from "./arch.js";
 import { registerApproveAliases } from "./approve.js";
 import { registerSdlcCommands } from "./sdlc.js";
+import { registerReqCommands, registerDevCommands, registerTestCommands, registerMigrateCommand, registerStageStatusCommand } from "./stages.js";
 import { VERSION } from "@harnessx/core";
 
 export const program = new Command("hx")
@@ -27,6 +28,11 @@ registerPrdCommands(program);
 registerArchCommands(program);
 registerApproveAliases(program);
 registerSdlcCommands(program);
+registerReqCommands(program);
+registerDevCommands(program);
+registerTestCommands(program);
+registerMigrateCommand(program);
+registerStageStatusCommand(program);
 registerMcpCommand(program);
 
 program.parseAsync(process.argv).catch((e) => {

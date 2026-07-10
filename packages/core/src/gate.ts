@@ -7,22 +7,29 @@ import { resolvePrdSlug } from "./prd.js";
 import { workorderProblems } from "./workorder.js";
 import { augmentSuiteIds, resolveCompensation } from "./gateCompensation.js";
 import { appendRun } from "./telemetry.js";
+import { profilePhases as resolveProfilePhases } from "./profileResolve.js";
 import fs from "node:fs";
 import path from "node:path";
 
 /**
- * T-200 (FR-020/FR-053): 8-phase gate state machine.
- * A change advances phase-by-phase along its Workflow Profile. `advance` only
- * succeeds when the gate suite for the target phase passes (fail-closed) and
- * phase-specific preconditions (proposal completeness, human approval) hold.
+ * T-200 (FR-020/FR-053): gate state machine.
+ * Legacy phases mode — see stageGate.ts for delivery_mode: stages.
  */
 
-const ORDER: PhaseState[] = ["explore", "proposed", "designed", "specified", "planned", "implementing", "verified", "archived"];
+const ORDER: PhaseState[] = [
+  "explore",
+  "proposed",
+  "designed",
+  "specified",
+  "planned",
+  "test_designed",
+  "implementing",
+  "verified",
+  "archived"
+];
 
 export function profilePhases(harness: HarnessYaml, profile: string): string[] {
-  const p = harness.profiles[profile];
-  if (!p) throw new Error(`profile "${profile}" not defined in harness.yaml`);
-  return p.phases;
+  return resolveProfilePhases(harness, profile);
 }
 
 /** Next phase command for a change according to its profile. */
@@ -61,8 +68,8 @@ export async function gateCheck(
     blockers.push(...proposalProblems(ws, change));
   }
   if (phaseCmd === "plan") {
-    const approved = meta.approvals.some((a) => a.gate === "spec");
-    if (!approved) blockers.push("spec→plan requires human approval: hx gate approve <change> --gate spec --approver <name> (FR-012)");
+    const approved = meta.approvals.some((a) => a.gate === "spec" || a.gate === "design-to-plan");
+    if (!approved) blockers.push("design→plan requires human approval: hx gate approve <change> --gate spec|design-to-plan --approver <name> (FR-012)");
   }
   if (phaseCmd === "apply") {
     const tasksFile = path.join(ws.changeDir(change), "tasks.md");

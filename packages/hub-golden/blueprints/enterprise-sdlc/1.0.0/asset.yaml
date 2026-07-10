@@ -4,4 +4,4 @@ version: 1.0.0
 category: blueprint
 status: trial
 owner: platform
-phases: [explore, propose, design, test-design, verify]
+phases: [explore, propose, design, spec, plan, test-design, apply, verify, archive]

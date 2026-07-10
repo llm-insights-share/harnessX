@@ -262,7 +262,7 @@ phases:
 
 ## 4. 四阶段操作模型（本手册主轴）
 
-> 你要求按阶段组织：**需求阶段 → 设计阶段 → 开发编码阶段 → 测试阶段**。本章及下一章按此结构展开。
+> 权威定义见 [delivery-stages.zh-CN.md](delivery-stages.zh-CN.md)。四阶段：**req（需求）→ arch（设计）→ dev（开发）→ test（测试）**。
 
 ### 4.1 操作入口
 
@@ -275,13 +275,12 @@ phases:
 
 ### 4.2 阶段总览
 
-| 阶段 | 目标 | 关键命令 |
-| --- | --- | --- |
-| **Pre-phase（组织级）** | PRD、全局 HLD、模块 LLD | `hx prd`、`hx arch`、`hx approve prd/arch` |
-| 需求阶段 | 明确业务变更、形成可验证规格 | `change create`、`propose`、`gate check --phase propose`、`gate approve` |
-| 设计阶段 | 形成可落地技术方案 | `design`、`gate check --phase design`、`gate advance` |
-| 开发编码阶段 | 按任务实现并持续自校正 | `plan`、`apply`、`guide task-pack`、`fix` |
-| 测试阶段 | 完整验证、可追溯、归档发布 | `verify`、`trace check`、`arch promote`、`archive` |
+| 阶段 | ID | 目标 | 关键命令 |
+| --- | --- | --- | --- |
+| 需求 | `req` | PRD、原型、需求分析 | `hx req prd`、`hx approve prd`、`hx stage status --stage req` |
+| 设计 | `arch` | 全局 HLD、模块 LLD | `hx arch`、`hx arch lld`、`hx approve arch` |
+| 开发 | `dev` | change 流水线：plan → propose → design → apply → verify → archive | `hx plan`、`hx propose`、`hx apply`、`hx dev status` |
+| 测试 | `test` | 测试用例设计、正式测试执行 | `hx test-cases`、`hx test status` |
 
 ### 4.3 Pre-phase 命令（组织级，`docs/` 制品）
 

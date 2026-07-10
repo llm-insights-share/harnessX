@@ -92,10 +92,12 @@ HarnessX 不只约束「代码质量」，还约束架构与行为：
 
 ### 1.4 交付阶段与两种操作入口
 
-标准 profile 的阶段序列：
+四阶段模型（req → arch → dev → test）详见 [delivery-stages.zh-CN.md](delivery-stages.zh-CN.md)。
+
+标准 profile 的 dev 阶段任务序列：
 
 ```text
-propose → design → spec → plan → apply → verify → archive
+plan → propose → design → apply → verify → archive
 ```
 
 （`lite` 跳过 design/spec/plan/verify；`strict` / `enterprise` 增加 explore 或企业级检查，见 [1.9](#19-典型场景按风险选择-profile)）

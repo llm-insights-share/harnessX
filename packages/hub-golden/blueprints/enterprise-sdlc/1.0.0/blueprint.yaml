@@ -12,7 +12,7 @@ phases:
   explore:
     guides: [requirements-research-outline]
   propose:
-    guides: [prd-writing, requirements-template]
+    guides: [prd-writing, requirements-template, prototype-wireframe]
   design:
     guides: [prototype-wireframe, design-template]
   test-design:

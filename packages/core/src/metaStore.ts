@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import YAML from "yaml";
 import { MetaYaml, type GateHistoryEntry, type ApprovalRecord, type WaiverRecord, type PhaseState } from "./schemas.js";
+import { ensureStageFields, migrateMetaV04ToV05 } from "./stageMigration.js";
 import { Workspace, ensureDir, writeYaml } from "./paths.js";
 import { sha256, runsLogHash } from "./telemetry.js";
 import path from "node:path";
@@ -34,7 +35,15 @@ export function writeMeta(ws: Workspace, meta: MetaYaml): void {
 }
 
 export function readMeta(ws: Workspace, change: string): MetaYaml {
-  return MetaYaml.parse(YAML.parse(fs.readFileSync(ws.metaFile(change), "utf8")));
+  const meta = MetaYaml.parse(YAML.parse(fs.readFileSync(ws.metaFile(change), "utf8")));
+  return ensureStageFields(meta);
+}
+
+export function migrateMeta(ws: Workspace, change: string, dryRun = false): MetaYaml {
+  const raw = MetaYaml.parse(YAML.parse(fs.readFileSync(ws.metaFile(change), "utf8")));
+  const migrated = ensureStageFields(raw);
+  if (!dryRun) writeMeta(ws, migrated);
+  return migrated;
 }
 
 export interface MetaVerifyResult {
@@ -75,6 +84,9 @@ export function initMeta(
     status: "proposed",
     profile,
     touchedDomains: domains,
+    stage: "dev",
+    task: "propose",
+    stageProgress: { dev: { current: "propose", completed: [] } },
     ...(opts?.prdRef ? { prdRef: opts.prdRef } : {}),
     ...(opts?.archModules?.length ? { archModules: opts.archModules } : {})
   });

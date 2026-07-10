@@ -7,6 +7,15 @@ export {
   profilePhases,
   type GateCheckResult
 } from "../gate.js";
+export {
+  stageGateCheck,
+  stageAdvance,
+  nextTask,
+  stageStatus,
+  unifiedGateCheck,
+  type StageGateCheckResult
+} from "../stageGate.js";
+export { DELIVERY_STAGES, STAGE_TASKS, STAGE_INFO } from "../stages.js";
 export { applyLoop, type ApplyOptions, type ApplyResult, type TaskExecution } from "../applyLoop.js";
 export {
   buildContextPack,

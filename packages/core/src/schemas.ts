@@ -3,7 +3,9 @@ import { z } from "zod";
 /** Plugin API version (NFR-008): consumers accept same major. */
 export const PLUGIN_API_VERSION = "1.0.0";
 
-/* ── Phase model (§15.1): display name / state name / command are three views of one phase ── */
+import type { DeliveryStage } from "./stages.js";
+
+/* ── Phase model (§15.1): legacy gate commands — prefer DELIVERY_STAGES + STAGE_TASKS in stages.ts ── */
 
 export const PHASE_STATES = [
   "explore",
@@ -91,6 +93,8 @@ export const GuideDef = z.object({
   kind: z.enum(GUIDE_KINDS),
   execution: Execution,
   phase: z.array(z.string()).default([]),
+  stage: z.enum(["req", "arch", "dev", "test"]).optional(),
+  task: z.string().optional(),
   source: z.string(),
   priority: z.number().optional()
 });
@@ -103,6 +107,8 @@ export const SensorDef = z.object({
   kind: z.enum(SENSOR_KINDS),
   execution: Execution,
   phase: z.array(z.string()).optional(),
+  stage: z.enum(["req", "arch", "dev", "test"]).optional(),
+  task: z.string().optional(),
   trigger: z.enum(["phase", "file-save", "schedule"]).default("phase"),
   scope: z.array(z.string()).optional(),
   run: z.string().optional(),
@@ -117,7 +123,14 @@ export const SensorDef = z.object({
 export type SensorDef = z.infer<typeof SensorDef>;
 
 export const ProfileDef = z.object({
-  phases: z.array(z.string()),
+  /** Legacy phase sequence (compat delivery_mode: phases). */
+  phases: z.array(z.string()).optional(),
+  /** Four-stage delivery model (delivery_mode: stages). */
+  stages: z.array(z.enum(["req", "arch", "dev", "test"])).optional(),
+  dev_tasks: z.array(z.string()).optional(),
+  test_tasks: z.array(z.string()).optional(),
+  req_tasks: z.array(z.string()).optional(),
+  arch_tasks: z.array(z.string()).optional(),
   suites: z.record(z.string()).default({})
 });
 export type ProfileDef = z.infer<typeof ProfileDef>;
@@ -162,6 +175,8 @@ export const ConfigYaml = z.object({
   profile: z.string().default("standard"),
   locale: z.enum(["en", "zh-CN"]).default("en"),
   compat_mode: z.enum(["openspec"]).optional(),
+  /** phases = legacy 9 gate phases; stages = req/arch/dev/test model (v0.5). */
+  delivery_mode: z.enum(["phases", "stages"]).default("phases"),
   hub: HubConfigField.optional(),
   adapter: z
     .object({
@@ -215,7 +230,9 @@ export const WaiverRecord = z.object({
 export type WaiverRecord = z.infer<typeof WaiverRecord>;
 
 export const GateHistoryEntry = z.object({
-  phase: z.string(),
+  phase: z.string().optional(),
+  stage: z.enum(["req", "arch", "dev", "test"]).optional(),
+  task: z.string().optional(),
   suite: z.string().optional(),
   at: z.string(),
   passed: z.boolean(),
@@ -417,9 +434,29 @@ export const ArchPromotedRecord = z.object({
 });
 export type ArchPromotedRecord = z.infer<typeof ArchPromotedRecord>;
 
+export const StageProgressEntry = z.object({
+  done: z.boolean().default(false),
+  current: z.string().optional(),
+  completed: z.array(z.string()).default([]),
+  approvedBy: z.string().optional()
+});
+export type StageProgressEntry = z.infer<typeof StageProgressEntry>;
+
+export const TaskHistoryEntry = z.object({
+  stage: z.enum(["req", "arch", "dev", "test"]),
+  task: z.string(),
+  at: z.string(),
+  gate: z.enum(["pass", "fail"]).default("pass")
+});
+export type TaskHistoryEntry = z.infer<typeof TaskHistoryEntry>;
+
 export const MetaYaml = z.object({
   change: z.string(),
   status: z.enum(PHASE_STATES),
+  stage: z.enum(["req", "arch", "dev", "test"]).optional(),
+  task: z.string().optional(),
+  stageProgress: z.record(StageProgressEntry).optional(),
+  taskHistory: z.array(TaskHistoryEntry).default([]),
   profile: z.string(),
   touchedDomains: z.array(z.string()).default([]),
   prdRef: z.string().optional(),
@@ -447,6 +484,8 @@ export const AssetManifest = z.object({
   kind: AssetKind,
   category: z.enum(["maintainability", "architecture", "behaviour"]).optional(),
   phase: z.array(z.string()).default([]),
+  stage: z.enum(["req", "arch", "dev", "test"]).optional(),
+  task: z.string().optional(),
   version: z.string().default("0.1.0"),
   owner: z.string().optional(),
   origin: AssetOrigin.default("local"),

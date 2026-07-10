@@ -26,7 +26,15 @@
 
 ### Profile（工作流配置）
 
-`harness.yaml` 中的工作流（如 `standard`、`enterprise`），定义经过哪些阶段，以及各阶段门禁绑定哪些 sensor **套件（suite）**。
+`harness.yaml` 中的工作流（如 `standard`、`enterprise`），定义经过哪些**阶段（stage）**或**门禁阶段（phase）**，以及各阶段绑定哪些 sensor **套件（suite）**。v0.5 起支持四阶段 `req/arch/dev/test`（见 [delivery-stages.zh-CN.md](delivery-stages.zh-CN.md)）。
+
+### Stage（交付阶段）
+
+四阶段交付语义：`req`（需求）、`arch`（设计）、`dev`（开发）、`test`（测试）。每阶段含若干**任务（task）**，含必选/可选标记。
+
+### Phase（门禁阶段，legacy）
+
+v0.4 以来的技术 gate 命令（`propose`、`design`、`spec` 等）。`delivery_mode: phases` 时为主状态机；`stages` 时映射为 dev/test 子任务。
 
 ### Suite（套件）
 

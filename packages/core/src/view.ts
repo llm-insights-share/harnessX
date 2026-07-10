@@ -45,7 +45,13 @@ export function collectStatus(ws: Workspace): ChangeStatusRow[] {
       domains: meta.touchedDomains,
       tasksDone: tasks.filter((t) => t.done).length,
       tasksTotal: tasks.length,
-      lastGate: lastGate ? { phase: lastGate.phase, passed: lastGate.passed, at: lastGate.at } : undefined,
+      lastGate: lastGate
+        ? {
+            phase: lastGate.phase ?? (lastGate.stage && lastGate.task ? `${lastGate.stage}/${lastGate.task}` : "unknown"),
+            passed: lastGate.passed,
+            at: lastGate.at
+          }
+        : undefined,
       scenarios: { covered, total }
     };
   });

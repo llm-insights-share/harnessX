@@ -4,22 +4,35 @@ constitution: constitution.md
 profiles:
   lite:
     phases: [propose, apply, archive]
+    stages: [dev]
+    dev_tasks: [propose, apply, archive]
     suites:
       apply: fast-lite
+      dev.propose: fast-lite
+      dev.apply: fast-lite
   standard:
     phases: [propose, design, spec, plan, apply, verify, archive]
+    stages: [req, arch, dev, test]
+    dev_tasks: [plan, propose, design, apply, verify, archive]
     suites:
       spec: fast
       apply: fast
       verify: verification
+      dev.design: fast
+      dev.verify: verification
   strict:
     phases: [explore, propose, design, spec, plan, apply, verify, archive]
+    stages: [req, arch, dev, test]
+    dev_tasks: [plan, propose, design, apply, verify, archive]
     suites:
       spec: fast
       apply: fast
       verify: verification-strict
+      dev.verify: verification-strict
   enterprise:
     phases: [explore, propose, design, spec, plan, apply, verify, archive]
+    stages: [req, arch, dev, test]
+    dev_tasks: [plan, propose, design, apply, verify, archive]
     suites:
       propose: propose-enterprise
       design: design-enterprise
@@ -27,8 +40,14 @@ profiles:
       plan: plan-enterprise
       apply: fast
       verify: verification-enterprise
+      dev.propose: propose-enterprise
+      dev.design: design-enterprise
+      dev.verify: verification-enterprise
   enterprise-sdlc:
     phases: [explore, propose, design, spec, plan, test-design, apply, verify, archive]
+    stages: [req, arch, dev, test]
+    dev_tasks: [plan, propose, design, apply, verify, archive]
+    test_tasks: [test-case-design, test-execution]
     suites:
       propose: propose-sdlc
       design: design-sdlc
@@ -37,6 +56,10 @@ profiles:
       test-design: test-design-sdlc
       apply: fast
       verify: verification-sdlc
+      dev.propose: propose-sdlc
+      dev.design: design-sdlc
+      dev.verify: verification-sdlc
+      test.test-case-design: test-design-sdlc
 
 suites:
   fast-lite: [spec-validate]
