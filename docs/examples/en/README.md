@@ -13,6 +13,7 @@ Scenarios are organized by **user journey**, not by version number. Each include
 | Your goal right now | Start here |
 | --- | --- |
 | First-time HarnessX setup | [01 New project onboarding](01-new-project-onboarding.md) |
+| Write `constitution.md` | [Constitution examples](../constitutions/README.md) · [Usage guide §2.2](../../usage-guide.en.md#22-constitution-constitutionmd) |
 | Ship a regular feature | [02 Standard feature](02-standard-feature-development.md) (after 01) |
 | Init from org Hub | [16 Hub blueprint init](16-v0.3-hub-blueprint-init.md) |
 | Enterprise requirements → code handoff | [19 Org Pre-phase](19-org-prd-and-architecture.md) → [15 Enterprise handoff](15-enterprise-delivery-handoff.md) |
