@@ -452,7 +452,7 @@ export function hubPromote(ws: Workspace, hubRoot: string, assetDir: string, opt
       kind: manifest.kind,
       owner: opts.owner,
       status: manifest.status,
-      phases: manifest.phase ?? [],
+      stages: manifest.stage ? [manifest.stage] : [],
       provenance: {
         source: `${path.basename(ws.root)}`,
         evidence: opts.evidence ? [{ type: "evidence", ref: opts.evidence }] : []

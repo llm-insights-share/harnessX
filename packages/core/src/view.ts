@@ -4,23 +4,24 @@ import { Workspace } from "./paths.js";
 import { readMeta } from "./metaStore.js";
 import { readTrace } from "./traceability.js";
 import { readTasks } from "./plan.js";
-import { PHASES } from "./schemas.js";
+import { STAGE_INFO, type DeliveryStage } from "./stages.js";
 import { resolveAssets } from "./assets.js";
 import { coverageReport } from "./steering.js";
 import { telemetrySummary } from "./coverageAggregate.js";
 
 /**
- * T-305 + v0.4: `hx view` dashboard — phases, funnel, assets, coverage.
+ * T-305 + v0.4: `hx view` dashboard — stages, funnel, assets, coverage.
  */
 
 export interface ChangeStatusRow {
   change: string;
-  status: string;
+  stage: string;
+  task: string;
   profile: string;
   domains: string[];
   tasksDone: number;
   tasksTotal: number;
-  lastGate?: { phase: string; passed: boolean; at: string };
+  lastGate?: { stageTask: string; passed: boolean; at: string };
   scenarios: { covered: number; total: number };
 }
 
@@ -40,14 +41,15 @@ export function collectStatus(ws: Workspace): ChangeStatusRow[] {
     const lastGate = meta.gateHistory.at(-1);
     return {
       change,
-      status: meta.status,
+      stage: meta.stage,
+      task: meta.task,
       profile: meta.profile,
       domains: meta.touchedDomains,
       tasksDone: tasks.filter((t) => t.done).length,
       tasksTotal: tasks.length,
       lastGate: lastGate
         ? {
-            phase: lastGate.phase ?? (lastGate.stage && lastGate.task ? `${lastGate.stage}/${lastGate.task}` : "unknown"),
+            stageTask: `${lastGate.stage}/${lastGate.task}`,
             passed: lastGate.passed,
             at: lastGate.at
           }
@@ -57,22 +59,21 @@ export function collectStatus(ws: Workspace): ChangeStatusRow[] {
   });
 }
 
-export interface PhaseFunnel {
-  phase: string;
+export interface StageFunnel {
+  stage: DeliveryStage;
   count: number;
 }
 
-/** Counts active changes at or past each phase (funnel). */
-export function phaseFunnel(ws: Workspace): PhaseFunnel[] {
-  const order = PHASES.map((p) => p.state);
-  const counts = new Map<string, number>();
-  for (const p of order) counts.set(p, 0);
+/** Counts active changes at each delivery stage. */
+export function stageFunnel(ws: Workspace): StageFunnel[] {
+  const stages: DeliveryStage[] = ["req", "arch", "dev", "test"];
+  const counts = new Map<DeliveryStage, number>();
+  for (const s of stages) counts.set(s, 0);
   for (const change of ws.listChanges()) {
     const meta = readMeta(ws, change);
-    const idx = order.indexOf(meta.status);
-    if (idx >= 0) counts.set(meta.status, (counts.get(meta.status) ?? 0) + 1);
+    counts.set(meta.stage, (counts.get(meta.stage) ?? 0) + 1);
   }
-  return order.map((phase) => ({ phase, count: counts.get(phase) ?? 0 }));
+  return stages.map((stage) => ({ stage, count: counts.get(stage) ?? 0 }));
 }
 
 export interface AssetEffectivenessRow {
@@ -100,15 +101,18 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
 export function renderDashboard(ws: Workspace): string {
   const rows = collectStatus(ws);
-  const funnel = phaseFunnel(ws);
+  const funnel = stageFunnel(ws);
   const assets = assetEffectiveness(ws).slice(0, 12);
   const coverage = coverageReport(ws);
   const telemetry = telemetrySummary(ws);
   const maxFunnel = Math.max(1, ...funnel.map((f) => f.count));
 
-  const phaseBar = (status: string) => {
-    const idx = PHASES.findIndex((p) => p.state === status);
-    return PHASES.map((p, i) => `<span class="ph ${i <= idx ? "on" : ""}" title="${p.display}">${p.display[0]}</span>`).join("");
+  const stageBar = (stage: DeliveryStage, task: string) => {
+    const stages: DeliveryStage[] = ["req", "arch", "dev", "test"];
+    const idx = stages.indexOf(stage);
+    return stages
+      .map((s, i) => `<span class="ph ${i <= idx ? "on" : ""}" title="${STAGE_INFO[s].display.en}">${STAGE_INFO[s].display.en[0]}</span>`)
+      .join("") + ` <span class="badge">${esc(task)}</span>`;
   };
 
   return `<!doctype html>
@@ -137,27 +141,27 @@ th,td{padding:.5rem .8rem;border-bottom:1px solid #334155;text-align:left;font-s
   <div class="card"><span>Uncovered patterns</span><strong>${coverage.uncoveredPatterns}</strong></div>
 </div>
 
-<h2>Phase funnel (active changes)</h2>
+<h2>Stage funnel (active changes)</h2>
 ${funnel
   .map(
-    (f) => `<div style="margin:.35rem 0"><span class="badge">${esc(f.phase)}</span> ${f.count}
+    (f) => `<div style="margin:.35rem 0"><span class="badge">${esc(f.stage)}</span> ${f.count}
   <div class="bar"><i style="width:${((f.count / maxFunnel) * 100).toFixed(0)}%"></i></div></div>`
   )
   .join("")}
 
 <h2>Changes</h2>
-<table><thead><tr><th>Change</th><th>Phase</th><th>Profile</th><th>Domains</th><th>Tasks</th><th>Scenarios</th><th>Last gate</th></tr></thead>
+<table><thead><tr><th>Change</th><th>Stage</th><th>Profile</th><th>Domains</th><th>Tasks</th><th>Scenarios</th><th>Last gate</th></tr></thead>
 <tbody>
 ${rows
   .map(
     (r) => `<tr>
   <td><strong>${esc(r.change)}</strong></td>
-  <td>${phaseBar(r.status)} <span class="badge">${esc(r.status)}</span></td>
+  <td>${stageBar(r.stage as DeliveryStage, r.task)}</td>
   <td>${esc(r.profile)}</td>
   <td>${r.domains.map((d) => `<span class="badge">${esc(d)}</span>`).join(" ")}</td>
   <td>${r.tasksDone}/${r.tasksTotal}</td>
   <td>${r.scenarios.covered}/${r.scenarios.total}</td>
-  <td>${r.lastGate ? `<span class="${r.lastGate.passed ? "pass" : "fail"}">${r.lastGate.phase} ${r.lastGate.passed ? "✓" : "✗"}</span>` : "—"}</td>
+  <td>${r.lastGate ? `<span class="${r.lastGate.passed ? "pass" : "fail"}">${r.lastGate.stageTask} ${r.lastGate.passed ? "✓" : "✗"}</span>` : "—"}</td>
 </tr>`
   )
   .join("\n")}
@@ -169,7 +173,7 @@ ${rows
 ${assets.map((a) => `<tr><td>${esc(a.id)}</td><td>${esc(a.kind)}</td><td>${esc(a.layer)}</td><td>${a.runs}</td><td>${a.failures}</td></tr>`).join("\n")}
 </tbody></table>
 
-<p><small>Generated ${new Date().toISOString()} by hx view (v0.4)</small></p>
+<p><small>Generated ${new Date().toISOString()} by hx view</small></p>
 </body></html>`;
 }
 
@@ -177,3 +181,6 @@ export function writeDashboard(ws: Workspace, outFile: string): string {
   fs.writeFileSync(outFile, renderDashboard(ws), "utf8");
   return outFile;
 }
+
+/** @deprecated use stageFunnel */
+export const phaseFunnel = stageFunnel;

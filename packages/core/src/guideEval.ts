@@ -3,19 +3,19 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Workspace } from "./paths.js";
 import { buildContextPack } from "./guideEngine.js";
+import type { DeliveryStage } from "./stages.js";
 
 /**
  * v0.2 P2: Guide behavior eval harness — offline checks that Context Packs
- * include expected guides for each phase (inspired by superpowers-evals).
+ * include expected guides for each stage/task.
  */
 
 export interface GuideEvalCase {
   id: string;
-  phase: string;
+  stage: DeliveryStage;
+  task: string;
   expectGuideIds: string[];
-  /** Substrings that must appear somewhere in the assembled pack */
   expectContent?: string[];
-  /** Substrings that must NOT appear (instruction pollution check) */
   forbidContent?: string[];
 }
 
@@ -40,27 +40,39 @@ const bundledEvalsPath = path.resolve(
 export function loadGuideEvalCases(customPath?: string): GuideEvalCase[] {
   const p = customPath ?? bundledEvalsPath;
   if (!fs.existsSync(p)) return defaultEvalCases();
-  return JSON.parse(fs.readFileSync(p, "utf8")) as GuideEvalCase[];
+  const raw = JSON.parse(fs.readFileSync(p, "utf8")) as Array<GuideEvalCase & { phase?: string }>;
+  return raw.map((c) =>
+    c.stage && c.task
+      ? c
+      : {
+          ...c,
+          stage: (c.stage ?? "dev") as DeliveryStage,
+          task: c.task ?? c.phase ?? "propose"
+        }
+  );
 }
 
 function defaultEvalCases(): GuideEvalCase[] {
   return [
     {
       id: "propose-has-template",
-      phase: "propose",
+      stage: "dev",
+      task: "propose",
       expectGuideIds: ["proposal-template", "cmd-propose"],
       expectContent: ["Constitution"]
     },
     {
       id: "apply-no-proposal-noise",
-      phase: "apply",
+      stage: "dev",
+      task: "apply",
       expectGuideIds: ["coding-conventions", "cmd-apply"],
       forbidContent: ["You are running the **propose** phase"]
     },
     {
-      id: "spec-has-spec-writing",
-      phase: "spec",
-      expectGuideIds: ["spec-writing", "cmd-spec"]
+      id: "design-has-spec-writing",
+      stage: "dev",
+      task: "design",
+      expectGuideIds: ["spec-writing", "cmd-design"]
     }
   ];
 }
@@ -70,7 +82,7 @@ export function runGuideEvals(ws: Workspace, change: string, cases?: GuideEvalCa
   const results: GuideEvalResult[] = [];
 
   for (const c of evalCases) {
-    const pack = buildContextPack(ws, change, c.phase);
+    const pack = buildContextPack(ws, change, c.stage, c.task);
     const guideIds = pack.sections
       .filter((s) => s.title.startsWith("Guide:"))
       .map((s) => {

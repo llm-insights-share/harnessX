@@ -113,7 +113,7 @@ export function registerBehaviourCommands(program: Command): void {
   program.command("status").description("Table of active changes").action(() => {
     for (const r of collectStatus(ws())) {
       console.log(
-        `${r.change}\t${r.status}\t${r.profile}\ttasks ${r.tasksDone}/${r.tasksTotal}\tscenarios ${r.scenarios.covered}/${r.scenarios.total}`
+        `${r.change}\t${r.stage}/${r.task}\t${r.profile}\ttasks ${r.tasksDone}/${r.tasksTotal}\tscenarios ${r.scenarios.covered}/${r.scenarios.total}`
       );
     }
   });

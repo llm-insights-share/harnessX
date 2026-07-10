@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Workspace } from "./paths.js";
 import { mergeChangeIntoSpecs, archiveChangeDir, type MergeConflict } from "./artifactStore.js";
-import { readMeta, setStatus, activeWaivers } from "./metaStore.js";
+import { readMeta, setStageTask, activeWaivers } from "./metaStore.js";
 import { appendRun, readRuns } from "./telemetry.js";
 import { readDesignOverview } from "./designLayout.js";
 import { resolveModulesForChange } from "./arch.js";
@@ -40,9 +40,11 @@ export interface ArchiveResult {
 export function archiveChange(ws: Workspace, change: string, opts: { force?: boolean } = {}): ArchiveResult {
   const problems: string[] = [];
   const meta = readMeta(ws, change);
-  if (meta.status !== "verified" && !opts.force) {
-    problems.push(`change is in state "${meta.status}", not "verified" — run hx verify first (or --force for lite profiles)`);
-    return { ok: false, conflicts: [], capabilities: [], problems };
+  if (meta.stage !== "dev" || meta.task !== "verify") {
+    if (!opts.force) {
+      problems.push(`change is at ${meta.stage}/${meta.task}, not dev/verify — run hx dev verify first (or --force for lite profiles)`);
+      return { ok: false, conflicts: [], capabilities: [], problems };
+    }
   }
   problems.push(...archPromoteProblems(ws, change, meta));
   if (problems.length > 0) {
@@ -63,7 +65,7 @@ export function archiveChange(ws: Workspace, change: string, opts: { force?: boo
 
   writeRetro(ws, change);
   appendRun(ws, { kind: "gate", name: "archive", change, status: "pass", detail: { capabilities } });
-  setStatus(ws, change, "archived");
+  setStageTask(ws, change, "dev", "archive");
   const archivedTo = archiveChangeDir(ws, change);
   return { ok: true, conflicts: [], archivedTo, capabilities, problems: [] };
 }

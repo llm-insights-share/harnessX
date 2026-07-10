@@ -117,12 +117,12 @@ x
     expect(resolvePrdSlug(ws, "feat-a")).toBe("my-prd");
   });
 
-  it("collectCommands includes pre-phase hx-prd and hx-arch", () => {
+  it("collectCommands includes req/arch stage commands", () => {
     const { ws } = initWorkspace(tmp(), { bundle: "api-service" });
     const cmds = collectCommands(ws);
-    expect(cmds.some((c) => c.name === "hx-prd" && c.prompt?.includes("/hx-prd"))).toBe(true);
-    expect(cmds.some((c) => c.name === "hx-arch")).toBe(true);
-    expect(cmds.some((c) => c.name === "hx-arch-lld")).toBe(true);
+    expect(cmds.some((c) => c.name === "hx-req-prd-writing")).toBe(true);
+    expect(cmds.some((c) => c.name === "hx-arch-subsystem-division")).toBe(true);
+    expect(cmds.some((c) => c.name === "hx-arch-internal-interface")).toBe(true);
   });
 
   it("buildPrdPack and buildArchPack assemble guides", () => {
@@ -132,6 +132,6 @@ x
     expect(prdPack.sections.some((s) => s.title.includes("prd-authoring"))).toBe(true);
     scaffoldArchHld(ws, "Sys");
     const archPack = buildArchPack(ws);
-    expect(archPack.phase).toBe("arch");
+    expect(archPack.stage).toBe("arch");
   });
 });

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import type { Finding, SensorReport } from "@harnessx/core/schemas.js";
-import { resolvePrdSlug, isPrephaseApproved } from "@harnessx/core";
+import { resolvePrdSlug, isStageApproved } from "@harnessx/core";
 import type { SensorContext } from "./types.js";
 import { hasPlaceholderContent, isPlaceholderTableRow } from "./placeholder.js";
 
@@ -82,7 +82,7 @@ export const prdApproved = (ctx: SensorContext): SensorReport => {
   if (!slug) {
     return block([{ severity: "block", message: "PRD slug unknown for approval check" }], ctx, "PRD not linked");
   }
-  if (!isPrephaseApproved(ctx.ws, "prd", slug)) {
+  if (!isStageApproved(ctx.ws, "req", slug)) {
     return block(
       [
         {

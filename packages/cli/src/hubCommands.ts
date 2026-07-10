@@ -166,11 +166,20 @@ async function interactiveCreateAsset(outDir?: string, sourceDir?: string) {
     const kind = (await rl.question("kind (guide.skill/guide.template/sensor.rubric/harness.bundle/harness.blueprint): ")).trim() as AssetKind;
     const version = (await rl.question("version [0.1.0]: ")).trim() || "0.1.0";
     const status = ((await rl.question("status [draft]: ")).trim() || "draft") as AssetStatus;
-    const phaseRaw = (await rl.question("phase list comma separated (optional): ")).trim();
+    const stageRaw = (await rl.question("stage [dev]: ")).trim() || "dev";
+    const taskRaw = (await rl.question("task (optional): ")).trim();
     const sourceInput = sourceDir ?? (await rl.question("source path (optional, directory or file containing original SKILL/template/rules): ")).trim();
-    const phase = phaseRaw ? phaseRaw.split(",").map((s) => s.trim()).filter(Boolean) : [];
     const root = path.resolve(outDir ?? id);
-    return createAssetScaffold({ rootDir: root, id, kind, version, status, phase, sourceDir: sourceInput || undefined });
+    return createAssetScaffold({
+      rootDir: root,
+      id,
+      kind,
+      version,
+      status,
+      stage: stageRaw as import("@harnessx/core").DeliveryStage,
+      task: taskRaw || undefined,
+      sourceDir: sourceInput || undefined
+    });
   } finally {
     rl.close();
   }
@@ -400,11 +409,12 @@ export function registerHubCommands(program: Command, opts: RegisterHubCommandsO
     .option("--id <id>", "asset id")
     .option("--asset-version <ver>", "asset version", "0.1.0")
     .option("--status <status>", "draft|trial|enforced|deprecated", "draft")
-    .option("--phase <list>", "comma-separated phases")
+    .option("--stage <stage>", "delivery stage: req|arch|dev|test", "dev")
+    .option("--task <task>", "task within stage")
     .option("--out <dir>", "target directory")
     .option("--source-dir <dir>", "source path (directory or single file) for this asset scaffold")
     .option("--interactive", "ask prompts interactively")
-    .action(async (cmdOpts: { kind?: AssetKind; id?: string; assetVersion?: string; status?: AssetStatus; phase?: string; out?: string; sourceDir?: string; interactive?: boolean }) => {
+    .action(async (cmdOpts: { kind?: AssetKind; id?: string; assetVersion?: string; status?: AssetStatus; stage?: string; task?: string; out?: string; sourceDir?: string; interactive?: boolean }) => {
       const result =
         cmdOpts.interactive || !cmdOpts.kind || !cmdOpts.id
           ? await interactiveCreateAsset(cmdOpts.out, cmdOpts.sourceDir)
@@ -414,7 +424,8 @@ export function registerHubCommands(program: Command, opts: RegisterHubCommandsO
               kind: cmdOpts.kind,
               version: cmdOpts.assetVersion,
               status: cmdOpts.status,
-              phase: cmdOpts.phase?.split(",").map((s) => s.trim()).filter(Boolean),
+              stage: (cmdOpts.stage ?? "dev") as import("@harnessx/core").DeliveryStage,
+              task: cmdOpts.task,
               sourceDir: cmdOpts.sourceDir
             });
       console.log(`created ${result.dir}`);

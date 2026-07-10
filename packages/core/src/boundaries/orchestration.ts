@@ -3,16 +3,11 @@
  */
 export {
   gateCheck,
-  nextPhase,
-  profilePhases,
-  type GateCheckResult
-} from "../gate.js";
-export {
+  gateAdvance,
   stageGateCheck,
   stageAdvance,
   nextTask,
   stageStatus,
-  unifiedGateCheck,
   type StageGateCheckResult
 } from "../stageGate.js";
 export { DELIVERY_STAGES, STAGE_TASKS, STAGE_INFO } from "../stages.js";
@@ -22,10 +17,11 @@ export {
   buildTaskPack,
   renderContextPack,
   writeTaskPack,
+  guidesForTask,
   type ContextPack
 } from "../guideEngine.js";
 export { createChange } from "../change.js";
-export { readMeta, setStatus } from "../metaStore.js";
+export { readMeta, setStageTask } from "../metaStore.js";
 export { readTasks, findTask, generateTasks, type Task } from "../plan.js";
 export { traceCheck } from "../traceability.js";
 export { buildFixPack, type FixPack } from "../fix.js";

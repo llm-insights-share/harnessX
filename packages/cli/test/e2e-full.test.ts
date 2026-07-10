@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import YAML from "yaml";
 
 /**
  * Overall integration test (final acceptance): drives the real `hx` CLI binary
@@ -92,8 +93,8 @@ describe("overall verification: full delivery cycle through the CLI", () => {
     hx(repo, ["change", "create", "session-expiry", "--domains", "auth"]);
     hx(repo, ["propose", "session-expiry", "--title", "Session expiry"]);
 
-    // placeholder delta must be blocked by the design gate (spec-validate not needed — proposal placeholder check)
-    const blocked = hx(repo, ["gate", "check", "session-expiry", "--phase", "spec"], { expectFail: true });
+    // placeholder proposal must be blocked by the design gate
+    const blocked = hx(repo, ["gate", "check", "session-expiry", "--stage", "dev", "--task", "design"], { expectFail: true });
     expect(blocked).toContain("GATE BLOCKED");
 
     // author the real artifacts
@@ -101,18 +102,17 @@ describe("overall verification: full delivery cycle through the CLI", () => {
     fs.writeFileSync(proposal, fs.readFileSync(proposal, "utf8").replace("{{title}}", "Session expiry"));
     fs.writeFileSync(path.join(hxDir, "changes/session-expiry/specs/auth/spec.md"), GOOD_DELTA);
 
-    // advance: design → spec
-    expect(hx(repo, ["gate", "advance", "session-expiry"])).toContain("designed");
-    expect(hx(repo, ["gate", "advance", "session-expiry"])).toContain("specified");
+    // advance: propose → design
+    expect(hx(repo, ["gate", "advance", "session-expiry"])).toContain("dev/design");
 
     // human approval gate blocks plan until approved (FR-012)
-    const noApproval = hx(repo, ["gate", "advance", "session-expiry"], { expectFail: true });
+    const noApproval = hx(repo, ["gate", "check", "session-expiry", "--stage", "dev", "--task", "plan"], { expectFail: true });
     expect(noApproval).toContain("human approval");
-    hx(repo, ["gate", "approve", "session-expiry", "--gate", "spec", "--approver", "alice"]);
+    hx(repo, ["gate", "approve", "session-expiry", "--gate", "design-to-plan", "--approver", "alice"]);
 
-    // plan + advance to planned
+    // plan + advance to apply
     expect(hx(repo, ["plan", "session-expiry"])).toContain("2 tasks");
-    expect(hx(repo, ["gate", "advance", "session-expiry"])).toContain("planned");
+    expect(hx(repo, ["gate", "advance", "session-expiry"])).toContain("dev/apply");
 
     // apply: runner writes the test covering the scenario on first task
     const testFile = path.join(repo, "tests", "auth.test.ts");
@@ -121,7 +121,7 @@ describe("overall verification: full delivery cycle through the CLI", () => {
     const applyOut = hx(repo, ["apply", "session-expiry", "--runner", runner]);
     expect(applyOut).toContain("completed tasks: 01a, 01b");
 
-    // verify → verified
+    // verify → dev/verify
     expect(hx(repo, ["verify", "session-expiry"])).toContain("VERIFIED");
     expect(hx(repo, ["meta", "verify", "session-expiry"])).toContain("ok");
 
@@ -156,25 +156,31 @@ describe("overall verification: full delivery cycle through the CLI", () => {
     hx(repo, ["init"]);
     hx(repo, ["change", "create", "risky", "--domains", "core"]);
     hx(repo, ["propose", "risky", "--title", "Risky"]);
+    fs.writeFileSync(path.join(repo, "harnessX/changes/risky/specs/core/spec.md"), `## ADDED Requirements\n\n### Requirement: R1\nTHE SYSTEM SHALL r1.\n\n#### Scenario: s1\n- THEN ok\n`);
 
     // register a crashing sensor into the apply suite
     const harnessFile = path.join(repo, "harnessX/harness.yaml");
-    let doc = fs.readFileSync(harnessFile, "utf8");
-    doc = doc.replace(/fast: \[[^\]]+\]/, (m) => m.replace("]", ", crasher]"));
-    doc = doc.replace(
-      "sensors:",
-      `sensors:\n  - id: crasher\n    kind: sensor.script\n    execution: computational\n    run: "exit 99"\n    on_fail: block\n`
-    );
-    fs.writeFileSync(harnessFile, doc);
+    const harness = YAML.parse(fs.readFileSync(harnessFile, "utf8"));
+    harness.sensors.push({
+      id: "crasher",
+      kind: "sensor.script",
+      execution: "computational",
+      run: "exit 99",
+      on_fail: "block",
+      stage: "dev",
+      task: "apply"
+    });
+    harness.suites.fast = [...(harness.suites.fast ?? []), "crasher"];
+    fs.writeFileSync(harnessFile, YAML.stringify(harness));
     fs.writeFileSync(path.join(repo, "harnessX/changes/risky/tasks.md"), "- [ ] 01a [test] (core / Requirement: R) t\n");
 
-    const out = hx(repo, ["gate", "check", "risky", "--phase", "apply"], { expectFail: true });
+    const out = hx(repo, ["gate", "check", "risky", "--stage", "dev", "--task", "apply"], { expectFail: true });
     expect(out).toContain("GATE BLOCKED");
     expect(out).toContain("crasher");
 
     // tamper meta.yaml by hand → meta verify fails (CI replay, FR-050/051)
     const metaFile = path.join(repo, "harnessX/changes/risky/meta.yaml");
-    fs.writeFileSync(metaFile, fs.readFileSync(metaFile, "utf8").replace("status: proposed", "status: verified"));
+    fs.writeFileSync(metaFile, fs.readFileSync(metaFile, "utf8").replace("task: propose", "task: verify"));
     const metaOut = hx(repo, ["meta", "verify", "risky"], { expectFail: true });
     expect(metaOut).toContain("TAMPERED");
   }, 120000);

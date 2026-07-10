@@ -1,8 +1,9 @@
 id: ui-pages-template
 kind: guide.template
 category: architecture
-phase: [design]
 version: 1.0.0
 origin: builtin
 status: enforced
 execution: computational
+stage: dev
+task: design

@@ -4,10 +4,9 @@ import {
   Workspace,
   gateCheck,
   gateAdvance,
-  nextPhase,
   nextTask,
-  stageAdvance,
   stageGateCheck,
+  stageAdvance,
   buildContextPack,
   renderContextPack,
   writeTaskPack,
@@ -18,11 +17,12 @@ import {
   ciInit,
   verifyMeta,
   recordApproval,
-  recordPrephaseApproval,
+  recordStageApproval,
   scaffoldDesign,
   readMeta,
   scaffoldFromIssue,
-  type RunnerOptions
+  type RunnerOptions,
+  type DeliveryStage
 } from "@harnessx/core";
 import { builtinSensors } from "@harnessx/sensors";
 import { registerPrdGuidePack } from "./prd.js";
@@ -34,10 +34,10 @@ const runnerOpts = (w: Workspace): RunnerOptions => ({
   changedFiles: gitChangedFiles(w.root)
 });
 
-function printGate(res: { blockers: string[]; warnings: string[]; passed: boolean; phase?: string; stage?: string; task?: string }) {
+function printGate(res: { blockers: string[]; warnings: string[]; passed: boolean; stage?: string; task?: string }) {
   for (const b of res.blockers) console.error(`BLOCKER  ${b}`);
   for (const w of res.warnings) console.warn(`warning  ${w}`);
-  const label = res.stage && res.task ? `${res.stage}/${res.task}` : res.phase ?? "-";
+  const label = res.stage && res.task ? `${res.stage}/${res.task}` : "-";
   console.log(res.passed ? `GATE PASS (${label})` : `GATE BLOCKED (${label})`);
 }
 
@@ -46,45 +46,26 @@ export function registerGateCommands(program: Command): void {
 
   gate
     .command("check <change>")
-    .option("--phase <cmd>", "legacy phase to check")
-    .option("--stage <stage>", "delivery stage: req|arch|dev|test")
-    .option("--task <task>", "task within stage")
-    .action(async (change: string, opts: { phase?: string; stage?: string; task?: string }) => {
+    .requiredOption("--stage <stage>", "delivery stage: req|arch|dev|test")
+    .requiredOption("--task <task>", "task within stage")
+    .action(async (change: string, opts: { stage: DeliveryStage; task: string }) => {
       const w = ws();
-      const meta = readMeta(w, change);
-      const stagesMode = w.readConfig().delivery_mode === "stages";
-      if (stagesMode) {
-        const stage = (opts.stage ?? meta.stage ?? "dev") as "req" | "arch" | "dev" | "test";
-        const task = opts.task ?? meta.task ?? "propose";
-        const res = await stageGateCheck(w, change, stage, task, runnerOpts(w));
-        printGate(res);
-        if (!res.passed) process.exit(1);
-        return;
-      }
-      const phase = opts.phase ?? nextPhase(w.readHarness(), meta) ?? "verify";
-      const res = await gateCheck(w, change, phase, runnerOpts(w));
+      const res = await stageGateCheck(w, change, opts.stage, opts.task, runnerOpts(w));
       printGate(res);
       if (!res.passed) process.exit(1);
     });
 
   gate.command("advance <change>").action(async (change: string) => {
     const w = ws();
-    if (w.readConfig().delivery_mode === "stages") {
-      const res = await stageAdvance(w, change, runnerOpts(w));
-      printGate(res);
-      if (res.toTask) console.log(`advanced: ${res.fromStage}/${res.fromTask} → ${res.toStage}/${res.toTask}`);
-      if (!res.passed) process.exit(1);
-      return;
-    }
-    const res = await gateAdvance(w, change, runnerOpts(w));
+    const res = await stageAdvance(w, change, runnerOpts(w));
     printGate(res);
-    if (res.to) console.log(`advanced: ${res.from} → ${res.to}`);
+    if (res.toTask) console.log(`advanced: ${res.fromStage}/${res.fromTask} → ${res.toStage}/${res.toTask}`);
     if (!res.passed) process.exit(1);
   });
 
   gate
     .command("approve [change]")
-    .requiredOption("--gate <gate>", "gate being approved (spec|prd|arch|arch-lld|test-cases)")
+    .requiredOption("--gate <gate>", "gate being approved (design-to-plan|prd|arch|arch-lld|test-cases)")
     .requiredOption("--approver <name>")
     .option("--prd <slug>", "PRD slug (required when --gate prd)")
     .option("--module <id>", "module id (required when --gate arch-lld)")
@@ -94,26 +75,26 @@ export function registerGateCommands(program: Command): void {
         if (opts.gate === "arch-lld" && !opts.module) throw new Error("--module required for gate arch-lld");
         const rec =
           opts.gate === "arch-lld"
-            ? recordPrephaseApproval(w, opts.gate, opts.approver, opts.prd, opts.module)
-            : recordPrephaseApproval(w, opts.gate, opts.approver, opts.prd);
+            ? recordStageApproval(w, opts.gate, opts.approver, opts.prd, opts.module)
+            : recordStageApproval(w, opts.gate, opts.approver, opts.prd);
         const target =
           opts.gate === "prd" ? `prd:${opts.prd}` : opts.gate === "arch-lld" ? `arch-lld:${opts.module}` : "arch:hld";
         console.log(`approved gate "${opts.gate}" (${target}) by ${rec.approver} at ${rec.at} (artifact ${rec.artifactHash.slice(0, 12)})`);
         return;
       }
-      if (!change) throw new Error("change id required for gate spec (and other change-scoped gates)");
+      if (!change) throw new Error("change id required for change-scoped gates");
       const rec = recordApproval(w, change, opts.gate, opts.approver);
       console.log(`approved gate "${rec.gate}" by ${rec.approver} at ${rec.at} (artifact ${rec.artifactHash.slice(0, 12)})`);
     });
 
   gate.command("hook-check").description("Fast pre-commit/pre-push check for active changes").action(async () => {
     const w = ws();
-    if (!fs.existsSync(w.harnessFile)) return; // repo without harness — no-op
+    if (!fs.existsSync(w.harnessFile)) return;
     let failed = false;
     for (const change of w.listChanges()) {
       const meta = readMeta(w, change);
-      if (meta.status !== "implementing") continue;
-      const res = await gateCheck(w, change, "apply", runnerOpts(w));
+      if (meta.stage !== "dev" || meta.task !== "apply") continue;
+      const res = await stageGateCheck(w, change, "dev", "apply", runnerOpts(w));
       if (!res.passed) {
         printGate(res);
         failed = true;
@@ -125,13 +106,14 @@ export function registerGateCommands(program: Command): void {
 
   gate.command("replay").description("CI replay: re-run gates for all active changes (FR-051)").action(async () => {
     const w = ws();
+    const harness = w.readHarness();
     let failed = false;
     for (const change of w.listChanges()) {
       const meta = readMeta(w, change);
-      const phase = nextPhase(w.readHarness(), meta);
-      if (!phase) continue;
-      const res = await gateCheck(w, change, phase, runnerOpts(w));
-      console.log(`${change} [${phase}]: ${res.passed ? "pass" : "BLOCKED"}`);
+      const next = nextTask(harness, meta);
+      if (!next) continue;
+      const res = await stageGateCheck(w, change, next.stage, next.task, runnerOpts(w));
+      console.log(`${change} [${next.stage}/${next.task}]: ${res.passed ? "pass" : "BLOCKED"}`);
       if (!res.passed) {
         printGate(res);
         failed = true;
@@ -143,10 +125,11 @@ export function registerGateCommands(program: Command): void {
   const guide = program.command("guide").description("Guide engine (FR-030)");
   guide
     .command("pack <change>")
-    .requiredOption("--phase <cmd>")
+    .requiredOption("--stage <stage>", "req|arch|dev|test")
+    .requiredOption("--task <task>", "task id within stage")
     .option("--out <file>", "write pack to file instead of stdout")
-    .action((change: string, opts: { phase: string; out?: string }) => {
-      const pack = buildContextPack(ws(), change, opts.phase);
+    .action((change: string, opts: { stage: DeliveryStage; task: string; out?: string }) => {
+      const pack = buildContextPack(ws(), change, opts.stage, opts.task);
       const text = renderContextPack(pack);
       if (opts.out) {
         fs.writeFileSync(opts.out, text);
@@ -200,7 +183,7 @@ export function registerGateCommands(program: Command): void {
     .description("Scaffold design.md; requires the propose gate to pass (FR-004)")
     .action(async (change: string) => {
       const w = ws();
-      const res = await gateCheck(w, change, "design", runnerOpts(w));
+      const res = await stageGateCheck(w, change, "dev", "design", runnerOpts(w));
       if (!res.passed) {
         printGate(res);
         process.exit(1);

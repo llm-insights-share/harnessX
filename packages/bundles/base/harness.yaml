@@ -1,459 +1,622 @@
 version: "1.0"
 constitution: constitution.md
-
 profiles:
   lite:
-    phases: [propose, apply, archive]
-    stages: [dev]
-    dev_tasks: [propose, apply, archive]
+    stages:
+      - dev
+    dev_tasks:
+      - propose
+      - apply
+      - archive
     suites:
-      apply: fast-lite
-      dev.propose: fast-lite
       dev.apply: fast-lite
+      dev.propose: fast-lite
   standard:
-    phases: [propose, design, spec, plan, apply, verify, archive]
-    stages: [req, arch, dev, test]
-    dev_tasks: [plan, propose, design, apply, verify, archive]
+    stages:
+      - req
+      - arch
+      - dev
+      - test
+    dev_tasks:
+      - plan
+      - propose
+      - design
+      - apply
+      - verify
+      - archive
     suites:
-      spec: fast
-      apply: fast
-      verify: verification
       dev.design: fast
+      dev.apply: fast
       dev.verify: verification
   strict:
-    phases: [explore, propose, design, spec, plan, apply, verify, archive]
-    stages: [req, arch, dev, test]
-    dev_tasks: [plan, propose, design, apply, verify, archive]
+    stages:
+      - req
+      - arch
+      - dev
+      - test
+    dev_tasks:
+      - plan
+      - propose
+      - design
+      - apply
+      - verify
+      - archive
     suites:
-      spec: fast
-      apply: fast
-      verify: verification-strict
+      dev.design: fast
+      dev.apply: fast
       dev.verify: verification-strict
   enterprise:
-    phases: [explore, propose, design, spec, plan, apply, verify, archive]
-    stages: [req, arch, dev, test]
-    dev_tasks: [plan, propose, design, apply, verify, archive]
+    stages:
+      - req
+      - arch
+      - dev
+      - test
+    dev_tasks:
+      - plan
+      - propose
+      - design
+      - apply
+      - verify
+      - archive
     suites:
-      propose: propose-enterprise
-      design: design-enterprise
-      spec: fast
-      plan: plan-enterprise
-      apply: fast
-      verify: verification-enterprise
       dev.propose: propose-enterprise
       dev.design: design-enterprise
+      dev.plan: plan-enterprise
+      dev.apply: fast
       dev.verify: verification-enterprise
   enterprise-sdlc:
-    phases: [explore, propose, design, spec, plan, test-design, apply, verify, archive]
-    stages: [req, arch, dev, test]
-    dev_tasks: [plan, propose, design, apply, verify, archive]
-    test_tasks: [test-case-design, test-execution]
+    stages:
+      - req
+      - arch
+      - dev
+      - test
+    dev_tasks:
+      - plan
+      - propose
+      - design
+      - apply
+      - verify
+      - archive
+    test_tasks:
+      - test-case-design
+      - test-execution
     suites:
-      propose: propose-sdlc
-      design: design-sdlc
-      spec: fast
-      plan: plan-sdlc
-      test-design: test-design-sdlc
-      apply: fast
-      verify: verification-sdlc
       dev.propose: propose-sdlc
       dev.design: design-sdlc
-      dev.verify: verification-sdlc
+      dev.plan: plan-sdlc
       test.test-case-design: test-design-sdlc
-
+      dev.apply: fast
+      dev.verify: verification-sdlc
 suites:
-  fast-lite: [spec-validate]
-  fast: [spec-validate, typecheck, lint, unit-changed]
-  verification: [spec-validate, spec-trace, drift]
-  verification-strict: [spec-validate, spec-trace, unit-changed, mutation-probe, ai-spec-review]
-  propose-enterprise: [prd-complete, prd-approved, requirements-complete, spec-validate, typecheck, lint, unit-changed]
-  design-enterprise: [arch-approved, arch-change-align, design-hld-complete, design-lld-complete, design-spec-align, prototype-complete]
-  plan-enterprise: [plan-coverage]
-  verification-enterprise: [spec-validate, spec-trace, design-drift, arch-drift, drift, uat-complete, unit-changed, mutation-probe, ai-spec-review]
-  prd-check: [prd-complete]
-  arch-check: [arch-hld-complete, arch-registry-complete, arch-approved]
-  arch-lld-check: [arch-lld-complete, arch-module-boundary, arch-lld-approved]
-  propose-sdlc: [wo-prephase-clear, prd-complete, prd-approved, requirements-extended-complete, spec-validate, typecheck, lint, unit-changed]
-  design-sdlc: [arch-approved, arch-lld-approved, arch-change-align, design-hld-complete, design-lld-complete, design-spec-align, prototype-complete, change-request-applied]
-  plan-sdlc: [plan-coverage, wo-lld-done]
-  test-design-sdlc: [test-cases-complete, test-cases-approved]
-  verification-sdlc: [spec-validate, spec-trace, design-drift, arch-drift, bugs-closed, drift, uat-complete, unit-changed, mutation-probe, ai-spec-review]
-
+  fast-lite:
+    - spec-validate
+  fast:
+    - spec-validate
+    - typecheck
+    - lint
+    - unit-changed
+  verification:
+    - spec-validate
+    - spec-trace
+    - drift
+  verification-strict:
+    - spec-validate
+    - spec-trace
+    - unit-changed
+    - mutation-probe
+    - ai-spec-review
+  propose-enterprise:
+    - prd-complete
+    - prd-approved
+    - requirements-complete
+    - spec-validate
+    - typecheck
+    - lint
+    - unit-changed
+  design-enterprise:
+    - arch-approved
+    - arch-change-align
+    - design-hld-complete
+    - design-lld-complete
+    - design-spec-align
+    - prototype-complete
+  plan-enterprise:
+    - plan-coverage
+  verification-enterprise:
+    - spec-validate
+    - spec-trace
+    - design-drift
+    - arch-drift
+    - drift
+    - uat-complete
+    - unit-changed
+    - mutation-probe
+    - ai-spec-review
+  prd-check:
+    - prd-complete
+  arch-check:
+    - arch-hld-complete
+    - arch-registry-complete
+    - arch-approved
+  arch-lld-check:
+    - arch-lld-complete
+    - arch-module-boundary
+    - arch-lld-approved
+  design-sdlc:
+    - arch-approved
+    - arch-lld-approved
+    - arch-change-align
+    - design-hld-complete
+    - design-lld-complete
+    - design-spec-align
+    - prototype-complete
+    - change-request-applied
+  plan-sdlc:
+    - plan-coverage
+    - wo-lld-done
+  test-design-sdlc:
+    - test-cases-complete
+    - test-cases-approved
+  verification-sdlc:
+    - spec-validate
+    - spec-trace
+    - design-drift
+    - arch-drift
+    - bugs-closed
+    - drift
+    - uat-complete
+    - unit-changed
+    - mutation-probe
+    - ai-spec-review
+  dev.propose:
+    - wo-req-arch-clear
+    - prd-complete
+    - prd-approved
+    - requirements-extended-complete
+    - spec-validate
+    - typecheck
+    - lint
+    - unit-changed
 guides:
   - id: requirements-template
     kind: guide.template
     execution: computational
-    phase: [propose]
     source: assets/guides/requirements-template/template.md
+    stage: dev
+    task: propose
   - id: ui-pages-template
     kind: guide.template
     execution: computational
-    phase: [design]
     source: assets/guides/ui-pages-template/template.md
+    stage: dev
+    task: design
   - id: prd-writing
     kind: guide.skill
     execution: inferential
-    phase: [propose, spec]
     source: assets/guides/prd-writing/SKILL.md
+    stage: dev
+    task: propose
   - id: fe-layout
     kind: guide.skill
     execution: inferential
-    phase: [design, apply]
     source: assets/guides/fe-layout/SKILL.md
+    stage: dev
+    task: design
   - id: design-tokens
     kind: guide.skill
     execution: inferential
-    phase: [design, apply]
     source: assets/guides/design-tokens/SKILL.md
+    stage: dev
+    task: design
   - id: proposal-template
     kind: guide.template
     execution: computational
-    phase: [propose]
     source: assets/guides/proposal-template/template.md
+    stage: dev
+    task: propose
   - id: design-template
     kind: guide.template
     execution: computational
-    phase: [design]
     source: assets/guides/design-template/template.md
+    stage: dev
+    task: design
   - id: coding-conventions
     kind: guide.skill
     execution: inferential
-    phase: [apply]
     source: assets/guides/coding-conventions/SKILL.md
+    stage: dev
+    task: apply
   - id: spec-writing
     kind: guide.skill
     execution: inferential
-    phase: [propose, spec]
     source: assets/guides/spec-writing/SKILL.md
+    stage: dev
+    task: propose
   - id: cmd-explore
     kind: guide.command
     execution: inferential
-    phase: [explore]
     source: assets/commands/explore.md
+    stage: req
+    task: requirements-research
   - id: cmd-propose
     kind: guide.command
     execution: inferential
-    phase: [propose]
     source: assets/commands/propose.md
+    stage: dev
+    task: propose
   - id: cmd-design
     kind: guide.command
     execution: inferential
-    phase: [design]
     source: assets/commands/design.md
+    stage: dev
+    task: design
   - id: cmd-spec
     kind: guide.command
     execution: inferential
-    phase: [spec]
     source: assets/commands/spec.md
+    stage: dev
+    task: design
   - id: cmd-plan
     kind: guide.command
     execution: inferential
-    phase: [plan]
     source: assets/commands/plan.md
+    stage: dev
+    task: plan
   - id: cmd-apply
     kind: guide.command
     execution: inferential
-    phase: [apply]
     source: assets/commands/apply.md
+    stage: dev
+    task: apply
   - id: cmd-verify
     kind: guide.command
     execution: inferential
-    phase: [verify]
     source: assets/commands/verify.md
+    stage: dev
+    task: verify
   - id: cmd-archive
     kind: guide.command
     execution: inferential
-    phase: [archive]
     source: assets/commands/archive.md
+    stage: dev
+    task: archive
   - id: prd-template
     kind: guide.template
     execution: computational
-    phase: [prd]
     source: assets/guides/prd-template/template.md
+    stage: req
+    task: prd-writing
   - id: prd-authoring
     kind: guide.skill
     execution: inferential
-    phase: [prd]
     source: assets/guides/prd-authoring/SKILL.md
+    stage: req
+    task: prd-writing
   - id: cmd-prd
     kind: guide.command
     execution: inferential
-    phase: [prd]
     source: assets/commands/prd.md
+    stage: req
+    task: prd-writing
   - id: arch-hld-template
     kind: guide.template
     execution: computational
-    phase: [arch]
     source: assets/guides/arch-hld-template/template.md
+    stage: arch
+    task: subsystem-division
   - id: arch-authoring
     kind: guide.skill
     execution: inferential
-    phase: [arch]
     source: assets/guides/arch-authoring/SKILL.md
+    stage: arch
+    task: subsystem-division
   - id: cmd-arch
     kind: guide.command
     execution: inferential
-    phase: [arch]
     source: assets/commands/arch.md
+    stage: arch
+    task: subsystem-division
   - id: arch-lld-template
     kind: guide.template
     execution: computational
-    phase: [arch-lld]
     source: assets/guides/arch-lld-template/template.md
+    stage: arch
+    task: internal-interface
   - id: arch-module-boundary
     kind: guide.skill
     execution: inferential
-    phase: [arch-lld]
     source: assets/guides/arch-module-boundary/SKILL.md
+    stage: arch
+    task: internal-interface
   - id: cmd-arch-lld
     kind: guide.command
     execution: inferential
-    phase: [arch-lld]
     source: assets/commands/arch-lld.md
-
+    stage: arch
+    task: internal-interface
 sensors:
   - id: spec-validate
     kind: sensor.script
     execution: computational
-    phase: [propose, spec, verify, archive]
     builtin: spec-validate
     on_fail: block
-    fix_hint: "Fix delta spec format; ensure each Requirement has >=1 Scenario and EARS-style requirement text"
+    fix_hint: Fix delta spec format; ensure each Requirement has >=1 Scenario and
+      EARS-style requirement text
+    stage: dev
+    task: propose
   - id: spec-trace
     kind: sensor.script
     execution: computational
-    phase: [verify]
     builtin: spec-trace
     on_fail: block
+    stage: dev
+    task: verify
   - id: ai-spec-review
     kind: sensor.rubric
     execution: inferential
-    phase: [verify]
     builtin: rubric
     on_fail: warn
     budget_tokens: 8000
+    stage: dev
+    task: verify
   - id: fixture-guard
     kind: sensor.fixture
     execution: computational
     trigger: file-save
-    scope: ["tests/fixtures/**"]
+    scope:
+      - tests/fixtures/**
     builtin: fixture-hash
     on_fail: block
   - id: typecheck
     kind: sensor.script
     execution: computational
-    phase: [apply, verify]
     builtin: typecheck
     on_fail: block
-    fix_hint: "Fix TypeScript errors reported by tsc"
+    fix_hint: Fix TypeScript errors reported by tsc
+    stage: dev
+    task: apply
   - id: lint
     kind: sensor.script
     execution: computational
-    phase: [apply, verify]
     builtin: lint
     on_fail: block
-    fix_hint: "Fix lint violations"
+    fix_hint: Fix lint violations
+    stage: dev
+    task: apply
   - id: unit-changed
     kind: sensor.script
     execution: computational
-    phase: [apply, verify]
     builtin: unit-changed
     on_fail: block
-    fix_hint: "Fix failing tests related to your diff"
+    fix_hint: Fix failing tests related to your diff
+    stage: dev
+    task: apply
   - id: mutation-probe
     kind: sensor.mutation
     execution: computational
-    phase: [verify]
     builtin: mutation-probe
     on_fail: block
-    fix_hint: "Strengthen scenario tests — avoid stubs and tautological assertions"
+    fix_hint: Strengthen scenario tests — avoid stubs and tautological assertions
+    stage: dev
+    task: verify
   - id: requirements-complete
     kind: sensor.script
     execution: computational
-    phase: [propose]
     builtin: requirements-complete
     on_fail: block
-    fix_hint: "Fill requirements/ artifacts and link PRD in proposal.md"
+    fix_hint: Fill requirements/ artifacts and link PRD in proposal.md
+    stage: dev
+    task: propose
   - id: design-hld-complete
     kind: sensor.script
     execution: computational
-    phase: [design]
     builtin: design-hld-complete
     on_fail: block
-    fix_hint: "Complete design/overview.md HLD sections (API, ADR, Observability, Rollback)"
+    fix_hint: Complete design/overview.md HLD sections (API, ADR, Observability,
+      Rollback)
+    stage: dev
+    task: design
   - id: design-lld-complete
     kind: sensor.script
     execution: computational
-    phase: [design]
     builtin: design-lld-complete
     on_fail: warn
-    fix_hint: "Add design/ui/pages.md and per-page LLD under design/ui/components/"
+    fix_hint: Add design/ui/pages.md and per-page LLD under design/ui/components/
+    stage: dev
+    task: design
   - id: design-spec-align
     kind: sensor.script
     execution: computational
-    phase: [design, spec]
     builtin: design-spec-align
     on_fail: warn
-    fix_hint: "Ensure API paths in design appear in delta specs"
+    fix_hint: Ensure API paths in design appear in delta specs
+    stage: dev
+    task: design
   - id: plan-coverage
     kind: sensor.script
     execution: computational
-    phase: [plan]
     builtin: plan-coverage
     on_fail: warn
-    fix_hint: "Run hx plan to generate @design= and delivery-trace.yaml handoff"
+    fix_hint: Run hx plan to generate @design= and delivery-trace.yaml handoff
+    stage: dev
+    task: plan
   - id: design-drift
     kind: sensor.script
     execution: computational
-    phase: [verify]
     builtin: design-drift
     on_fail: warn
-    fix_hint: "Implement files listed in delivery-trace code_hints or update the trace"
+    fix_hint: Implement files listed in delivery-trace code_hints or update the trace
+    stage: dev
+    task: verify
   - id: prototype-complete
     kind: sensor.script
     execution: computational
-    phase: [design]
     builtin: prototype-complete
     on_fail: block
-    fix_hint: "Add design/ui/pages.md wireframe inventory (prototype-wireframe skill)"
+    fix_hint: Add design/ui/pages.md wireframe inventory (prototype-wireframe skill)
+    stage: dev
+    task: design
   - id: uat-complete
     kind: sensor.script
     execution: computational
-    phase: [verify]
     builtin: uat-complete
     on_fail: block
-    fix_hint: "Complete change/uat-checklist.md with scenario walkthrough and sign-off"
+    fix_hint: Complete change/uat-checklist.md with scenario walkthrough and sign-off
+    stage: dev
+    task: verify
   - id: drift
     kind: sensor.drift
     execution: computational
-    phase: [verify]
     builtin: drift
     on_fail: warn
-    fix_hint: "Run hx sync; fix spec↔code or design↔code drift; hx adapter sync for adapter drift"
+    fix_hint: Run hx sync; fix spec↔code or design↔code drift; hx adapter sync for
+      adapter drift
+    stage: dev
+    task: verify
   - id: integration-smoke
     kind: sensor.script
     execution: computational
-    phase: [verify]
     builtin: integration-smoke
     on_fail: warn
     timeout_ms: 120000
-    fix_hint: "Add npm run test:integration or fix failing integration tests"
+    fix_hint: Add npm run test:integration or fix failing integration tests
+    stage: dev
+    task: verify
   - id: prd-complete
     kind: sensor.script
     execution: computational
-    phase: [prd, propose]
     builtin: prd-complete
     on_fail: block
-    fix_hint: "Complete docs/prd/<slug>.md per prd-template"
+    fix_hint: Complete docs/prd/<slug>.md per prd-template
+    stage: req
+    task: prd-writing
   - id: prd-approved
     kind: sensor.script
     execution: computational
-    phase: [prd, propose]
     builtin: prd-approved
     on_fail: block
-    fix_hint: "Human approves PRD: hx gate approve --gate prd --prd <slug> --approver <name>"
+    fix_hint: "Human approves PRD: hx gate approve --gate prd --prd <slug>
+      --approver <name>"
+    stage: req
+    task: prd-writing
   - id: arch-hld-complete
     kind: sensor.script
     execution: computational
-    phase: [arch]
     builtin: arch-hld-complete
     on_fail: block
-    fix_hint: "Complete docs/architecture/overview.md HLD sections"
+    fix_hint: Complete docs/architecture/overview.md HLD sections
+    stage: arch
+    task: subsystem-division
   - id: arch-registry-complete
     kind: sensor.script
     execution: computational
-    phase: [arch]
     builtin: arch-registry-complete
     on_fail: block
-    fix_hint: "Fix registry.yaml and ensure active modules have LLD paths"
+    fix_hint: Fix registry.yaml and ensure active modules have LLD paths
+    stage: arch
+    task: subsystem-division
   - id: arch-lld-complete
     kind: sensor.script
     execution: computational
-    phase: [arch-lld]
     builtin: arch-lld-complete
     on_fail: block
-    fix_hint: "Complete module LLD under docs/architecture/modules/<id>/lld.md"
+    fix_hint: Complete module LLD under docs/architecture/modules/<id>/lld.md
+    stage: arch
+    task: internal-interface
   - id: arch-module-boundary
     kind: sensor.script
     execution: computational
-    phase: [arch-lld]
     builtin: arch-module-boundary
     on_fail: warn
-    fix_hint: "Resolve duplicate capability ownership in registry.yaml"
+    fix_hint: Resolve duplicate capability ownership in registry.yaml
+    stage: arch
+    task: internal-interface
   - id: arch-change-align
     kind: sensor.script
     execution: computational
-    phase: [design]
     builtin: arch-change-align
     on_fail: block
-    fix_hint: "Ensure touched domains map to module LLD in docs/architecture/"
+    fix_hint: Ensure touched domains map to module LLD in docs/architecture/
+    stage: dev
+    task: design
   - id: arch-approved
     kind: sensor.script
     execution: computational
-    phase: [arch]
     builtin: arch-approved
     on_fail: block
     fix_hint: "Human approves global HLD: hx gate approve --gate arch --approver <name>"
+    stage: arch
+    task: subsystem-division
   - id: arch-drift
     kind: sensor.script
     execution: computational
-    phase: [verify]
     builtin: arch-drift
     on_fail: warn
-    fix_hint: "Run hx arch promote <change> to沉淀 design into module LLD"
-  - id: wo-prephase-clear
+    fix_hint: Run hx arch promote <change> to沉淀 design into module LLD
+    stage: dev
+    task: verify
+  - id: wo-req-arch-clear
     kind: sensor.script
     execution: computational
-    phase: [propose]
-    builtin: wo-prephase-clear
+    builtin: wo-req-arch-clear
     on_fail: block
-    fix_hint: "Close pending pre-phase work orders: hx wo inbox"
+    fix_hint: "Close pending req/arch work orders: hx wo inbox"
+    stage: dev
+    task: propose
   - id: requirements-extended-complete
     kind: sensor.script
     execution: computational
-    phase: [propose]
     builtin: requirements-extended-complete
     on_fail: block
-    fix_hint: "Fill extended requirements/ artifacts (research, business flows, integrations)"
+    fix_hint: Fill extended requirements/ artifacts (research, business flows,
+      integrations)
+    stage: dev
+    task: propose
   - id: test-cases-complete
     kind: sensor.script
     execution: computational
-    phase: [test-design]
     builtin: test-cases-complete
     on_fail: block
-    fix_hint: "Complete test-cases/overview.md — hx test-cases init"
+    fix_hint: Complete test-cases/overview.md — hx test-cases init
+    stage: test
+    task: test-case-design
   - id: test-cases-approved
     kind: sensor.script
     execution: computational
-    phase: [test-design, apply]
     builtin: test-cases-approved
     on_fail: block
     fix_hint: "Submit and approve test cases: hx test-cases submit"
+    stage: test
+    task: test-case-design
   - id: bugs-closed
     kind: sensor.script
     execution: computational
-    phase: [verify]
     builtin: bugs-closed
     on_fail: block
     fix_hint: "Close or fix open bugs: hx bug list"
+    stage: dev
+    task: verify
   - id: wo-lld-done
     kind: sensor.script
     execution: computational
-    phase: [plan]
     builtin: wo-lld-done
     on_fail: block
     fix_hint: "Mark lld-design work orders done: hx wo done <id>"
+    stage: dev
+    task: plan
   - id: arch-lld-approved
     kind: sensor.script
     execution: computational
-    phase: [design, arch-lld]
     builtin: arch-lld-approved
     on_fail: block
     fix_hint: "Approve module LLD: hx approve arch-lld <module> --approver <name>"
+    stage: dev
+    task: design
   - id: change-request-applied
     kind: sensor.script
     execution: computational
-    phase: [design, propose]
     builtin: change-request-applied
     on_fail: block
-    fix_hint: "Apply pending change requests after approval"
+    fix_hint: Apply pending change requests after approval
+    stage: dev
+    task: design

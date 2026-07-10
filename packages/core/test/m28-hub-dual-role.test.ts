@@ -42,7 +42,8 @@ function makeAsset(dir: string, id: string, extra: Record<string, unknown> = {})
       origin: "local",
       status: "trial",
       execution: "inferential",
-      phase: ["design"],
+      stage: "dev",
+      task: "design",
       provenance: [],
       ...extra
     })
@@ -72,6 +73,7 @@ describe("m28 hub dual-role ops", () => {
         version: "1.0.0",
         origin: "local",
         status: "trial",
+        stage: "dev",
         provenance: []
       })
     );

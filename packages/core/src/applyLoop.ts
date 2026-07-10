@@ -1,5 +1,6 @@
 import { Workspace } from "./paths.js";
-import { readMeta, setStatus } from "./metaStore.js";
+import { readMeta, setStageTask } from "./metaStore.js";
+import { resolveSuiteName } from "./profileResolve.js";
 import { readTasks, markTaskDone, nextTaskBatch, type Task } from "./plan.js";
 import { runSuite, type RunnerOptions } from "./sensorRunner.js";
 import { appendRun } from "./telemetry.js";
@@ -79,13 +80,13 @@ async function runOneTask(
 export async function applyLoop(ws: Workspace, change: string, opts: ApplyOptions): Promise<ApplyResult> {
   const harness = ws.readHarness();
   const meta = readMeta(ws, change);
-  const suiteName = harness.profiles[meta.profile]?.suites?.["apply"];
+  const suiteName = resolveSuiteName(harness, meta.profile, "dev", "apply");
   const maxRetries = opts.maxRetries ?? 3;
   const parallel = opts.parallel ?? 1;
   const completed: string[] = [];
   const reviewHints = pendingFixHints(ws, change);
 
-  if (meta.status !== "implementing") setStatus(ws, change, "implementing");
+  if (meta.stage !== "dev" || meta.task !== "apply") setStageTask(ws, change, "dev", "apply");
 
   let allTasks = readTasks(ws, change);
   let processed = 0;

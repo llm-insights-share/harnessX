@@ -10,7 +10,6 @@ export const L1_AGENT_ENV_SCHEMA_ID = "https://harnessx.dev/schemas/l1/agent-env
 /** Apply-loop environment contract for Tier-1 agent runners. */
 export interface ApplyTaskEnv {
   HX_CHANGE: string;
-  HX_PHASE: "apply";
   HX_STAGE: "dev";
   HX_TASK: "apply";
   HX_TASK_ID: string;
@@ -32,7 +31,6 @@ export interface FixSessionEnv {
 export function buildApplyTaskEnv(change: string, task: Task, taskPackPath: string, fixHints: string[] = []): ApplyTaskEnv {
   return {
     HX_CHANGE: change,
-    HX_PHASE: "apply",
     HX_STAGE: "dev",
     HX_TASK: "apply",
     HX_TASK_ID: task.id,

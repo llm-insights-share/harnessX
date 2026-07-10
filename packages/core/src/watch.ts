@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { Workspace } from "./paths.js";
 import { readMeta } from "./metaStore.js";
 import { readTasks } from "./plan.js";
-import { nextPhase } from "./gate.js";
+import { nextTask } from "./stageGate.js";
 import { pendingFixHints } from "./reviewAnnotations.js";
 
 /**
@@ -27,11 +27,12 @@ export interface WatchEvent {
 
 export interface WatchSnapshot {
   change: string;
-  status: string;
+  stage: string;
+  task: string;
   profile: string;
   tasksDone: number;
   tasksTotal: number;
-  nextPhase: string | null;
+  nextTask: string | null;
   pendingReviewHints: number;
 }
 
@@ -39,13 +40,15 @@ export function collectWatchSnapshot(ws: Workspace, change: string): WatchSnapsh
   const meta = readMeta(ws, change);
   const tasks = readTasks(ws, change);
   const harness = ws.readHarness();
+  const next = nextTask(harness, meta);
   return {
     change,
-    status: meta.status,
+    stage: meta.stage,
+    task: meta.task,
     profile: meta.profile,
     tasksDone: tasks.filter((t) => t.done).length,
     tasksTotal: tasks.length,
-    nextPhase: nextPhase(harness, meta),
+    nextTask: next ? `${next.stage}/${next.task}` : null,
     pendingReviewHints: pendingFixHints(ws, change).length
   };
 }
@@ -56,34 +59,30 @@ export function detectWatchEvents(ws: Workspace, change: string, prev?: WatchSna
   const events: WatchEvent[] = [];
   const at = new Date().toISOString();
 
-  if (prev && prev.status !== snap.status) {
+  if (prev && (prev.stage !== snap.stage || prev.task !== snap.task)) {
     events.push({
       at,
       change,
       kind: "status_change",
-      message: `Status: ${prev.status} → ${snap.status}`,
-      detail: { from: prev.status, to: snap.status }
+      message: `${change}: ${prev.stage}/${prev.task} → ${snap.stage}/${snap.task}`,
+      detail: { from: `${prev.stage}/${prev.task}`, to: `${snap.stage}/${snap.task}` }
     });
   }
 
-  if (snap.nextPhase === "plan" && meta.status === "specified" && meta.approvals.length === 0) {
-    events.push({
-      at,
-      change,
-      kind: "needs_approval",
-      message: "Spec gate needs human approval before plan",
-      detail: { gate: "spec" }
-    });
+  if (snap.stage === "dev" && snap.task === "plan") {
+    const approved = meta.approvals.some((a) => a.gate === "design-to-plan");
+    if (!approved) {
+      events.push({
+        at,
+        change,
+        kind: "needs_approval",
+        message: `${change} needs design-to-plan approval before plan gate`
+      });
+    }
   }
 
-  if (snap.tasksTotal > 0 && snap.tasksDone === snap.tasksTotal && meta.status === "implementing") {
-    events.push({
-      at,
-      change,
-      kind: "tasks_complete",
-      message: "All tasks done — run hx verify",
-      detail: { tasksTotal: snap.tasksTotal }
-    });
+  if (snap.tasksTotal > 0 && snap.tasksDone === snap.tasksTotal && snap.stage === "dev" && snap.task === "apply") {
+    events.push({ at, change, kind: "tasks_complete", message: `${change}: all implementation tasks done` });
   }
 
   if (snap.pendingReviewHints > 0) {
@@ -91,65 +90,77 @@ export function detectWatchEvents(ws: Workspace, change: string, prev?: WatchSna
       at,
       change,
       kind: "review_pending",
-      message: `${snap.pendingReviewHints} unresolved review annotation(s)`,
-      detail: { count: snap.pendingReviewHints }
+      message: `${change}: ${snap.pendingReviewHints} review annotation(s) with fix hints`
     });
   }
 
   if (!events.length) {
-    events.push({ at, change, kind: "idle", message: `Watching ${change} (${snap.status})` });
+    events.push({ at, change, kind: "idle", message: `${change} at ${snap.stage}/${snap.task}` });
   }
 
   return events;
 }
 
-export async function emitWatchEvents(events: WatchEvent[], webhookUrl?: string): Promise<void> {
-  for (const ev of events) {
-    const line = `[hx watch] ${ev.change} ${ev.kind}: ${ev.message}`;
-    console.log(line);
-    if (webhookUrl) {
-      try {
-        await fetch(webhookUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(ev)
-        });
-      } catch (e) {
-        console.error(`webhook failed: ${(e as Error).message}`);
-      }
-    }
-  }
-}
-
 export interface WatchOptions {
   intervalMs?: number;
-  webhookUrl?: string;
-  once?: boolean;
-  onEvent?: (events: WatchEvent[]) => void;
+  webhook?: string;
+  changes?: string[];
 }
 
-/** Poll change state until interrupted (or --once). */
-export async function watchChange(ws: Workspace, change: string, opts: WatchOptions = {}): Promise<void> {
-  if (!fs.existsSync(ws.metaFile(change))) throw new Error(`change not found: ${change}`);
-  const interval = opts.intervalMs ?? 30_000;
-  let prev: WatchSnapshot | undefined;
+export async function watchChanges(ws: Workspace, opts: WatchOptions = {}): Promise<void> {
+  const interval = opts.intervalMs ?? 5000;
+  const targets = opts.changes?.length ? opts.changes : ws.listChanges();
+  const prev = new Map<string, WatchSnapshot>();
 
-  const tick = async () => {
-    const events = detectWatchEvents(ws, change, prev);
-    prev = collectWatchSnapshot(ws, change);
-    if (opts.onEvent) opts.onEvent(events);
-    else await emitWatchEvents(events.filter((e) => e.kind !== "idle"), opts.webhookUrl);
+  const tick = () => {
+    for (const change of targets) {
+      if (!fs.existsSync(ws.metaFile(change))) continue;
+      const snap = collectWatchSnapshot(ws, change);
+      const events = detectWatchEvents(ws, change, prev.get(change));
+      prev.set(change, snap);
+      for (const ev of events) {
+        if (ev.kind === "idle") continue;
+        const line = JSON.stringify(ev);
+        console.log(line);
+        if (opts.webhook) {
+          fetch(opts.webhook, { method: "POST", headers: { "Content-Type": "application/json" }, body: line }).catch(() => {});
+        }
+      }
+    }
   };
 
-  await tick();
-  if (opts.once) return;
+  tick();
+  setInterval(tick, interval);
+}
 
+/** Poll a single change and emit watch events. */
+export async function watchChange(
+  ws: Workspace,
+  change: string,
+  opts: { intervalMs?: number; webhookUrl?: string; once?: boolean } = {}
+): Promise<void> {
+  let prev: WatchSnapshot | undefined;
+  const tick = () => {
+    const snap = collectWatchSnapshot(ws, change);
+    const events = detectWatchEvents(ws, change, prev);
+    prev = snap;
+    for (const ev of events) {
+      if (ev.kind === "idle" && !opts.once) continue;
+      const line = JSON.stringify(ev);
+      console.log(line);
+      if (opts.webhookUrl) {
+        fetch(opts.webhookUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: line }).catch(() => {});
+      }
+    }
+  };
+  tick();
+  if (opts.once) return;
   await new Promise<void>((resolve) => {
-    const handle = setInterval(() => {
-      tick().catch((e) => console.error(`watch error: ${(e as Error).message}`));
-    }, interval);
+    const id = setInterval(() => {
+      tick();
+    }, opts.intervalMs ?? 30000);
     process.on("SIGINT", () => {
-      clearInterval(handle);
+      clearInterval(id);
       resolve();
     });
   });

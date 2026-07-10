@@ -39,7 +39,7 @@ export function registerWorkOrderCommands(program: Command): void {
     .requiredOption("--title <title>", "title")
     .requiredOption("--assignee-role <role>", "assignee role")
     .requiredOption("--by <name>", "creator")
-    .option("--scope <scope>", "prephase|change", "prephase")
+    .option("--scope <scope>", "req|arch|change", "req")
     .option("--prd <slug>", "PRD slug ref")
     .option("--change <id>", "change id ref")
     .option("--module <id>", "module ref")
@@ -48,7 +48,7 @@ export function registerWorkOrderCommands(program: Command): void {
       title: string;
       assigneeRole: string;
       by: string;
-      scope: "prephase" | "change";
+      scope: "req" | "arch" | "change";
       prd?: string;
       change?: string;
       module?: string;

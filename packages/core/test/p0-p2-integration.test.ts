@@ -15,7 +15,7 @@ import {
   mergePromotedIntoLld,
   promoteArchFromChange,
   gateCheck,
-  setStatus,
+  setStageTask,
   readMeta
 } from "@harnessx/core";
 import { archApproved, builtinSensors } from "@harnessx/sensors";
@@ -44,7 +44,7 @@ ok
 }
 
 describe("P0-P2 integration", () => {
-  it("buildContextPack injects org PRD and module LLD on design", () => {
+  it("buildContextPack injects org PRD on propose and module LLD on design", () => {
     const { ws } = initWorkspace(tmp(), { bundle: "api-service" });
     scaffoldPrd(ws, "feat", "Feat");
     fillPrd(ws.prdFile("feat"));
@@ -59,9 +59,11 @@ describe("P0-P2 integration", () => {
       `# LLD\n## 组件与职责\n| c | r | i | d |\n## 接口契约\n| IF-001 | API | in | out | E1 | yes |\n## 数据模型与存储\nx\n## 核心流程与状态机\nx\n## 异常处理与降级\nx\n## 安全与权限控制\nx\n`
     );
     createChange(ws, "c1", ["order"], "enterprise", { prdRef: "feat", archModules: ["order"] });
-    const pack = buildContextPack(ws, "c1", "design");
+    const proposePack = buildContextPack(ws, "c1", "dev", "propose");
+    expect(proposePack.sections.map((s) => s.title).join()).toContain("Org PRD: feat");
+    const pack = buildContextPack(ws, "c1", "dev", "design");
     const titles = pack.sections.map((s) => s.title).join("\n");
-    expect(titles).toContain("Org PRD: feat");
+    expect(titles).not.toContain("Org PRD: feat");
     expect(titles).toContain("Org architecture HLD");
     expect(titles).toContain("Org module LLD: order");
   });
@@ -75,10 +77,10 @@ describe("P0-P2 integration", () => {
     );
     createChange(ws, "c1", ["order"], "enterprise");
     fs.writeFileSync(path.join(ws.changeDir("c1"), "proposal.md"), "## Why\nx\n## What Changes\ny\n## Impact\nz\n");
-    const blocked = await gateCheck(ws, "c1", "design", { builtins: builtinSensors });
+    const blocked = await gateCheck(ws, "c1", { task: "design" }, { builtins: builtinSensors });
     expect(blocked.blockers.join()).toMatch(/not approved/);
     recordPrephaseApproval(ws, "arch", "architect");
-    const ok = await gateCheck(ws, "c1", "design", { builtins: { "arch-approved": archApproved } as never });
+    const ok = await gateCheck(ws, "c1", { task: "design" }, { builtins: { "arch-approved": archApproved } as never });
     expect(ok.blockers.join()).not.toMatch(/arch-approved.*not approved/);
   });
 
@@ -100,7 +102,7 @@ describe("P0-P2 integration", () => {
       `# LLD\n## 组件与职责\n| c | r | i | d |\n## 接口契约\n| IF-001 | API | in | out | E1 | yes |\n## 数据模型与存储\nx\n## 核心流程与状态机\nx\n## 异常处理与降级\nx\n## 安全与权限控制\nx\n`
     );
     createChange(ws, "c1", ["order"], "enterprise", { archModules: ["order"] });
-    setStatus(ws, "c1", "verified");
+    setStageTask(ws, "c1", "dev", "verify");
     fs.mkdirSync(ws.designDir("c1"), { recursive: true });
     fs.writeFileSync(ws.designOverviewFile("c1"), "| POST | /v1/x |\n");
     const meta = readMeta(ws, "c1");

@@ -51,7 +51,7 @@ describe("T-500 failure catalog", () => {
 
   it("sensor runner feeds failures into the catalog automatically", async () => {
     const ws = initWorkspace(tmp()).ws;
-    const def: SensorDef = { id: "always-fails", kind: "sensor.script", execution: "computational", trigger: "phase", run: "echo boom >&2; exit 1", on_fail: "block", max_retries: 0, timeout_ms: 5000 };
+    const def: SensorDef = { id: "always-fails", kind: "sensor.script", execution: "computational", trigger: "task", run: "echo boom >&2; exit 1", on_fail: "block", max_retries: 0, timeout_ms: 5000 };
     await runSensor(ws, def, "c1", { builtins: builtinSensors });
     const patterns = aggregatePatterns(ws);
     expect(patterns.some((p) => p.sensor === "always-fails")).toBe(true);
@@ -92,8 +92,8 @@ describe("T-502 harvest-pr", () => {
 describe("T-503 coverage report", () => {
   it("reports first-attempt pass rate and uncovered recurrent patterns", async () => {
     const ws = initWorkspace(tmp()).ws;
-    const pass: SensorDef = { id: "s-ok", kind: "sensor.script", execution: "computational", trigger: "phase", run: "true", on_fail: "block", max_retries: 0, timeout_ms: 5000 };
-    const fail: SensorDef = { id: "s-bad", kind: "sensor.script", execution: "computational", trigger: "phase", run: "exit 1", on_fail: "block", max_retries: 0, timeout_ms: 5000 };
+    const pass: SensorDef = { id: "s-ok", kind: "sensor.script", execution: "computational", trigger: "task", run: "true", on_fail: "block", max_retries: 0, timeout_ms: 5000 };
+    const fail: SensorDef = { id: "s-bad", kind: "sensor.script", execution: "computational", trigger: "task", run: "exit 1", on_fail: "block", max_retries: 0, timeout_ms: 5000 };
     await runSensor(ws, pass, "c1", { builtins: builtinSensors });
     await runSensor(ws, fail, "c1", { builtins: builtinSensors });
     await runSensor(ws, fail, "c2", { builtins: builtinSensors });
@@ -194,7 +194,7 @@ describe("T-506 janitor", () => {
 describe("T-507 M5 acceptance", () => {
   it("repeated failures → pattern → distilled draft with traceable evidence", async () => {
     const ws = initWorkspace(tmp()).ws;
-    const def: SensorDef = { id: "lint", kind: "sensor.rule", execution: "computational", trigger: "phase", run: "echo 'unused variable foo' >&2; exit 1", on_fail: "block", max_retries: 0, timeout_ms: 5000 };
+    const def: SensorDef = { id: "lint", kind: "sensor.rule", execution: "computational", trigger: "task", run: "echo 'unused variable foo' >&2; exit 1", on_fail: "block", max_retries: 0, timeout_ms: 5000 };
     for (const c of ["c1", "c2", "c3"]) await runSensor(ws, def, c, { builtins: builtinSensors });
 
     const pattern = aggregatePatterns(ws).find((p) => p.isPattern)!;

@@ -1,13 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import { Workspace, ensureDir, sha256, PHASES } from "@harnessx/core";
+import { Workspace, ensureDir, sha256, STAGE_TASKS, type DeliveryStage } from "@harnessx/core";
 import { computeTier, TARGETS, type Tier } from "./capability.js";
 
 /**
  * T-604: single-source → multi-target compilation.
- * Sources are harnessX/assets/** (guides, commands via phase model); outputs
- * are native files per tool. Every generated file carries a header with the
- * adapter version and a content hash so manual edits are detectable.
  */
 
 export const ADAPTER_VERSION = "1.0.0";
@@ -16,69 +13,74 @@ export interface CommandDef {
   name: string;
   description: string;
   run: string;
-  /** Full phase workflow prompt (from guide.command assets); the agent-facing body of the slash command. */
   prompt?: string;
 }
 
-/** The standard hx command set, derived from the phase model (single source). */
-export function standardCommands(): CommandDef[] {
-  const map: Record<string, string> = {
-    explore: "Read-only exploration; write findings to explore.md",
-    propose: "Draft proposal.md + initial delta specs",
-    design: "Write design.md (requires propose gate)",
-    spec: "Refine delta specs; validate with spec-validate",
-    plan: "Generate dual-track tasks.md",
-    apply: "Implement task-by-task with fast-suite self-correction",
-    verify: "Run the verification suite + traceability",
-    archive: "Merge deltas into main specs and archive"
-  };
-  return PHASES.map((p) => ({
-    name: `hx-${p.command}`,
-    description: map[p.command] ?? p.display,
-    run: `hx ${p.command === "explore" || p.command === "propose" ? `${p.command} <change>` : p.command === "archive" ? "archive <change>" : `${p.command} <change>`}`
-  }));
+const STAGE_COMMAND_DESCRIPTIONS: Record<string, string> = {
+  "req.prd-writing": "Author or revise org-level PRD",
+  "arch.subsystem-division": "Write global architecture HLD",
+  "arch.internal-interface": "Write module LLD",
+  "dev.plan": "Generate dual-track tasks.md",
+  "dev.propose": "Draft proposal.md + initial delta specs",
+  "dev.design": "Write design.md (requires propose gate)",
+  "dev.apply": "Implement task-by-task with fast-suite self-correction",
+  "dev.verify": "Run the verification suite + traceability",
+  "dev.archive": "Merge deltas into main specs and archive",
+  "test.test-case-design": "Design test cases for the change"
+};
+
+function slashName(stage: DeliveryStage, task: string): string {
+  return `hx-${stage}-${task.replace(/_/g, "-")}`;
 }
 
-/**
- * Standard commands enriched with the workspace's guide.command assets: for each
- * phase command, the matching guide.command source (harnessX/assets/commands/*)
- * becomes the slash-command prompt body. Missing assets fall back to the thin
- * description so compilation never breaks on a partial workspace.
- */
-export function collectCommands(ws: Workspace): CommandDef[] {
-  const harness = ws.readHarness();
-  const commands = standardCommands();
-  const phaseCommands = new Set(PHASES.map((p) => p.command));
-  const prePhaseRuns: Record<string, string> = {
-    prd: "hx prd init <slug> --title \"...\"",
-    arch: "hx arch init --title \"...\"",
-    "arch-lld": "hx arch lld init <module> --title \"...\""
+export function standardCommands(): CommandDef[] {
+  const commands: CommandDef[] = [];
+  const orgRuns: Record<string, string> = {
+    "req.prd-writing": 'hx req prd init <slug> --title "..."',
+    "arch.subsystem-division": 'hx arch init --title "..."',
+    "arch.internal-interface": 'hx arch lld init <module> --title "..."'
   };
-  for (const g of harness.guides) {
-    if (g.kind !== "guide.command") continue;
-    const f = path.join(ws.base, g.source);
-    if (!fs.existsSync(f)) continue;
-    const content = fs.readFileSync(f, "utf8");
-    for (const phase of g.phase) {
-      const existing = commands.find((c) => c.name === `hx-${phase}`);
-      if (existing) {
-        existing.prompt = content;
-        continue;
-      }
-      if (!phaseCommands.has(phase)) {
-        commands.push({
-          name: `hx-${phase}`,
-          description: `Pre-phase workflow: ${phase}`,
-          run: prePhaseRuns[phase] ?? `hx ${phase}`,
-          prompt: content
-        });
-      }
+  for (const stage of ["req", "arch", "dev", "test"] as DeliveryStage[]) {
+    for (const t of STAGE_TASKS[stage]) {
+      const key = `${stage}.${t.id}`;
+      const run =
+        orgRuns[key] ??
+        (stage === "dev" || stage === "test"
+          ? `hx ${stage === "dev" ? "dev" : "test"} ${t.id.replace(/-/g, " ")} <change>`
+          : `hx ${stage} ${t.id}`);
+      commands.push({
+        name: slashName(stage, t.id),
+        description: STAGE_COMMAND_DESCRIPTIONS[key] ?? t.title.en,
+        run
+      });
     }
   }
   return commands;
 }
 
-/** Slash-command body: full workflow prompt when available, thin bridge otherwise. */
+export function collectCommands(ws: Workspace): CommandDef[] {
+  const harness = ws.readHarness();
+  const commands = standardCommands();
+  for (const g of harness.guides) {
+    if (g.kind !== "guide.command") continue;
+    const f = path.join(ws.base, g.source);
+    if (!fs.existsSync(f)) continue;
+    const content = fs.readFileSync(f, "utf8");
+    const name = slashName(g.stage, g.task ?? g.stage);
+    const existing = commands.find((c) => c.name === name);
+    if (existing) existing.prompt = content;
+    else {
+      commands.push({
+        name,
+        description: `${g.stage}/${g.task ?? ""} workflow`,
+        run: `hx ${g.stage} ${g.task ?? ""}`,
+        prompt: content
+      });
+    }
+  }
+  return commands;
+}
+
 export function commandBody(c: CommandDef): string {
   if (c.prompt) return `${c.prompt.trimEnd()}\n\nCLI entry point: \`${c.run}\`\n`;
   return `# ${c.name}\n\n${c.description}\n\nRun:\n\n\`\`\`bash\n${c.run}\n\`\`\`\n`;
@@ -110,12 +112,10 @@ export function rulesDigest(ws: Workspace): string {
     "- Work inside a change workspace; never edit harnessX/specs/ directly.",
     "- Never edit meta.yaml, harness.lock, fixtures.lock or approved fixtures by hand.",
     "- When a sensor fails, read fix_hint/agent_instruction before editing code.",
-    "- Run `hx gate check <change>` before claiming a phase is complete."
+    "- Run `hx gate check <change> --stage <s> --task <t>` before claiming a task is complete."
   );
   return parts.join("\n\n");
 }
-
-/* ── generated file header + drift detection ── */
 
 export function withHeader(content: string, sourceNote: string, commentStyle: "html" | "hash" | "raw" = "html"): string {
   if (commentStyle === "raw") return content;
@@ -128,12 +128,10 @@ const HEADER_RE = /GENERATED by harnessx adapter v([\d.]+) from (.+?) — do not
 
 export type DriftState = "ok" | "manually-edited" | "missing-header";
 
-/** Recomputes the body hash and compares with the header (T-604 手改检测). */
 export function checkGeneratedFile(file: string): DriftState {
   const raw = fs.readFileSync(file, "utf8");
   const m = raw.match(HEADER_RE);
   if (!m) {
-    // JSON configs must stay comment-free for tool parsers (e.g. Cursor hooks.json).
     if (file.endsWith(".json")) return "ok";
     return "missing-header";
   }

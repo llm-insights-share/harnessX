@@ -1,18 +1,16 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Workspace } from "./paths.js";
-import type { HarnessYaml, MetaYaml, PhaseState } from "./schemas.js";
-import { phaseByCommand, type SuiteResult } from "./schemas.js";
+import type { HarnessYaml, MetaYaml, SuiteResult } from "./schemas.js";
 import { readMeta, recordGate, writeMeta, activeWaivers } from "./metaStore.js";
 import { runSensor, type RunnerOptions } from "./sensorRunner.js";
 import { proposalProblems } from "./change.js";
+import { resolvePrdSlug } from "./prd.js";
 import { workorderProblems } from "./workorder.js";
 import { augmentSuiteIds, resolveCompensation } from "./gateCompensation.js";
 import { appendRun } from "./telemetry.js";
-import { gateCheck as legacyGateCheck, type GateCheckResult as LegacyGateCheckResult } from "./gate.js";
 import { profileDevTasks, profileStages, profileTestTasks, resolveSuiteName } from "./profileResolve.js";
-import { ensureStageFields } from "./stageMigration.js";
-import { STAGE_TASKS, TASK_TO_PHASE, type DeliveryStage, type StageTaskDef, taskById } from "./stages.js";
+import { STAGE_TASKS, type DeliveryStage, type StageTaskDef, taskById } from "./stages.js";
 
 export interface StageGateCheckResult {
   change: string;
@@ -31,15 +29,18 @@ export interface StageAdvanceResult extends StageGateCheckResult {
   toStage?: DeliveryStage;
 }
 
-function isStagesMode(ws: Workspace): boolean {
-  return ws.readConfig().delivery_mode === "stages";
+/** Map dev/test task id to workorder gate phase label. */
+function workorderPhase(stage: DeliveryStage, taskId: string): string | undefined {
+  if (stage === "dev") return taskId;
+  if (stage === "test" && taskId === "test-case-design") return "test-design";
+  if (stage === "test" && taskId === "test-execution") return "verify";
+  return undefined;
 }
 
-/** Next task within change delivery (stages mode). */
+/** Next task within change delivery. */
 export function nextTask(harness: HarnessYaml, meta: MetaYaml): { stage: DeliveryStage; task: string } | null {
-  const m = ensureStageFields(meta);
   const stages = profileStages(harness, meta.profile);
-  const stageIdx = stages.indexOf(m.stage!);
+  const stageIdx = stages.indexOf(meta.stage);
   if (stageIdx < 0) return null;
 
   const tasksForStage = (stage: DeliveryStage): string[] => {
@@ -48,10 +49,10 @@ export function nextTask(harness: HarnessYaml, meta: MetaYaml): { stage: Deliver
     return STAGE_TASKS[stage].filter((t) => t.required).map((t) => t.id);
   };
 
-  const currentTasks = tasksForStage(m.stage!);
-  const curIdx = currentTasks.indexOf(m.task!);
+  const currentTasks = tasksForStage(meta.stage);
+  const curIdx = currentTasks.indexOf(meta.task);
   if (curIdx >= 0 && curIdx < currentTasks.length - 1) {
-    return { stage: m.stage!, task: currentTasks[curIdx + 1] };
+    return { stage: meta.stage, task: currentTasks[curIdx + 1] };
   }
   if (stageIdx < stages.length - 1) {
     const nextStage = stages[stageIdx + 1];
@@ -68,14 +69,8 @@ export async function stageGateCheck(
   taskId: string,
   runnerOpts: RunnerOptions
 ): Promise<StageGateCheckResult> {
-  if (!isStagesMode(ws)) {
-    const phase = TASK_TO_PHASE[taskId] ?? taskId;
-    const legacy = await legacyGateCheck(ws, change, phase, runnerOpts);
-    return { change, stage, task: taskId, suite: legacy.suite, blockers: legacy.blockers, warnings: legacy.warnings, passed: legacy.passed };
-  }
-
   const harness = ws.readHarness();
-  const meta = ensureStageFields(readMeta(ws, change));
+  const meta = readMeta(ws, change);
   const blockers: string[] = [];
   const warnings: string[] = [];
 
@@ -83,7 +78,7 @@ export async function stageGateCheck(
     blockers.push(...proposalProblems(ws, change));
   }
   if (taskId === "plan") {
-    const approved = meta.approvals.some((a) => a.gate === "spec" || a.gate === "design-to-plan");
+    const approved = meta.approvals.some((a) => a.gate === "design-to-plan");
     if (!approved) blockers.push("design→plan requires human approval: hx gate approve <change> --gate design-to-plan --approver <name>");
   }
   if (taskId === "apply") {
@@ -91,52 +86,45 @@ export async function stageGateCheck(
     if (!fs.existsSync(tasksFile)) blockers.push("tasks.md missing — run hx dev plan first");
   }
 
-  const phaseCmd = TASK_TO_PHASE[taskId] ?? taskId;
-  blockers.push(...workorderProblems(ws, change, phaseCmd));
+  const woPhase = workorderPhase(stage, taskId);
+  if (woPhase) blockers.push(...workorderProblems(ws, change, woPhase));
 
   const suiteName = resolveSuiteName(harness, meta.profile, stage, taskId);
   const compensation = resolveCompensation(ws);
   let suite: SuiteResult | undefined;
 
+  if (stage === "dev" && taskId === "propose") {
+    await appendOrgStageSensors(ws, harness, change, runnerOpts, meta.profile, blockers, warnings, suiteName);
+  }
+  if (stage === "dev" && taskId === "design") {
+    await appendOrgStageSensors(ws, harness, change, runnerOpts, meta.profile, blockers, warnings, suiteName, "arch");
+  }
+
   if (suiteName) {
     const waived = activeWaivers(meta).map((w) => w.target);
-    suite = await runCompensatedSuite(ws, harness, suiteName, change, { ...runnerOpts, waivedSensors: waived }, compensation, phaseCmd);
+    suite = await runCompensatedSuite(ws, harness, suiteName, change, { ...runnerOpts, waivedSensors: waived }, compensation, taskId);
     blockers.push(...suite.blockers);
     warnings.push(...suite.warnings);
+    if (compensation.requireHeadlessApply && taskId === "apply") {
+      warnings.push(`adapter tier ${compensation.tier}: recommend headless apply via hx dev apply --runner "<agent>" for reliable feedback`);
+    }
   }
 
   const passed = blockers.length === 0;
-  recordGate(ws, change, { stage, task: taskId, phase: phaseCmd, suite: suiteName, passed });
+  recordGate(ws, change, { stage, task: taskId, suite: suiteName, passed });
   return { change, stage, task: taskId, suite, blockers, warnings, passed };
 }
 
 export async function stageAdvance(ws: Workspace, change: string, runnerOpts: RunnerOptions): Promise<StageAdvanceResult> {
   const harness = ws.readHarness();
-  const meta = ensureStageFields(readMeta(ws, change));
-
-  if (!isStagesMode(ws)) {
-    const { gateAdvance } = await import("./gate.js");
-    const adv = await gateAdvance(ws, change, runnerOpts);
-    const m = ensureStageFields(readMeta(ws, change));
-    return {
-      change,
-      stage: m.stage!,
-      task: m.task!,
-      suite: adv.suite,
-      blockers: adv.blockers,
-      warnings: adv.warnings,
-      passed: adv.passed,
-      fromTask: m.task,
-      toTask: m.task
-    };
-  }
+  const meta = readMeta(ws, change);
 
   const next = nextTask(harness, meta);
   if (!next) {
     return {
       change,
-      stage: meta.stage!,
-      task: meta.task!,
+      stage: meta.stage,
+      task: meta.task,
       blockers: [`change is at terminal task "${meta.stage}/${meta.task}" for profile "${meta.profile}"`],
       warnings: [],
       passed: false
@@ -146,7 +134,7 @@ export async function stageAdvance(ws: Workspace, change: string, runnerOpts: Ru
   const check = await stageGateCheck(ws, change, next.stage, next.task, runnerOpts);
   if (!check.passed) return { ...check, fromTask: meta.task, fromStage: meta.stage };
 
-  const updated = ensureStageFields(readMeta(ws, change));
+  const updated = readMeta(ws, change);
   updated.stage = next.stage;
   updated.task = next.task;
   updated.stageProgress = {
@@ -159,10 +147,6 @@ export async function stageAdvance(ws: Workspace, change: string, runnerOpts: Ru
     }
   };
   updated.taskHistory.push({ stage: next.stage, task: next.task, at: new Date().toISOString(), gate: "pass" });
-
-  const phase = phaseByCommand(TASK_TO_PHASE[next.task] ?? next.task);
-  if (phase) updated.status = phase.state as PhaseState;
-
   writeMeta(ws, updated);
   return { ...check, fromTask: meta.task, toTask: next.task, fromStage: meta.stage, toStage: next.stage };
 }
@@ -174,10 +158,10 @@ async function runCompensatedSuite(
   change: string | undefined,
   opts: RunnerOptions,
   compensation: ReturnType<typeof resolveCompensation>,
-  phaseCmd: string
+  taskId: string
 ): Promise<SuiteResult> {
   const extraIds =
-    phaseCmd === "verify" || phaseCmd === "apply"
+    taskId === "verify" || taskId === "apply"
       ? compensation.extraSensors
       : compensation.extraSensors.filter((id) => ["spec-validate", "typecheck", "lint"].includes(id));
   const ids = augmentSuiteIds(harness, suiteName, extraIds);
@@ -207,6 +191,36 @@ async function runCompensatedSuite(
   return result;
 }
 
+async function appendOrgStageSensors(
+  ws: Workspace,
+  harness: HarnessYaml,
+  change: string,
+  opts: RunnerOptions,
+  profile: string,
+  blockers: string[],
+  warnings: string[],
+  suiteName: string | undefined,
+  mode: "prd" | "arch" = "prd"
+): Promise<void> {
+  const suiteIds = suiteName ? (harness.suites[suiteName] ?? []) : [];
+  const sensors: string[] =
+    mode === "prd"
+      ? ["prd-complete", "prd-approved"].filter((id) => !suiteIds.includes(id))
+      : ["arch-approved"].filter((id) => !suiteIds.includes(id));
+
+  for (const sensorId of sensors) {
+    const def = harness.sensors.find((s) => s.id === sensorId);
+    if (!def) continue;
+    const prdSlug = sensorId === "prd-complete" || sensorId === "prd-approved" ? resolvePrdSlug(ws, change) : undefined;
+    const report = await runSensor(ws, def, change, { ...opts, prdSlug });
+    const label = `${def.id}: ${report.summary}`;
+    const strict = profile === "enterprise" || profile === "strict" || profile === "enterprise-sdlc";
+    if (report.status === "pass") continue;
+    if (report.status === "error" || (def.on_fail === "block" && strict)) blockers.push(label);
+    else warnings.push(label);
+  }
+}
+
 /** Stage task completion summary. */
 export function stageStatus(
   harness: HarnessYaml,
@@ -228,21 +242,31 @@ export function stageStatus(
   return tasks.map((t) => ({ task: t, done: completed.includes(t.id) }));
 }
 
-/** Unified gate check — respects delivery_mode. */
-export async function unifiedGateCheck(
+/** Gate check using meta stage/task when not specified. */
+export async function gateCheck(
   ws: Workspace,
   change: string,
-  opts: { phase?: string; stage?: DeliveryStage; task?: string },
+  opts: { stage?: DeliveryStage; task?: string },
   runnerOpts: RunnerOptions
-): Promise<LegacyGateCheckResult | StageGateCheckResult> {
-  const meta = ensureStageFields(readMeta(ws, change));
-  if (isStagesMode(ws)) {
-    const stage = opts.stage ?? meta.stage ?? "dev";
-    const task = opts.task ?? meta.task ?? "propose";
-    return stageGateCheck(ws, change, stage, task, runnerOpts);
-  }
+): Promise<StageGateCheckResult> {
+  const meta = readMeta(ws, change);
+  const stage = opts.stage ?? meta.stage;
+  const task = opts.task ?? meta.task;
+  return stageGateCheck(ws, change, stage, task, runnerOpts);
+}
+
+export async function gateAdvance(ws: Workspace, change: string, runnerOpts: RunnerOptions): Promise<StageAdvanceResult> {
+  return stageAdvance(ws, change, runnerOpts);
+}
+
+/** Run a named sensor suite (diagnostics). */
+export async function runHarnessSuite(
+  ws: Workspace,
+  suiteName: string,
+  runnerOpts: RunnerOptions,
+  change?: string
+): Promise<SuiteResult> {
   const harness = ws.readHarness();
-  const { nextPhase } = await import("./gate.js");
-  const phase = opts.phase ?? nextPhase(harness, meta) ?? "verify";
-  return legacyGateCheck(ws, change, phase, runnerOpts);
+  const compensation = resolveCompensation(ws);
+  return runCompensatedSuite(ws, harness, suiteName, change, runnerOpts, compensation, "verify");
 }

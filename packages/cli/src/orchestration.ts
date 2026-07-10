@@ -134,7 +134,7 @@ export function registerOrchestrationCommands(program: Command): void {
     .option("--once", "single poll then exit")
     .action(async (change: string, opts: { interval: string; webhook?: string; once?: boolean }) => {
       const snap = collectWatchSnapshot(ws(), change);
-      console.log(`watching ${change} (${snap.status}, tasks ${snap.tasksDone}/${snap.tasksTotal})`);
+      console.log(`watching ${change} (${snap.stage}/${snap.task}, tasks ${snap.tasksDone}/${snap.tasksTotal})`);
       await watchChange(ws(), change, {
         intervalMs: parseInt(opts.interval, 10),
         webhookUrl: opts.webhook ?? process.env.HX_WATCH_WEBHOOK,

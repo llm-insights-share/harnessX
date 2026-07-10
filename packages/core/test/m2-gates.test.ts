@@ -9,13 +9,13 @@ import {
   createChange,
   scaffoldProposal,
   readMeta,
-  setStatus,
+  setStageTask,
   writeMeta,
   verifyMeta,
   recordApproval,
   gateCheck,
   gateAdvance,
-  nextPhase,
+  nextTask,
   runSensor,
   runSuite,
   buildContextPack,
@@ -60,7 +60,7 @@ const shellSensor = (id: string, run: string, over: Partial<SensorDef> = {}): Se
   id,
   kind: "sensor.script",
   execution: "computational",
-  trigger: "phase",
+  trigger: "task",
   run,
   on_fail: "block",
   max_retries: 0,
@@ -69,15 +69,16 @@ const shellSensor = (id: string, run: string, over: Partial<SensorDef> = {}): Se
 });
 
 describe("T-200 gate state machine", () => {
-  it("advances along the profile phases only when gates pass", async () => {
+  it("advances along the profile tasks only when gates pass", async () => {
     const ws = setup();
     const meta = readMeta(ws, "c1");
-    expect(nextPhase(ws.readHarness(), meta)).toBe("design");
+    expect(nextTask(ws.readHarness(), meta)).toEqual({ stage: "dev", task: "design" });
 
     const adv = await gateAdvance(ws, "c1", opts());
     expect(adv.passed).toBe(true);
-    expect(adv.to).toBe("designed");
-    expect(readMeta(ws, "c1").status).toBe("designed");
+    expect(adv.toTask).toBe("design");
+    expect(adv.toStage).toBe("dev");
+    expect(readMeta(ws, "c1").task).toBe("design");
   });
 
   it("fail-closed: unknown suite or crashing sensor blocks the gate", async () => {
@@ -130,9 +131,9 @@ describe("T-201 sensor runner", () => {
 });
 
 describe("T-202 guide engine context pack", () => {
-  it("assembles constitution + phase guides + phase artifacts with persona/permissions, <2s", () => {
+  it("assembles constitution + task guides + task artifacts with persona/permissions, <2s", () => {
     const ws = setup();
-    const pack = buildContextPack(ws, "c1", "apply");
+    const pack = buildContextPack(ws, "c1", "dev", "apply");
     expect(pack.assembledInMs).toBeLessThan(2000);
     expect(pack.persona).toContain("apply agent");
     expect(pack.permissions).toMatch(/Never edit meta.yaml/);
@@ -140,7 +141,7 @@ describe("T-202 guide engine context pack", () => {
     expect(titles[0]).toMatch(/Constitution/);
     expect(titles.join()).toContain("coding-conventions");
     expect(titles.join()).toContain("Delta spec: auth");
-    // exclusion: propose-phase template guide not in apply pack
+    // exclusion: propose-task template guide not in apply pack
     expect(titles.join()).not.toContain("proposal-template");
   });
 });
@@ -237,7 +238,7 @@ describe("T-206 meta exclusive write + verify", () => {
     const ws = setup();
     // apply gate runs the fast suite → sensor telemetry is recorded and hashed
     generateTasks(ws, "c1");
-    await gateCheck(ws, "c1", "apply", opts());
+    await gateCheck(ws, "c1", { task: "apply" }, opts());
     expect(verifyMeta(ws, "c1").ok).toBe(true);
     // later legitimate runs may append without breaking the recorded hash
     appendRun(ws, { kind: "sensor", change: "c1", name: "later", status: "pass" });
@@ -281,20 +282,20 @@ describe("T-209/T-210 design precondition + human approval gate", () => {
   it("design gate blocks on incomplete proposal", async () => {
     const ws = initWorkspace(tmp()).ws;
     createChange(ws, "c2", ["auth"]);
-    const res = await gateCheck(ws, "c2", "design", opts());
+    const res = await gateCheck(ws, "c2", { task: "design" }, opts());
     expect(res.passed).toBe(false);
     expect(res.blockers.join()).toMatch(/proposal\.md missing/);
   });
 
-  it("spec→plan requires recorded human approval (FR-012)", async () => {
+  it("design→plan requires recorded human approval (FR-012)", async () => {
     const ws = setup();
-    setStatus(ws, "c1", "specified");
-    const blocked = await gateCheck(ws, "c1", "plan", opts());
+    setStageTask(ws, "c1", "dev", "design");
+    const blocked = await gateCheck(ws, "c1", { task: "plan" }, opts());
     expect(blocked.passed).toBe(false);
     expect(blocked.blockers.join()).toMatch(/human approval/);
 
-    recordApproval(ws, "c1", "spec", "alice");
-    const ok = await gateCheck(ws, "c1", "plan", opts());
+    recordApproval(ws, "c1", "design-to-plan", "alice");
+    const ok = await gateCheck(ws, "c1", { task: "plan" }, opts());
     expect(ok.passed).toBe(true);
     const meta = readMeta(ws, "c1");
     expect(meta.approvals[0].approver).toBe("alice");
@@ -303,21 +304,26 @@ describe("T-209/T-210 design precondition + human approval gate", () => {
 });
 
 describe("T-211 M2 acceptance", () => {
-  it("full gated pipeline: propose→design→spec→approve→plan→apply(self-correct)→verify state", async () => {
+  it("full gated pipeline: propose→design→approve→plan→apply(self-correct)→verify state", async () => {
     const ws = setup();
-    // design
+    // propose → design
     let adv = await gateAdvance(ws, "c1", opts());
-    expect(adv.to).toBe("designed");
-    // spec
-    adv = await gateAdvance(ws, "c1", opts());
-    expect(adv.to).toBe("specified");
+    expect(adv.toTask).toBe("design");
+    expect(adv.toStage).toBe("dev");
+
     // plan blocked without approval (fail-closed on human gate)
-    adv = await gateAdvance(ws, "c1", opts());
-    expect(adv.passed).toBe(false);
-    recordApproval(ws, "c1", "spec", "alice");
+    const planBlocked = await gateCheck(ws, "c1", { task: "plan" }, opts());
+    expect(planBlocked.passed).toBe(false);
+    recordApproval(ws, "c1", "design-to-plan", "alice");
     generateTasks(ws, "c1");
+    const planOk = await gateCheck(ws, "c1", { task: "plan" }, opts());
+    expect(planOk.passed).toBe(true);
+
+    // design → apply
     adv = await gateAdvance(ws, "c1", opts());
-    expect(adv.to).toBe("planned");
+    expect(adv.toTask).toBe("apply");
+    expect(adv.passed).toBe(true);
+
     // apply with a sensor that the executor "fixes" on first attempt
     const marker = path.join(ws.root, "ok.txt");
     const harness = ws.readHarness();
@@ -329,7 +335,7 @@ describe("T-211 M2 acceptance", () => {
       executor: () => fs.writeFileSync(marker, "1")
     });
     expect(res.remaining).toBe(0);
-    expect(readMeta(ws, "c1").status).toBe("implementing");
+    expect(readMeta(ws, "c1").task).toBe("apply");
     // meta verify passes at the end (no tampering happened)
     expect(verifyMeta(ws, "c1").ok).toBe(true);
   });

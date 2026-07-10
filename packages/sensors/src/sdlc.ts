@@ -22,15 +22,18 @@ function block(findings: Finding[], ctx: SensorContext, summary: string): Sensor
   };
 }
 
-export const woPrephaseClear = (ctx: SensorContext): SensorReport => {
+export const woReqArchClear = (ctx: SensorContext): SensorReport => {
   const findings: Finding[] = [];
   const pending = listWorkOrders(ctx.ws, { status: "pending" });
   const blocking = pending.filter((w) => ["req-review", "req-change", "arch-review", "arch-change"].includes(w.type));
   for (const w of blocking) {
     findings.push({ severity: "block", message: `work order ${w.id} (${w.type}) is still pending` });
   }
-  return block(findings, ctx, blocking.length ? `${blocking.length} pre-phase work order(s) pending` : "pre-phase work orders clear");
+  return block(findings, ctx, blocking.length ? `${blocking.length} req/arch work order(s) pending` : "req/arch work orders clear");
 };
+
+/** @deprecated */
+export const woPrephaseClear = woReqArchClear;
 
 export const requirementsExtendedComplete = (ctx: SensorContext): SensorReport => {
   if (!ctx.change) return { sensor: ctx.def.id, status: "error", summary: "requires change id", findings: [] };

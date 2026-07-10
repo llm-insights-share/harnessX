@@ -1,17 +1,16 @@
 import { Workspace } from "./paths.js";
-import { readMeta, setStatus } from "./metaStore.js";
-import { gateCheck, type GateCheckResult } from "./gate.js";
+import { readMeta, setStageTask } from "./metaStore.js";
+import { stageGateCheck, type StageGateCheckResult } from "./stageGate.js";
 import type { RunnerOptions } from "./sensorRunner.js";
 import { traceCheck, type TraceCheckResult } from "./traceability.js";
 
 /**
- * T-301 (FR-008): `hx verify` runs the profile's verification suite plus the
- * traceability check. All P0 (blocking) sensors must pass before the change
- * reaches "verified".
+ * T-301 (FR-008): `hx dev verify` runs the profile's verification suite plus the
+ * traceability check.
  */
 
 export interface VerifyResult {
-  gate: GateCheckResult;
+  gate: StageGateCheckResult;
   trace: TraceCheckResult;
   passed: boolean;
   verified: boolean;
@@ -19,7 +18,7 @@ export interface VerifyResult {
 
 export async function verifyChange(ws: Workspace, change: string, runnerOpts: RunnerOptions): Promise<VerifyResult> {
   const trace = traceCheck(ws, change);
-  const gate = await gateCheck(ws, change, "verify", runnerOpts);
+  const gate = await stageGateCheck(ws, change, "dev", "verify", runnerOpts);
   if (!trace.passed) {
     gate.blockers.push(
       ...trace.uncovered.map(
@@ -29,6 +28,6 @@ export async function verifyChange(ws: Workspace, change: string, runnerOpts: Ru
     gate.passed = false;
   }
   const passed = gate.passed;
-  if (passed) setStatus(ws, change, "verified");
+  if (passed) setStageTask(ws, change, "dev", "verify");
   return { gate, trace, passed, verified: passed };
 }

@@ -18,7 +18,8 @@ import {
   generateTasks,
   scaffoldProposal,
   orchestration,
-  hub as hubBoundary
+  hub as hubBoundary,
+  type HarnessYaml
 } from "@harnessx/core";
 import { builtinSensors } from "@harnessx/sensors";
 
@@ -39,7 +40,7 @@ describe("arch review Top 5", () => {
         name: "test-bp",
         extends: "standard",
         hub_deps: ["prototype-wireframe@1.0.0"],
-        phases: { design: { guides: ["prototype-wireframe"] } }
+        stages: { "req.prototype-design": { guides: ["prototype-wireframe"] } }
       },
       hub
     );
@@ -76,10 +77,10 @@ describe("arch review Top 5", () => {
 
   it("expandHarnessImports is idempotent for nested refs", () => {
     const { ws } = initWorkspace(tmp());
-    const raw = {
+    const raw: HarnessYaml = {
       version: "1.0",
       imports: ["api-service", "api-service"],
-      profiles: { lite: { phases: ["apply"], suites: {} } },
+      profiles: { lite: { stages: ["dev"], dev_tasks: ["apply"], suites: {} } },
       suites: {},
       guides: [],
       sensors: [],

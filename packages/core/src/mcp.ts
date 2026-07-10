@@ -1,11 +1,11 @@
 import { createInterface } from "node:readline";
 import { Workspace } from "./paths.js";
-import { gateCheck, nextPhase } from "./gate.js";
+import { stageGateCheck } from "./stageGate.js";
 import { buildContextPack, buildTaskPack, renderContextPack, writeTaskPack } from "./guideEngine.js";
 import { traceCheck } from "./traceability.js";
 import { collectStatus } from "./view.js";
 import { readMeta } from "./metaStore.js";
-import { phaseByState } from "./schemas.js";
+import type { DeliveryStage } from "./stages.js";
 import type { RunnerOptions } from "./sensorRunner.js";
 import { runSensor } from "./sensorRunner.js";
 import { findTask } from "./plan.js";
@@ -29,19 +29,21 @@ export const MCP_TOOLS: McpTool[] = [
       type: "object",
       properties: {
         change: { type: "string", description: "Change id" },
-        phase: { type: "string", description: "Phase command (propose, spec, apply, verify, ...)" }
+        stage: { type: "string", description: "Delivery stage: req|arch|dev|test" },
+        task: { type: "string", description: "Task within stage" }
       },
       required: ["change"]
     }
   },
   {
     name: "guide_pack",
-    description: "Assemble the phase-scoped Context Pack for a change",
+    description: "Assemble the stage/task Context Pack for a change",
     inputSchema: {
       type: "object",
       properties: {
         change: { type: "string" },
-        phase: { type: "string", description: "Phase command (defaults to change status phase)" }
+        stage: { type: "string", description: "Delivery stage (defaults to meta.stage)" },
+        task: { type: "string", description: "Task id (defaults to meta.task)" }
       },
       required: ["change"]
     }
@@ -106,17 +108,18 @@ export async function callMcpTool(
       const change = String(args.change ?? "");
       if (!change) throw new Error("gate_check requires change");
       const meta = readMeta(ws, change);
-      const phase = args.phase ? String(args.phase) : (nextPhase(ws.readHarness(), meta) ?? "verify");
-      return gateCheck(ws, change, phase, runnerOpts);
+      const stage = (args.stage ? String(args.stage) : meta.stage) as DeliveryStage;
+      const task = args.task ? String(args.task) : meta.task;
+      return stageGateCheck(ws, change, stage, task, runnerOpts);
     }
     case "guide_pack": {
       const change = String(args.change ?? "");
       if (!change) throw new Error("guide_pack requires change");
-      const phaseCmd = args.phase
-        ? String(args.phase)
-        : (phaseByState(readMeta(ws, change).status)?.command ?? "apply");
-      const pack = buildContextPack(ws, change, phaseCmd);
-      return { phase: phaseCmd, markdown: renderContextPack(pack), sections: pack.sections.map((s) => s.title) };
+      const meta = readMeta(ws, change);
+      const stage = (args.stage ? String(args.stage) : meta.stage) as DeliveryStage;
+      const task = args.task ? String(args.task) : meta.task;
+      const pack = buildContextPack(ws, change, stage, task);
+      return { stage, task, markdown: renderContextPack(pack), sections: pack.sections.map((s) => s.title) };
     }
     case "change_status":
       return collectStatus(ws);
@@ -163,7 +166,7 @@ export async function callMcpTool(
         id: "drift",
         kind: "sensor.drift" as const,
         execution: "computational" as const,
-        trigger: "phase" as const,
+        trigger: "task" as const,
         builtin: "drift",
         on_fail: "block" as const,
         max_retries: 0,

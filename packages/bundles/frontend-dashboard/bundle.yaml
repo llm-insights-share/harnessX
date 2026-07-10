@@ -1,35 +1,43 @@
 id: frontend-dashboard
-description: Topology bundle for frontend dashboards (page/component layering, bundle size budgets)
+description: Topology bundle for frontend dashboards (page/component layering,
+  bundle size budgets)
 guides:
   - id: ui-architecture
     kind: guide.skill
     execution: inferential
-    phase: [design, apply]
     source: assets/bundles/frontend-dashboard/skills/ui-architecture.md
+    stage: dev
   - id: layering-rules
     kind: guide.constraint
     execution: computational
-    phase: [apply, verify]
     source: assets/bundles/frontend-dashboard/constraints/layering.yaml
+    stage: dev
   - id: performance-budget
     kind: guide.skill
     execution: inferential
-    phase: [design, apply, verify]
     source: assets/bundles/frontend-dashboard/skills/performance-budget.md
+    stage: dev
 sensors:
   - id: arch-boundary
     kind: sensor.arch
     execution: computational
-    phase: [verify]
     builtin: arch-boundary
     on_fail: block
     fix_hint: "Keep UI dependencies inward: pages → components → hooks → shared"
+    stage: dev
+    task: verify
   - id: perf-budget
     kind: sensor.budget
     execution: computational
-    phase: [verify]
     builtin: budget
     on_fail: warn
-    fix_hint: "Split large components or lazy-load routes; document bundle impact in design.md"
+    fix_hint: Split large components or lazy-load routes; document bundle impact in
+      design.md
+    stage: dev
+    task: verify
 suites:
-  verification: [spec-validate, spec-trace, arch-boundary, perf-budget]
+  verification:
+    - spec-validate
+    - spec-trace
+    - arch-boundary
+    - perf-budget

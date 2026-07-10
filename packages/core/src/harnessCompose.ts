@@ -16,7 +16,8 @@ import { loadAssetDir } from "./assets.js";
 
 export interface ResolveOpts {
   hubRoot?: string;
-  phaseHint?: string;
+  stageHint?: string;
+  taskHint?: string;
 }
 
 export function parseImportRef(ref: string): { id: string; version?: string } {
@@ -72,7 +73,8 @@ export function guideDefFromHubAsset(ws: Workspace, assetDir: string, manifest: 
     id: manifest.id,
     kind,
     execution: manifest.execution ?? "inferential",
-    phase: manifest.phase.length ? manifest.phase : ["apply"],
+    stage: manifest.stage,
+    task: manifest.task,
     source: rel
   };
 }

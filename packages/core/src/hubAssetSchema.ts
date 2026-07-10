@@ -19,7 +19,7 @@ export const HubAssetMeta = z.object({
   kind: z.string().optional(),
   owner: z.string().optional(),
   status: HubAssetStatus.default("trial"),
-  phases: z.array(z.string()).default([]),
+  stages: z.array(z.enum(["req", "arch", "dev", "test"])).default([]),
   tags: z.array(z.string()).default([]),
   compat: z
     .object({

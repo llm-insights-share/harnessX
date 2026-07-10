@@ -7,25 +7,42 @@ import {
   MetaYaml,
   AssetManifest,
   SensorDef,
-  PHASES,
-  phaseByCommand,
+  DELIVERY_STAGE,
   PLUGIN_API_VERSION
 } from "@harnessx/core/schemas.js";
+import { orchestration } from "@harnessx/core";
+
+const { STAGE_TASKS } = orchestration;
 import { Workspace } from "@harnessx/core/paths.js";
 import { appendRun, readRuns, runsLogHash, sha256 } from "@harnessx/core/telemetry.js";
 
 describe("T-001 core schemas", () => {
   it("parses a valid harness.yaml with kind + execution split", () => {
     const h = HarnessYaml.parse({
-      profiles: { lite: { phases: ["propose", "apply", "archive"], suites: { apply: "fast" } } },
+      profiles: {
+        lite: {
+          stages: ["dev"],
+          dev_tasks: ["propose", "apply", "archive"],
+          suites: { "dev.apply": "fast" }
+        }
+      },
       suites: { fast: ["lint"] },
       guides: [
-        { id: "conv", kind: "guide.skill", execution: "inferential", phase: ["apply"], source: "assets/guides/conv/SKILL.md" }
+        {
+          id: "conv",
+          kind: "guide.skill",
+          execution: "inferential",
+          stage: "dev",
+          task: "apply",
+          source: "assets/guides/conv/SKILL.md"
+        }
       ],
       sensors: [{ id: "lint", kind: "sensor.rule", execution: "computational", run: "npm run lint", on_fail: "retry", max_retries: 3 }]
     });
     expect(h.sensors[0].max_retries).toBe(3);
     expect(h.guides[0].kind).toBe("guide.skill");
+    expect(h.guides[0].stage).toBe("dev");
+    expect(h.guides[0].task).toBe("apply");
   });
 
   it("rejects unknown kinds and missing override reasons", () => {
@@ -35,22 +52,27 @@ describe("T-001 core schemas", () => {
     ).toThrow();
   });
 
-  it("meta.yaml enforces valid phase states", () => {
-    expect(() => MetaYaml.parse({ change: "c", status: "flying", profile: "standard" })).toThrow();
-    const m = MetaYaml.parse({ change: "c", status: "proposed", profile: "standard" });
+  it("meta.yaml enforces valid stage+task states", () => {
+    expect(() => MetaYaml.parse({ change: "c", stage: "nope", task: "propose", profile: "standard" })).toThrow();
+    const m = MetaYaml.parse({ change: "c", stage: "dev", task: "propose", profile: "standard" });
     expect(m.approvals).toEqual([]);
+    expect(m.stage).toBe("dev");
+    expect(m.task).toBe("propose");
   });
 
   it("asset manifest defaults lifecycle to draft", () => {
-    const a = AssetManifest.parse({ id: "api-design", kind: "guide.skill" });
+    const a = AssetManifest.parse({ id: "api-design", kind: "guide.skill", stage: "dev" });
     expect(a.status).toBe("draft");
     expect(a.origin).toBe("local");
+    expect(a.stage).toBe("dev");
   });
 
-  it("phase mapping table has 9 consistent entries (includes test-design)", () => {
-    expect(PHASES).toHaveLength(9);
-    expect(phaseByCommand("test-design")?.state).toBe("test_designed");
-    expect(phaseByCommand("apply")?.state).toBe("implementing");
+  it("DELIVERY_STAGE and STAGE_TASKS define the four-stage model", () => {
+    expect(DELIVERY_STAGE.options).toEqual(["req", "arch", "dev", "test"]);
+    expect(STAGE_TASKS.dev.map((t) => t.id)).toEqual(
+      expect.arrayContaining(["plan", "propose", "design", "apply", "verify", "archive"])
+    );
+    expect(STAGE_TASKS.req.some((t) => t.id === "prd-writing" && t.required)).toBe(true);
     expect(PLUGIN_API_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
   });
 });

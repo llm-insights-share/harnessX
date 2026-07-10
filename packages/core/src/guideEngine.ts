@@ -9,48 +9,50 @@ import { findTask, type Task } from "./plan.js";
 import { resolvePrdSlug } from "./prd.js";
 import { resolveModulesForChange } from "./arch.js";
 import type { GuideDef } from "./schemas.js";
+import type { DeliveryStage } from "./stages.js";
 
 /**
- * T-202 (FR-030/NFR-002): assembles the per-phase Context Pack an agent
- * receives before working. Includes persona + permission declaration, the
- * constitution, phase-relevant guides and change artifacts; excludes
- * artifacts from other changes and later-phase noise.
+ * T-202 (FR-030/NFR-002): assembles the per-task Context Pack an agent
+ * receives before working.
  */
 
-const PHASE_ARTIFACTS: Record<string, string[]> = {
-  explore: ["explore.md"],
-  propose: ["proposal.md"],
-  design: ["proposal.md"],
-  spec: ["proposal.md"],
-  plan: ["tasks.md"],
-  "test-design": ["tasks.md"],
-  apply: ["tasks.md"],
-  verify: ["tasks.md"],
-  archive: []
+const TASK_ARTIFACTS: Record<string, string[]> = {
+  "req.requirements-research": ["explore.md"],
+  "dev.propose": ["proposal.md"],
+  "dev.design": ["proposal.md"],
+  "dev.plan": ["tasks.md"],
+  "test.test-case-design": ["tasks.md"],
+  "dev.apply": ["tasks.md"],
+  "dev.verify": ["tasks.md"],
+  "dev.archive": []
 };
 
-const PHASE_PERMISSIONS: Record<string, string> = {
-  explore: "READ-ONLY. You may read any file; you must not modify code or specs.",
-  prd: "You may edit docs/prd/** only. Do not create change artifacts or code.",
-  arch: "You may edit docs/architecture/overview.md, registry.yaml, and adr/**. No change artifacts or code.",
-  "arch-lld": "You may edit docs/architecture/modules/<module>/** for the target module only.",
-  propose: "You may edit changes/<id>/proposal.md, requirements/**, and changes/<id>/specs/**.",
-  design: "You may edit changes/<id>/design/**, design.md, and changes/<id>/specs/**.",
-  spec: "You may edit only changes/<id>/specs/**.",
-  plan: "You may edit only changes/<id>/tasks.md and traces/delivery-trace.yaml.",
-  "test-design": "You may edit changes/<id>/test-cases/** and tasks.md test-track items only.",
-  apply: "You may edit source code and tests for unchecked tasks in tasks.md. Never edit meta.yaml, fixtures, or approved test assertions.",
-  verify: "You may fix code to satisfy sensors. Never weaken tests or specs to make sensors pass.",
-  archive: "No edits. Archival is performed by the hx CLI."
+const TASK_PERMISSIONS: Record<string, string> = {
+  "req.requirements-research": "READ-ONLY. You may read any file; you must not modify code or specs.",
+  "req.prd-writing": "You may edit docs/prd/** only. Do not create change artifacts or code.",
+  "arch.subsystem-division": "You may edit docs/architecture/overview.md, registry.yaml, and adr/**. No change artifacts or code.",
+  "arch.internal-interface": "You may edit docs/architecture/modules/<module>/** for the target module only.",
+  "dev.propose": "You may edit changes/<id>/proposal.md, requirements/**, and changes/<id>/specs/**.",
+  "dev.design": "You may edit changes/<id>/design/**, design.md, and changes/<id>/specs/**.",
+  "dev.plan": "You may edit only changes/<id>/tasks.md and traces/delivery-trace.yaml.",
+  "test.test-case-design": "You may edit changes/<id>/test-cases/** and tasks.md test-track items only.",
+  "dev.apply": "You may edit source code and tests for unchecked tasks in tasks.md. Never edit meta.yaml, fixtures, or approved test assertions.",
+  "dev.verify": "You may fix code to satisfy sensors. Never weaken tests or specs to make sensors pass.",
+  "dev.archive": "No edits. Archival is performed by the hx CLI."
 };
 
 export interface ContextPack {
-  phase: string;
+  stage: DeliveryStage;
+  task: string;
   change: string;
   persona: string;
   permissions: string;
   sections: { title: string; source: string; content: string }[];
   assembledInMs: number;
+}
+
+function taskKey(stage: DeliveryStage, task: string): string {
+  return `${stage}.${task}`;
 }
 
 function pushArtifact(sections: ContextPack["sections"], title: string, file: string) {
@@ -82,60 +84,58 @@ function pushDesignArtifacts(ws: Workspace, change: string, sections: ContextPac
   visit(designDir, "");
 }
 
-/** Inject org-level PRD and architecture into change phase context packs. */
-function pushOrgPrephaseContext(ws: Workspace, change: string, phaseCmd: string, sections: ContextPack["sections"]) {
-  if (!["propose", "design", "spec", "plan", "apply", "verify", "test-design"].includes(phaseCmd)) return;
-
-  const slug = resolvePrdSlug(ws, change);
-  if (slug && fs.existsSync(ws.prdFile(slug))) {
-    pushArtifact(sections, `Org PRD: ${slug}`, ws.prdFile(slug));
+function pushOrgContext(ws: Workspace, change: string, stage: DeliveryStage, task: string, sections: ContextPack["sections"]) {
+  if (stage === "dev" && task === "propose") {
+    const slug = resolvePrdSlug(ws, change);
+    if (slug && fs.existsSync(ws.prdFile(slug))) pushArtifact(sections, `Org PRD: ${slug}`, ws.prdFile(slug));
   }
-
-  if (!["design", "spec", "plan", "apply", "verify"].includes(phaseCmd)) return;
-
-  if (fs.existsSync(ws.archOverviewFile())) {
-    pushArtifact(sections, "Org architecture HLD", ws.archOverviewFile());
-  }
-  if (fs.existsSync(ws.archRegistryFile())) {
-    pushArtifact(sections, "Org module registry", ws.archRegistryFile());
-  }
-  try {
-    for (const mod of resolveModulesForChange(ws, change)) {
-      const lld = ws.archModuleLld(mod.id);
-      if (fs.existsSync(lld)) pushArtifact(sections, `Org module LLD: ${mod.id}`, lld);
+  if (stage === "dev" && ["design", "plan", "apply", "verify"].includes(task)) {
+    if (fs.existsSync(ws.archOverviewFile())) pushArtifact(sections, "Org architecture HLD", ws.archOverviewFile());
+    if (fs.existsSync(ws.archRegistryFile())) pushArtifact(sections, "Org module registry", ws.archRegistryFile());
+    try {
+      for (const mod of resolveModulesForChange(ws, change)) {
+        const lld = ws.archModuleLld(mod.id);
+        if (fs.existsSync(lld)) pushArtifact(sections, `Org module LLD: ${mod.id}`, lld);
+      }
+    } catch {
+      /* change meta may be incomplete during early scaffolding */
     }
-  } catch {
-    /* change meta may be incomplete during early scaffolding */
   }
 }
 
-export function buildContextPack(ws: Workspace, change: string, phaseCmd: string): ContextPack {
-  const t0 = Date.now();
+export function guidesForTask(ws: Workspace, stage: DeliveryStage, task: string): GuideDef[] {
   const harness = ws.readHarness();
+  return harness.guides
+    .filter((g) => g.stage === stage && (!g.task || g.task === task))
+    .sort((a: GuideDef, b: GuideDef) => (b.priority ?? 0) - (a.priority ?? 0));
+}
+
+export function buildContextPack(ws: Workspace, change: string, stage: DeliveryStage, task: string): ContextPack {
+  const t0 = Date.now();
   const meta = readMeta(ws, change);
   const sections: ContextPack["sections"] = [];
+  const key = taskKey(stage, task);
 
   pushArtifact(sections, "Constitution (highest priority)", ws.constitutionFile);
 
-  const guides = harness.guides
-    .filter((g) => g.phase.length === 0 || g.phase.includes(phaseCmd))
-    .sort((a: GuideDef, b: GuideDef) => (b.priority ?? 0) - (a.priority ?? 0));
-  for (const g of guides) pushArtifact(sections, `Guide: ${g.id} (${g.kind})`, path.join(ws.base, g.source));
+  for (const g of guidesForTask(ws, stage, task)) {
+    pushArtifact(sections, `Guide: ${g.id} (${g.kind})`, path.join(ws.base, g.source));
+  }
 
-  for (const artifact of PHASE_ARTIFACTS[phaseCmd] ?? []) {
+  for (const artifact of TASK_ARTIFACTS[key] ?? []) {
     pushArtifact(sections, `Artifact: ${artifact}`, path.join(ws.changeDir(change), artifact));
   }
 
-  if (["propose", "design", "spec"].includes(phaseCmd)) pushRequirements(ws, change, sections);
-  pushOrgPrephaseContext(ws, change, phaseCmd, sections);
-  if (["design", "spec", "plan", "apply", "verify"].includes(phaseCmd)) pushDesignArtifacts(ws, change, sections);
+  if (stage === "dev" && ["propose", "design"].includes(task)) pushRequirements(ws, change, sections);
+  pushOrgContext(ws, change, stage, task, sections);
+  if (stage === "dev" && ["design", "plan", "apply", "verify"].includes(task)) pushDesignArtifacts(ws, change, sections);
 
   const traceFile = ws.deliveryTraceFile(change);
-  if (fs.existsSync(traceFile) && ["plan", "apply", "verify"].includes(phaseCmd)) {
+  if (fs.existsSync(traceFile) && stage === "dev" && ["plan", "apply", "verify"].includes(task)) {
     pushArtifact(sections, "Delivery trace", traceFile);
   }
 
-  if (["spec", "plan", "apply", "verify", "test-design"].includes(phaseCmd)) {
+  if (stage === "dev" && ["design", "plan", "apply", "verify"].includes(task)) {
     const dir = ws.deltaSpecsDir(change);
     if (fs.existsSync(dir)) {
       for (const cap of fs.readdirSync(dir)) {
@@ -145,10 +145,11 @@ export function buildContextPack(ws: Workspace, change: string, phaseCmd: string
   }
 
   return {
-    phase: phaseCmd,
+    stage,
+    task,
     change,
-    persona: `You are the ${phaseCmd} agent for change "${change}" (profile: ${meta.profile}, domains: ${meta.touchedDomains.join(", ")}).`,
-    permissions: PHASE_PERMISSIONS[phaseCmd] ?? "No special permissions.",
+    persona: `You are the ${stage}/${task} agent for change "${change}" (profile: ${meta.profile}, domains: ${meta.touchedDomains.join(", ")}).`,
+    permissions: TASK_PERMISSIONS[key] ?? "No special permissions.",
     sections,
     assembledInMs: Date.now() - t0
   };
@@ -157,13 +158,12 @@ export function buildContextPack(ws: Workspace, change: string, phaseCmd: string
 /** Task-scoped pack for apply handoff: requirement slice + LLD + code hints only. */
 export function buildTaskPack(ws: Workspace, change: string, task: Task): ContextPack {
   const t0 = Date.now();
-  const meta = readMeta(ws, change);
   const sections: ContextPack["sections"] = [];
 
   pushArtifact(sections, "Constitution (highest priority)", ws.constitutionFile);
 
   const harness = ws.readHarness();
-  for (const g of harness.guides.filter((x) => x.kind === "guide.skill" && x.phase.includes("apply"))) {
+  for (const g of harness.guides.filter((x) => x.kind === "guide.skill" && x.stage === "dev" && x.task === "apply")) {
     pushArtifact(sections, `Guide: ${g.id}`, path.join(ws.base, g.source));
   }
 
@@ -210,10 +210,11 @@ export function buildTaskPack(ws: Workspace, change: string, task: Task): Contex
   }
 
   return {
-    phase: "apply",
+    stage: "dev",
+    task: "apply",
     change,
     persona: `You are implementing task ${task.id} [${task.track}] for "${task.requirement}" (${task.capability}).`,
-    permissions: PHASE_PERMISSIONS.apply,
+    permissions: TASK_PERMISSIONS["dev.apply"],
     sections,
     assembledInMs: Date.now() - t0
   };
@@ -221,7 +222,7 @@ export function buildTaskPack(ws: Workspace, change: string, task: Task): Contex
 
 export function renderContextPack(pack: ContextPack): string {
   const parts = [
-    `# Context Pack — ${pack.phase} / ${pack.change}`,
+    `# Context Pack — ${pack.stage}/${pack.task} / ${pack.change}`,
     "",
     `## Persona`,
     pack.persona,
@@ -235,63 +236,59 @@ export function renderContextPack(pack: ContextPack): string {
   return parts.join("\n") + "\n";
 }
 
-function guidesForPhase(ws: Workspace, phaseCmd: string): GuideDef[] {
-  const harness = ws.readHarness();
-  return harness.guides
-    .filter((g) => g.phase.length === 0 || g.phase.includes(phaseCmd))
-    .sort((a: GuideDef, b: GuideDef) => (b.priority ?? 0) - (a.priority ?? 0));
-}
-
-function pushGuides(ws: Workspace, phaseCmd: string, sections: ContextPack["sections"]) {
-  for (const g of guidesForPhase(ws, phaseCmd)) {
-    pushArtifact(sections, `Guide: ${g.id} (${g.kind})`, path.join(ws.base, g.source));
-  }
-}
-
-/** Pre-phase context pack for organization PRD authoring. */
+/** Req-stage context pack for organization PRD authoring. */
 export function buildPrdPack(ws: Workspace, slug: string): ContextPack {
   const t0 = Date.now();
   const sections: ContextPack["sections"] = [];
   pushArtifact(sections, "Constitution (highest priority)", ws.constitutionFile);
-  pushGuides(ws, "prd", sections);
+  for (const g of guidesForTask(ws, "req", "prd-writing")) {
+    pushArtifact(sections, `Guide: ${g.id}`, path.join(ws.base, g.source));
+  }
   pushArtifact(sections, "PRD document", ws.prdFile(slug));
   return {
-    phase: "prd",
+    stage: "req",
+    task: "prd-writing",
     change: slug,
     persona: `You are the PRD authoring agent for "${slug}".`,
-    permissions: PHASE_PERMISSIONS.prd,
+    permissions: TASK_PERMISSIONS["req.prd-writing"],
     sections,
     assembledInMs: Date.now() - t0
   };
 }
 
-/** Pre-phase context pack for global HLD or a specific module LLD. */
+/** Arch-stage context pack for global HLD or a specific module LLD. */
 export function buildArchPack(ws: Workspace, moduleId?: string): ContextPack {
   const t0 = Date.now();
   const sections: ContextPack["sections"] = [];
   pushArtifact(sections, "Constitution (highest priority)", ws.constitutionFile);
   if (moduleId) {
-    pushGuides(ws, "arch-lld", sections);
+    for (const g of guidesForTask(ws, "arch", "internal-interface")) {
+      pushArtifact(sections, `Guide: ${g.id}`, path.join(ws.base, g.source));
+    }
     pushArtifact(sections, "Global HLD", ws.archOverviewFile());
     pushArtifact(sections, "Module registry", ws.archRegistryFile());
     pushArtifact(sections, `Module LLD: ${moduleId}`, ws.archModuleLld(moduleId));
     return {
-      phase: "arch-lld",
+      stage: "arch",
+      task: "internal-interface",
       change: moduleId,
       persona: `You are the module LLD agent for "${moduleId}".`,
-      permissions: PHASE_PERMISSIONS["arch-lld"],
+      permissions: TASK_PERMISSIONS["arch.internal-interface"],
       sections,
       assembledInMs: Date.now() - t0
     };
   }
-  pushGuides(ws, "arch", sections);
+  for (const g of guidesForTask(ws, "arch", "subsystem-division")) {
+    pushArtifact(sections, `Guide: ${g.id}`, path.join(ws.base, g.source));
+  }
   pushArtifact(sections, "Global HLD", ws.archOverviewFile());
   pushArtifact(sections, "Module registry", ws.archRegistryFile());
   return {
-    phase: "arch",
+    stage: "arch",
+    task: "subsystem-division",
     change: "-",
     persona: "You are the global architecture (HLD) agent.",
-    permissions: PHASE_PERMISSIONS.arch,
+    permissions: TASK_PERMISSIONS["arch.subsystem-division"],
     sections,
     assembledInMs: Date.now() - t0
   };

@@ -122,7 +122,7 @@ export function registerArchCommands(program: Command): void {
       const wo = createWorkOrder(w, {
         type: "arch-review",
         title: opts.title ?? "Review global architecture HLD",
-        scope: opts.change ? "change" : "prephase",
+        scope: opts.change ? "change" : "arch",
         ref: { change: opts.change },
         assigneeRole: "tech-manager",
         createdBy: opts.by,

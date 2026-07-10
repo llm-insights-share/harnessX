@@ -8,26 +8,25 @@ export * from "./change.js";
 export * from "./openspecImport.js";
 export * from "./archive.js";
 export * from "./sensorRunner.js";
-export * from "./stages.js";
+export type { DeliveryStage } from "./stages.js";
+export { DELIVERY_STAGES, STAGE_TASKS, STAGE_INFO } from "./stages.js";
 export {
   profileStages,
   profileDevTasks,
   profileTestTasks,
+  profileReqTasks,
+  profileArchTasks,
   resolveSuiteName,
-  normalizeHarnessProfiles,
-  phasesToStages,
-  stagesToPhases
+  normalizeHarnessProfiles
 } from "./profileResolve.js";
-export * from "./stageMigration.js";
 export * from "./stageGate.js";
-export * from "./gate.js";
 export * from "./guideEngine.js";
 export * from "./designLayout.js";
 export * from "./archRegistry.js";
 export * from "./archLayout.js";
 export * from "./prd.js";
 export * from "./arch.js";
-export * from "./prephaseStore.js";
+export * from "./stageApprovalStore.js";
 export * from "./archPromote.js";
 export * from "./deliveryTrace.js";
 export * from "./plan.js";

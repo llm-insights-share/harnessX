@@ -1,8 +1,8 @@
 id: design-tokens
 kind: guide.skill
 category: maintainability
-phase: [design, apply]
 version: 1.0.0
 origin: builtin
 status: enforced
 execution: inferential
+stage: dev

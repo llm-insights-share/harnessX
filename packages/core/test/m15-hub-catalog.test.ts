@@ -20,13 +20,14 @@ describe("hub catalog", () => {
         version: "1.0.0",
         status: "trial",
         execution: "inferential",
-        phase: ["propose"]
+        stage: "dev",
+        task: "propose"
       })
     );
     fs.writeFileSync(path.join(pkgDir, "SKILL.md"), "# skill\n");
     fs.writeFileSync(
       path.join(pkgDir, ".hub-meta.yaml"),
-      YAML.stringify({ id: "pkg-a", version: "1.0.0", category: "package", status: "trial", owner: "platform", phases: ["propose"] })
+      YAML.stringify({ id: "pkg-a", version: "1.0.0", category: "package", status: "trial", owner: "platform", stages: ["dev"] })
     );
     fs.writeFileSync(path.join(pkgDir, ".hub-review.yaml"), YAML.stringify({ status: "approved", approvedBy: ["alice"] }));
 
@@ -35,7 +36,7 @@ describe("hub catalog", () => {
     expect(entries[0].owner).toBe("platform");
     expect(entries[0].review).toBe("approved");
 
-    const filtered = queryHubCatalog(hub, { phase: "propose", status: "trial" });
+    const filtered = queryHubCatalog(hub, { stage: "dev", status: "trial" });
     expect(filtered).toHaveLength(1);
 
     const file = writeHubCatalog(hub);

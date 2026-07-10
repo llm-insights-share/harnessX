@@ -1,410 +1,584 @@
 version: "1.0"
 constitution: constitution.md
-
 profiles:
   lite:
-    phases: [propose, apply, archive]
+    stages:
+      - dev
+    dev_tasks:
+      - propose
+      - apply
+      - archive
     suites:
-      apply: fast-lite
+      dev.apply: fast-lite
+      dev.propose: fast-lite
   standard:
-    phases: [propose, design, spec, plan, apply, verify, archive]
+    stages:
+      - req
+      - arch
+      - dev
+      - test
+    dev_tasks:
+      - plan
+      - propose
+      - design
+      - apply
+      - verify
+      - archive
     suites:
-      spec: fast
-      apply: fast
-      verify: verification
+      dev.design: fast
+      dev.apply: fast
+      dev.verify: verification
   strict:
-    phases: [explore, propose, design, spec, plan, apply, verify, archive]
+    stages:
+      - req
+      - arch
+      - dev
+      - test
+    dev_tasks:
+      - plan
+      - propose
+      - design
+      - apply
+      - verify
+      - archive
     suites:
-      spec: fast
-      apply: fast
-      verify: verification-strict
+      dev.design: fast
+      dev.apply: fast
+      dev.verify: verification-strict
   enterprise:
-    phases: [explore, propose, design, spec, plan, apply, verify, archive]
+    stages:
+      - req
+      - arch
+      - dev
+      - test
+    dev_tasks:
+      - plan
+      - propose
+      - design
+      - apply
+      - verify
+      - archive
     suites:
-      propose: propose-enterprise
-      design: design-enterprise
-      spec: fast
-      plan: plan-enterprise
-      apply: fast
-      verify: verification-enterprise
+      dev.propose: propose-enterprise
+      dev.design: design-enterprise
+      dev.plan: plan-enterprise
+      dev.apply: fast
+      dev.verify: verification-enterprise
   enterprise-sdlc:
-    phases: [explore, propose, design, spec, plan, test-design, apply, verify, archive]
+    stages:
+      - req
+      - arch
+      - dev
+      - test
+    dev_tasks:
+      - plan
+      - propose
+      - design
+      - apply
+      - verify
+      - archive
+    test_tasks:
+      - test-case-design
+      - test-execution
     suites:
-      propose: propose-sdlc
-      design: design-sdlc
-      spec: fast
-      plan: plan-sdlc
-      test-design: test-design-sdlc
-      apply: fast
-      verify: verification-sdlc
-
+      dev.propose: propose-sdlc
+      dev.design: design-sdlc
+      dev.plan: plan-sdlc
+      test.test-case-design: test-design-sdlc
+      dev.apply: fast
+      dev.verify: verification-sdlc
 suites:
-  fast-lite: [spec-validate]
-  fast: [spec-validate, typecheck, lint, unit-changed]
-  verification: [spec-validate, spec-trace]
-  verification-strict: [spec-validate, spec-trace, unit-changed, mutation-probe, ai-spec-review]
-  propose-enterprise: [prd-complete, prd-approved, requirements-complete, spec-validate, typecheck, lint, unit-changed]
-  design-enterprise: [arch-approved, arch-change-align, design-hld-complete, design-lld-complete, design-spec-align, prototype-complete]
-  plan-enterprise: [plan-coverage]
-  verification-enterprise: [spec-validate, spec-trace, design-drift, arch-drift, unit-changed, mutation-probe, ai-spec-review]
-  prd-check: [prd-complete]
-  arch-check: [arch-hld-complete, arch-registry-complete, arch-approved]
-  arch-lld-check: [arch-lld-complete, arch-module-boundary, arch-lld-approved]
-  propose-sdlc: [wo-prephase-clear, prd-complete, prd-approved, requirements-extended-complete, spec-validate, typecheck, lint, unit-changed]
-  design-sdlc: [arch-approved, arch-lld-approved, arch-change-align, design-hld-complete, design-lld-complete, design-spec-align, prototype-complete, change-request-applied]
-  plan-sdlc: [plan-coverage, wo-lld-done]
-  test-design-sdlc: [test-cases-complete, test-cases-approved]
-  verification-sdlc: [spec-validate, spec-trace, design-drift, arch-drift, bugs-closed, drift, uat-complete, unit-changed, mutation-probe, ai-spec-review]
-
+  fast-lite:
+    - spec-validate
+  fast:
+    - spec-validate
+    - typecheck
+    - lint
+    - unit-changed
+  verification:
+    - spec-validate
+    - spec-trace
+  verification-strict:
+    - spec-validate
+    - spec-trace
+    - unit-changed
+    - mutation-probe
+    - ai-spec-review
+  propose-enterprise:
+    - prd-complete
+    - prd-approved
+    - requirements-complete
+    - spec-validate
+    - typecheck
+    - lint
+    - unit-changed
+  design-enterprise:
+    - arch-approved
+    - arch-change-align
+    - design-hld-complete
+    - design-lld-complete
+    - design-spec-align
+    - prototype-complete
+  plan-enterprise:
+    - plan-coverage
+  verification-enterprise:
+    - spec-validate
+    - spec-trace
+    - design-drift
+    - arch-drift
+    - unit-changed
+    - mutation-probe
+    - ai-spec-review
+  prd-check:
+    - prd-complete
+  arch-check:
+    - arch-hld-complete
+    - arch-registry-complete
+    - arch-approved
+  arch-lld-check:
+    - arch-lld-complete
+    - arch-module-boundary
+    - arch-lld-approved
+  design-sdlc:
+    - arch-approved
+    - arch-lld-approved
+    - arch-change-align
+    - design-hld-complete
+    - design-lld-complete
+    - design-spec-align
+    - prototype-complete
+    - change-request-applied
+  plan-sdlc:
+    - plan-coverage
+    - wo-lld-done
+  test-design-sdlc:
+    - test-cases-complete
+    - test-cases-approved
+  verification-sdlc:
+    - spec-validate
+    - spec-trace
+    - design-drift
+    - arch-drift
+    - bugs-closed
+    - drift
+    - uat-complete
+    - unit-changed
+    - mutation-probe
+    - ai-spec-review
+  dev.propose:
+    - wo-req-arch-clear
+    - prd-complete
+    - prd-approved
+    - requirements-extended-complete
+    - spec-validate
+    - typecheck
+    - lint
+    - unit-changed
 guides:
   - id: requirements-template
     kind: guide.template
     execution: computational
-    phase: [propose]
     source: assets/guides/requirements-template/template.md
+    stage: dev
+    task: propose
   - id: ui-pages-template
     kind: guide.template
     execution: computational
-    phase: [design]
     source: assets/guides/ui-pages-template/template.md
+    stage: dev
+    task: design
   - id: prd-writing
     kind: guide.skill
     execution: inferential
-    phase: [propose, spec]
     source: assets/guides/prd-writing/SKILL.md
+    stage: dev
+    task: propose
   - id: fe-layout
     kind: guide.skill
     execution: inferential
-    phase: [design, apply]
     source: assets/guides/fe-layout/SKILL.md
+    stage: dev
+    task: design
   - id: design-tokens
     kind: guide.skill
     execution: inferential
-    phase: [design, apply]
     source: assets/guides/design-tokens/SKILL.md
+    stage: dev
+    task: design
   - id: proposal-template
     kind: guide.template
     execution: computational
-    phase: [propose]
     source: assets/guides/proposal-template/template.md
+    stage: dev
+    task: propose
   - id: design-template
     kind: guide.template
     execution: computational
-    phase: [design]
     source: assets/guides/design-template/template.md
+    stage: dev
+    task: design
   - id: coding-conventions
     kind: guide.skill
     execution: inferential
-    phase: [apply]
     source: assets/guides/coding-conventions/SKILL.md
+    stage: dev
+    task: apply
   - id: spec-writing
     kind: guide.skill
     execution: inferential
-    phase: [propose, spec]
     source: assets/guides/spec-writing/SKILL.md
+    stage: dev
+    task: propose
   - id: cmd-explore
     kind: guide.command
     execution: inferential
-    phase: [explore]
     source: assets/commands/explore.md
+    stage: req
+    task: requirements-research
   - id: cmd-propose
     kind: guide.command
     execution: inferential
-    phase: [propose]
     source: assets/commands/propose.md
+    stage: dev
+    task: propose
   - id: cmd-design
     kind: guide.command
     execution: inferential
-    phase: [design]
     source: assets/commands/design.md
+    stage: dev
+    task: design
   - id: cmd-spec
     kind: guide.command
     execution: inferential
-    phase: [spec]
     source: assets/commands/spec.md
+    stage: dev
+    task: design
   - id: cmd-plan
     kind: guide.command
     execution: inferential
-    phase: [plan]
     source: assets/commands/plan.md
+    stage: dev
+    task: plan
   - id: cmd-apply
     kind: guide.command
     execution: inferential
-    phase: [apply]
     source: assets/commands/apply.md
+    stage: dev
+    task: apply
   - id: cmd-verify
     kind: guide.command
     execution: inferential
-    phase: [verify]
     source: assets/commands/verify.md
+    stage: dev
+    task: verify
   - id: cmd-archive
     kind: guide.command
     execution: inferential
-    phase: [archive]
     source: assets/commands/archive.md
+    stage: dev
+    task: archive
   - id: prd-template
     kind: guide.template
     execution: computational
-    phase: [prd]
     source: assets/guides/prd-template/template.md
+    stage: req
+    task: prd-writing
   - id: prd-authoring
     kind: guide.skill
     execution: inferential
-    phase: [prd]
     source: assets/guides/prd-authoring/SKILL.md
+    stage: req
+    task: prd-writing
   - id: cmd-prd
     kind: guide.command
     execution: inferential
-    phase: [prd]
     source: assets/commands/prd.md
+    stage: req
+    task: prd-writing
   - id: arch-hld-template
     kind: guide.template
     execution: computational
-    phase: [arch]
     source: assets/guides/arch-hld-template/template.md
+    stage: arch
+    task: subsystem-division
   - id: arch-authoring
     kind: guide.skill
     execution: inferential
-    phase: [arch]
     source: assets/guides/arch-authoring/SKILL.md
+    stage: arch
+    task: subsystem-division
   - id: cmd-arch
     kind: guide.command
     execution: inferential
-    phase: [arch]
     source: assets/commands/arch.md
+    stage: arch
+    task: subsystem-division
   - id: arch-lld-template
     kind: guide.template
     execution: computational
-    phase: [arch-lld]
     source: assets/guides/arch-lld-template/template.md
+    stage: arch
+    task: internal-interface
   - id: arch-module-boundary
     kind: guide.skill
     execution: inferential
-    phase: [arch-lld]
     source: assets/guides/arch-module-boundary/SKILL.md
+    stage: arch
+    task: internal-interface
   - id: cmd-arch-lld
     kind: guide.command
     execution: inferential
-    phase: [arch-lld]
     source: assets/commands/arch-lld.md
-
+    stage: arch
+    task: internal-interface
 sensors:
   - id: spec-validate
     kind: sensor.script
     execution: computational
-    phase: [propose, spec, verify, archive]
     builtin: spec-validate
     on_fail: block
-    fix_hint: "修正 delta spec 格式；确保每条 Requirement 至少有一个 Scenario，且需求文本符合 EARS 句式"
+    fix_hint: 修正 delta spec 格式；确保每条 Requirement 至少有一个 Scenario，且需求文本符合 EARS 句式
+    stage: dev
+    task: propose
   - id: spec-trace
     kind: sensor.script
     execution: computational
-    phase: [verify]
     builtin: spec-trace
     on_fail: block
-    fix_hint: "为未覆盖的 Scenario 补充测试，或在测试标题中字面引用 Scenario 名称"
+    fix_hint: 为未覆盖的 Scenario 补充测试，或在测试标题中字面引用 Scenario 名称
+    stage: dev
+    task: verify
   - id: ai-spec-review
     kind: sensor.rubric
     execution: inferential
-    phase: [verify]
     builtin: rubric
     on_fail: warn
     budget_tokens: 8000
-    fix_hint: "根据 rubric 评审意见收紧规格表述，消除模糊或不可测量的需求"
+    fix_hint: 根据 rubric 评审意见收紧规格表述，消除模糊或不可测量的需求
+    stage: dev
+    task: verify
   - id: fixture-guard
     kind: sensor.fixture
     execution: computational
     trigger: file-save
-    scope: ["tests/fixtures/**"]
+    scope:
+      - tests/fixtures/**
     builtin: fixture-hash
     on_fail: block
-    fix_hint: "已批准的 fixture 不可修改；如需变更请通过 waiver 流程重新批准"
+    fix_hint: 已批准的 fixture 不可修改；如需变更请通过 waiver 流程重新批准
   - id: typecheck
     kind: sensor.script
     execution: computational
-    phase: [apply, verify]
     builtin: typecheck
     on_fail: block
-    fix_hint: "修复 tsc 报告的类型错误"
+    fix_hint: 修复 tsc 报告的类型错误
+    stage: dev
+    task: apply
   - id: lint
     kind: sensor.script
     execution: computational
-    phase: [apply, verify]
     builtin: lint
     on_fail: block
-    fix_hint: "修复 lint 违规"
+    fix_hint: 修复 lint 违规
+    stage: dev
+    task: apply
   - id: unit-changed
     kind: sensor.script
     execution: computational
-    phase: [apply, verify]
     builtin: unit-changed
     on_fail: block
-    fix_hint: "修复与当前 diff 相关的失败测试"
+    fix_hint: 修复与当前 diff 相关的失败测试
+    stage: dev
+    task: apply
   - id: mutation-probe
     kind: sensor.mutation
     execution: computational
-    phase: [verify]
     builtin: mutation-probe
     on_fail: block
-    fix_hint: "加强场景测试——避免桩和恒真断言"
+    fix_hint: 加强场景测试——避免桩和恒真断言
+    stage: dev
+    task: verify
   - id: requirements-complete
     kind: sensor.script
     execution: computational
-    phase: [propose]
     builtin: requirements-complete
     on_fail: block
-    fix_hint: "填写 requirements/ 并在 proposal.md 中链接 PRD"
+    fix_hint: 填写 requirements/ 并在 proposal.md 中链接 PRD
+    stage: dev
+    task: propose
   - id: design-hld-complete
     kind: sensor.script
     execution: computational
-    phase: [design]
     builtin: design-hld-complete
     on_fail: block
-    fix_hint: "补全 design/overview.md 概要设计章节"
+    fix_hint: 补全 design/overview.md 概要设计章节
+    stage: dev
+    task: design
   - id: design-lld-complete
     kind: sensor.script
     execution: computational
-    phase: [design]
     builtin: design-lld-complete
     on_fail: warn
-    fix_hint: "补充 design/ui/pages.md 与 components LLD"
+    fix_hint: 补充 design/ui/pages.md 与 components LLD
+    stage: dev
+    task: design
   - id: design-spec-align
     kind: sensor.script
     execution: computational
-    phase: [design, spec]
     builtin: design-spec-align
     on_fail: warn
-    fix_hint: "确保设计中的 API 路径出现在 delta spec"
+    fix_hint: 确保设计中的 API 路径出现在 delta spec
+    stage: dev
+    task: design
   - id: plan-coverage
     kind: sensor.script
     execution: computational
-    phase: [plan]
     builtin: plan-coverage
     on_fail: warn
-    fix_hint: "运行 hx plan 生成 @design= 与 delivery-trace.yaml"
+    fix_hint: 运行 hx plan 生成 @design= 与 delivery-trace.yaml
+    stage: dev
+    task: plan
   - id: design-drift
     kind: sensor.script
     execution: computational
-    phase: [verify]
     builtin: design-drift
     on_fail: warn
-    fix_hint: "实现 delivery-trace 中的 code_hints 或更新追溯文件"
+    fix_hint: 实现 delivery-trace 中的 code_hints 或更新追溯文件
+    stage: dev
+    task: verify
   - id: prd-complete
     kind: sensor.script
     execution: computational
-    phase: [prd, propose]
     builtin: prd-complete
     on_fail: block
-    fix_hint: "补全 docs/prd/<slug>.md"
+    fix_hint: 补全 docs/prd/<slug>.md
+    stage: req
+    task: prd-writing
   - id: prd-approved
     kind: sensor.script
     execution: computational
-    phase: [prd, propose]
     builtin: prd-approved
     on_fail: block
-    fix_hint: "人工批准 PRD：hx gate approve --gate prd --prd <slug> --approver <姓名>"
+    fix_hint: 人工批准 PRD：hx gate approve --gate prd --prd <slug> --approver <姓名>
+    stage: req
+    task: prd-writing
   - id: arch-hld-complete
     kind: sensor.script
     execution: computational
-    phase: [arch]
     builtin: arch-hld-complete
     on_fail: block
-    fix_hint: "补全 docs/architecture/overview.md"
+    fix_hint: 补全 docs/architecture/overview.md
+    stage: arch
+    task: subsystem-division
   - id: arch-registry-complete
     kind: sensor.script
     execution: computational
-    phase: [arch]
     builtin: arch-registry-complete
     on_fail: block
-    fix_hint: "修复 registry.yaml"
+    fix_hint: 修复 registry.yaml
+    stage: arch
+    task: subsystem-division
   - id: arch-lld-complete
     kind: sensor.script
     execution: computational
-    phase: [arch-lld]
     builtin: arch-lld-complete
     on_fail: block
-    fix_hint: "补全模块 LLD"
+    fix_hint: 补全模块 LLD
+    stage: arch
+    task: internal-interface
   - id: arch-module-boundary
     kind: sensor.script
     execution: computational
-    phase: [arch-lld]
     builtin: arch-module-boundary
     on_fail: warn
-    fix_hint: "解决 capabilities 重复归属"
+    fix_hint: 解决 capabilities 重复归属
+    stage: arch
+    task: internal-interface
   - id: arch-change-align
     kind: sensor.script
     execution: computational
-    phase: [design]
     builtin: arch-change-align
     on_fail: block
-    fix_hint: "确保 touched domains 映射到模块 LLD"
+    fix_hint: 确保 touched domains 映射到模块 LLD
+    stage: dev
+    task: design
   - id: arch-approved
     kind: sensor.script
     execution: computational
-    phase: [arch]
     builtin: arch-approved
     on_fail: block
-    fix_hint: "人工批准全局架构：hx gate approve --gate arch --approver <姓名>"
+    fix_hint: 人工批准全局架构：hx gate approve --gate arch --approver <姓名>
+    stage: arch
+    task: subsystem-division
   - id: arch-drift
     kind: sensor.script
     execution: computational
-    phase: [verify]
     builtin: arch-drift
     on_fail: warn
-    fix_hint: "运行 hx arch promote <change> 将 design 沉淀到模块 LLD"
-  - id: wo-prephase-clear
+    fix_hint: 运行 hx arch promote <change> 将 design 沉淀到模块 LLD
+    stage: dev
+    task: verify
+  - id: wo-req-arch-clear
     kind: sensor.script
     execution: computational
-    phase: [propose]
-    builtin: wo-prephase-clear
+    builtin: wo-req-arch-clear
     on_fail: block
-    fix_hint: "关闭待审 pre-phase 工单：hx wo inbox"
+    fix_hint: 关闭待审 req/arch 工单：hx wo inbox
+    stage: dev
+    task: propose
   - id: requirements-extended-complete
     kind: sensor.script
     execution: computational
-    phase: [propose]
     builtin: requirements-extended-complete
     on_fail: block
-    fix_hint: "填写扩展 requirements/ 制品（调研、业务流程、集成）"
+    fix_hint: 填写扩展 requirements/ 制品（调研、业务流程、集成）
+    stage: dev
+    task: propose
   - id: test-cases-complete
     kind: sensor.script
     execution: computational
-    phase: [test-design]
     builtin: test-cases-complete
     on_fail: block
-    fix_hint: "完成 test-cases/overview.md — hx test-cases init"
+    fix_hint: 完成 test-cases/overview.md — hx test-cases init
+    stage: test
+    task: test-case-design
   - id: test-cases-approved
     kind: sensor.script
     execution: computational
-    phase: [test-design, apply]
     builtin: test-cases-approved
     on_fail: block
-    fix_hint: "提交并批准测试用例：hx test-cases submit"
+    fix_hint: 提交并批准测试用例：hx test-cases submit
+    stage: test
+    task: test-case-design
   - id: bugs-closed
     kind: sensor.script
     execution: computational
-    phase: [verify]
     builtin: bugs-closed
     on_fail: block
-    fix_hint: "关闭或修复 open bug：hx bug list"
+    fix_hint: 关闭或修复 open bug：hx bug list
+    stage: dev
+    task: verify
   - id: wo-lld-done
     kind: sensor.script
     execution: computational
-    phase: [plan]
     builtin: wo-lld-done
     on_fail: block
-    fix_hint: "将 lld-design 工单标记完成：hx wo done <id>"
+    fix_hint: 将 lld-design 工单标记完成：hx wo done <id>
+    stage: dev
+    task: plan
   - id: arch-lld-approved
     kind: sensor.script
     execution: computational
-    phase: [design, arch-lld]
     builtin: arch-lld-approved
     on_fail: block
-    fix_hint: "批准模块 LLD：hx approve arch-lld <module> --approver <姓名>"
+    fix_hint: 批准模块 LLD：hx approve arch-lld <module> --approver <姓名>
+    stage: dev
+    task: design
   - id: change-request-applied
     kind: sensor.script
     execution: computational
-    phase: [design, propose]
     builtin: change-request-applied
     on_fail: block
-    fix_hint: "批准后应用待处理变更单"
+    fix_hint: 批准后应用待处理变更单
+    stage: dev
+    task: design

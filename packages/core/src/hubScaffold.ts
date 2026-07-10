@@ -9,7 +9,8 @@ export interface CreateAssetOptions {
   kind: AssetKind;
   version?: string;
   status?: AssetStatus;
-  phase?: string[];
+  stage?: import("./schemas.js").DeliveryStage;
+  task?: string;
   owner?: string;
   sourceDir?: string;
 }
@@ -100,7 +101,8 @@ export function createAssetScaffold(opts: CreateAssetOptions): CreateAssetResult
     version: opts.version ?? "0.1.0",
     status: opts.status ?? "draft",
     origin: "local",
-    phase: opts.phase ?? [],
+    stage: opts.stage ?? "dev",
+    task: opts.task,
     owner: opts.owner,
     execution: executionForKind(opts.kind),
     provenance: [],

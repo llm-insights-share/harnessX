@@ -14,20 +14,13 @@ function printSensorReport(sensor: string, status: string, summary: string) {
   }
 }
 
-export function registerPrdCommands(program: Command): void {
-  const prd = program.command("prd").description("Organization-level PRD (pre-phase; prefer hx req prd)");
-  registerPrdOnParent(prd, { deprecatedPrefix: "hx prd" });
-}
-
-export function registerPrdOnParent(prd: Command, opts?: { deprecatedPrefix?: string }): void {
-  const warn = opts?.deprecatedPrefix ? () => console.warn(`[deprecated] ${opts.deprecatedPrefix} — prefer hx req prd`) : () => {};
+export function registerPrdOnParent(prd: Command): void {
 
   prd
     .command("init <slug>")
     .requiredOption("--title <title>", "PRD title")
     .description("Scaffold docs/prd/<slug>.md from prd-template")
     .action((slug: string, opts: { title: string }) => {
-      warn();
       console.log(`Wrote ${scaffoldPrd(ws(), slug, opts.title)}`);
     });
 
@@ -35,7 +28,6 @@ export function registerPrdOnParent(prd: Command, opts?: { deprecatedPrefix?: st
     .command("check <slug>")
     .description("Run prd-complete sensor on docs/prd/<slug>.md")
     .action(async (slug: string) => {
-      warn();
       const w = ws();
       const def = w.readHarness().sensors.find((s) => s.id === "prd-complete");
       if (!def) throw new Error("prd-complete sensor not registered in harness.yaml");
@@ -44,7 +36,6 @@ export function registerPrdOnParent(prd: Command, opts?: { deprecatedPrefix?: st
     });
 
   prd.command("list").action(() => {
-    warn();
     for (const s of listPrdSlugs(ws())) console.log(s);
   });
 
@@ -54,12 +45,11 @@ export function registerPrdOnParent(prd: Command, opts?: { deprecatedPrefix?: st
     .option("--title <title>", "review title override")
     .description("Create and submit req-review work order for PRD")
     .action((slug: string, opts: { by: string; title?: string }) => {
-      warn();
       const w = ws();
       const wo = createWorkOrder(w, {
         type: "req-review",
         title: opts.title ?? `Review PRD ${slug}`,
-        scope: "prephase",
+        scope: "req",
         ref: { prd: slug },
         assigneeRole: "tech-manager",
         createdBy: opts.by,

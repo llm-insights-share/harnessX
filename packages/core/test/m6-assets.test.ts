@@ -47,7 +47,7 @@ const opts = () => ({ builtins: builtinSensors });
 
 function makeAsset(dir: string, id: string, over: Record<string, unknown> = {}, content = `# Skill: ${id}\n\n- Be excellent.\n`) {
   fs.mkdirSync(dir, { recursive: true });
-  writeYaml(path.join(dir, "asset.yaml"), { id, kind: "guide.skill", version: "1.0.0", status: "trial", ...over });
+  writeYaml(path.join(dir, "asset.yaml"), { id, kind: "guide.skill", version: "1.0.0", status: "trial", stage: "dev", task: "apply", ...over });
   fs.writeFileSync(path.join(dir, "SKILL.md"), content);
 }
 
@@ -79,7 +79,7 @@ describe("T-600 asset model + lifecycle", () => {
     const ws = initWorkspace(tmp()).ws;
     const dir = path.join(ws.assetsDir, "sensors/my-sensor");
     makeAsset(dir, "my-sensor", { kind: "sensor.script" });
-    const def: SensorDef = { id: "my-sensor", kind: "sensor.script", execution: "computational", trigger: "phase", run: "exit 1", on_fail: "block", max_retries: 0, timeout_ms: 5000 };
+    const def: SensorDef = { id: "my-sensor", kind: "sensor.script", execution: "computational", trigger: "task", run: "exit 1", on_fail: "block", max_retries: 0, timeout_ms: 5000 };
     await runSensor(ws, def, "c1", opts());
     const m = backfillMetrics(ws, loadAssetDir(dir, "local")!);
     expect(m.metrics["runs"]).toBe(1);
@@ -254,10 +254,10 @@ describe("T-605..T-608 target emitters", () => {
     const agentsMd = fs.readFileSync(path.join(ws.root, "AGENTS.md"), "utf8");
     for (const c of cmds) expect(agentsMd).toContain(c.run);
 
-    // consistency: every target mentions the same `hx <phase>` commands
+    // consistency: every target mentions the same stage/task hx commands
     for (const text of [claudeMd, agentsMd]) {
-      expect(text).toContain("hx apply");
-      expect(text).toContain("hx verify");
+      expect(text).toContain("hx dev apply");
+      expect(text).toContain("hx dev verify");
     }
   });
 
@@ -304,13 +304,13 @@ describe("T-605..T-608 target emitters", () => {
     const ws = initWorkspace(tmp()).ws;
     compileAdapters(ws, ["cursor", "claude", "qoder"]);
 
-    // the propose command carries the full phase workflow, not a thin bridge
+    // the propose command carries the full task workflow, not a thin bridge
     for (const dir of [".cursor/commands", ".claude/commands", ".qoder/commands"]) {
-      const propose = fs.readFileSync(path.join(ws.root, dir, "hx-propose.md"), "utf8");
+      const propose = fs.readFileSync(path.join(ws.root, dir, "hx-dev-propose.md"), "utf8");
       expect(propose).toContain("EARS");
       expect(propose).toContain("hx gate check");
       expect(propose).toContain("Guardrails");
-      const apply = fs.readFileSync(path.join(ws.root, dir, "hx-apply.md"), "utf8");
+      const apply = fs.readFileSync(path.join(ws.root, dir, "hx-dev-apply.md"), "utf8");
       expect(apply).toMatch(/hx guide (task-pack|pack)/);
       expect(apply).toMatch(/never weaken tests/i);
     }
@@ -320,7 +320,7 @@ describe("T-605..T-608 target emitters", () => {
 
     // command prompts also flow into the phase context pack (single source, two consumers)
     createChange(ws, "cp1", ["auth"]);
-    const pack = buildContextPack(ws, "cp1", "apply");
+    const pack = buildContextPack(ws, "cp1", "dev", "apply");
     expect(pack.sections.some((s) => s.title.includes("cmd-apply"))).toBe(true);
   });
 
@@ -370,7 +370,7 @@ describe("T-610 plugin API", () => {
       pluginFile,
       `export default { api: "1.2.0", id: "my-plugin", execute: (ctx) => ({ status: "fail", summary: "found issue in " + ctx.sensor.id, findings: [{ severity: "block", message: "plugin finding" }] }) };\n`
     );
-    const def: SensorDef = { id: "custom", kind: "sensor.script", execution: "computational", trigger: "phase", plugin: "plugins/my-plugin.mjs", on_fail: "block", max_retries: 0, timeout_ms: 5000 };
+    const def: SensorDef = { id: "custom", kind: "sensor.script", execution: "computational", trigger: "task", plugin: "plugins/my-plugin.mjs", on_fail: "block", max_retries: 0, timeout_ms: 5000 };
     const report = await runPluginSensor(ws, def, "c1");
     expect(report.status).toBe("fail");
     expect(report.findings[0].message).toBe("plugin finding");
@@ -389,7 +389,7 @@ describe("T-610 plugin API", () => {
   it("command-protocol plugin (python-style) via JSON stdin/stdout", async () => {
     const ws = initWorkspace(tmp()).ws;
     const cmd = `node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const ctx=JSON.parse(d);console.log(JSON.stringify({status:'pass',summary:'checked '+ctx.sensor.id}))})"`;
-    const def: SensorDef = { id: "cmd-plug", kind: "sensor.script", execution: "computational", trigger: "phase", plugin: `cmd:${cmd}`, on_fail: "block", max_retries: 0, timeout_ms: 10000 };
+    const def: SensorDef = { id: "cmd-plug", kind: "sensor.script", execution: "computational", trigger: "task", plugin: `cmd:${cmd}`, on_fail: "block", max_retries: 0, timeout_ms: 10000 };
     const report = await runPluginSensor(ws, def);
     expect(report.status).toBe("pass");
     expect(report.summary).toBe("checked cmd-plug");
@@ -403,7 +403,7 @@ describe("T-611 hx fix", () => {
     fs.mkdirSync(path.join(ws.deltaSpecsDir("c1"), "auth"), { recursive: true });
     fs.writeFileSync(path.join(ws.deltaSpecsDir("c1"), "auth/spec.md"), "## ADDED Requirements\n\n### Requirement: R1\nTHE SYSTEM SHALL r1.\n\n#### Scenario: s1\n- THEN ok\n");
     const json = `{"status":"fail","summary":"1 issue","findings":[{"severity":"block","message":"bad thing","fix_hint":"do good thing"}]}`;
-    const def: SensorDef = { id: "linter", kind: "sensor.rule", execution: "computational", trigger: "phase", run: `echo '${json}'; exit 1`, on_fail: "block", max_retries: 0, timeout_ms: 5000 };
+    const def: SensorDef = { id: "linter", kind: "sensor.rule", execution: "computational", trigger: "task", run: `echo '${json}'; exit 1`, on_fail: "block", max_retries: 0, timeout_ms: 5000 };
     await runSensor(ws, def, "c1", opts());
 
     const pack = buildFixPack(ws, "c1", "linter");

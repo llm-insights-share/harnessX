@@ -51,28 +51,29 @@ export function applyBlueprint(ws: Workspace, blueprint: BlueprintYaml, hubRoot?
     harnessChanged = true;
   }
 
-  if (blueprint.phases) {
-    for (const [phase, cfg] of Object.entries(blueprint.phases)) {
+  if (blueprint.stages) {
+    for (const [stageKey, cfg] of Object.entries(blueprint.stages)) {
+      const [stage, task] = stageKey.includes(".") ? stageKey.split(".", 2) : [stageKey, undefined];
       for (const gid of cfg.guides ?? []) {
         if (harness.guides.some((g) => g.id === gid)) continue;
-        const def = resolveHarnessGuideDef(ws, gid, { hubRoot, phaseHint: phase });
+        const def = resolveHarnessGuideDef(ws, gid, { hubRoot, stageHint: stage, taskHint: task });
         if (def) {
           harness.guides.push(def);
-          applied.push(`guide: ${gid} → harness.yaml (phase ${phase})`);
+          applied.push(`guide: ${gid} → harness.yaml (stage ${stageKey})`);
           harnessChanged = true;
         } else {
-          applied.push(`warn: guide "${gid}" for phase ${phase} not resolvable — install via hub`);
+          applied.push(`warn: guide "${gid}" for stage ${stageKey} not resolvable — install via hub`);
         }
       }
       for (const sid of cfg.sensors ?? []) {
         if (harness.sensors.some((s) => s.id === sid)) continue;
-        const def = resolveHarnessSensorDef(ws, sid, { hubRoot, phaseHint: phase });
+        const def = resolveHarnessSensorDef(ws, sid, { hubRoot, stageHint: stage, taskHint: task });
         if (def) {
           harness.sensors.push(def);
-          applied.push(`sensor: ${sid} → harness.yaml (phase ${phase})`);
+          applied.push(`sensor: ${sid} → harness.yaml (stage ${stageKey})`);
           harnessChanged = true;
         } else {
-          applied.push(`warn: sensor "${sid}" for phase ${phase} not resolvable — install via hub`);
+          applied.push(`warn: sensor "${sid}" for stage ${stageKey} not resolvable — install via hub`);
         }
       }
     }

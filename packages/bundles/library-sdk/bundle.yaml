@@ -1,35 +1,43 @@
 id: library-sdk
-description: Topology bundle for publishable SDKs/libraries (semver, public API surface, bundle size)
+description: Topology bundle for publishable SDKs/libraries (semver, public API
+  surface, bundle size)
 guides:
   - id: sdk-design
     kind: guide.skill
     execution: inferential
-    phase: [design, apply]
     source: assets/bundles/library-sdk/skills/sdk-design.md
+    stage: dev
   - id: layering-rules
     kind: guide.constraint
     execution: computational
-    phase: [apply, verify]
     source: assets/bundles/library-sdk/constraints/layering.yaml
+    stage: dev
   - id: performance-budget
     kind: guide.skill
     execution: inferential
-    phase: [design, apply, verify]
     source: assets/bundles/library-sdk/skills/performance-budget.md
+    stage: dev
 sensors:
   - id: arch-boundary
     kind: sensor.arch
     execution: computational
-    phase: [verify]
     builtin: arch-boundary
     on_fail: block
-    fix_hint: "Keep dependencies inward: public → internal → shared; never export internals directly"
+    fix_hint: "Keep dependencies inward: public → internal → shared; never export
+      internals directly"
+    stage: dev
+    task: verify
   - id: perf-budget
     kind: sensor.budget
     execution: computational
-    phase: [verify]
     builtin: budget
     on_fail: warn
-    fix_hint: "Split modules or move optional adapters behind subpath exports"
+    fix_hint: Split modules or move optional adapters behind subpath exports
+    stage: dev
+    task: verify
 suites:
-  verification: [spec-validate, spec-trace, arch-boundary, perf-budget]
+  verification:
+    - spec-validate
+    - spec-trace
+    - arch-boundary
+    - perf-budget

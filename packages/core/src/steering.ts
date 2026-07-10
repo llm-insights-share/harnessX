@@ -35,7 +35,8 @@ export function distillPattern(ws: Workspace, pattern: FailurePattern, kind: "gu
   const manifest = {
     id,
     kind,
-    phase: kind === "guide.skill" ? ["apply"] : ["verify"],
+    stage: kind === "guide.skill" ? "dev" : "dev",
+    task: kind === "guide.skill" ? "apply" : "verify",
     version: "0.1.0",
     origin: "local",
     status: "draft",

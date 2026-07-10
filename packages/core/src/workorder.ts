@@ -87,7 +87,7 @@ export function hashArtifact(ws: Workspace, relPath: string): string {
 export interface CreateWorkOrderOpts {
   type: WorkOrderType;
   title: string;
-  scope: "prephase" | "change";
+  scope: "req" | "arch" | "change";
   ref?: WorkOrderRef;
   assigneeRole: string;
   createdBy: string;

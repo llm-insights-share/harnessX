@@ -1,24 +1,28 @@
 [
   {
     "id": "propose-has-template",
-    "phase": "propose",
-    "expectGuideIds": ["proposal-template", "cmd-propose"],
+    "stage": "dev",
+    "task": "propose",
+    "expectGuideIds": ["proposal-template", "cmd-propose", "spec-writing"],
     "expectContent": ["Constitution"]
   },
   {
     "id": "apply-no-proposal-noise",
-    "phase": "apply",
+    "stage": "dev",
+    "task": "apply",
     "expectGuideIds": ["coding-conventions", "cmd-apply"],
     "forbidContent": ["You are running the **propose** phase"]
   },
   {
-    "id": "spec-has-spec-writing",
-    "phase": "spec",
-    "expectGuideIds": ["spec-writing", "cmd-spec"]
+    "id": "design-has-design-template",
+    "stage": "dev",
+    "task": "design",
+    "expectGuideIds": ["design-template", "cmd-design"]
   },
   {
-    "id": "plan-phase-scoped",
-    "phase": "plan",
+    "id": "plan-task-scoped",
+    "stage": "dev",
+    "task": "plan",
     "expectGuideIds": ["cmd-plan"],
     "forbidContent": ["You are running the **apply** phase"]
   }

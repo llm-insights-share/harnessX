@@ -7,11 +7,10 @@ import { registerSteeringCommands } from "./steering.js";
 import { registerAssetCommands } from "./assets.js";
 import { registerOrchestrationCommands } from "./orchestration.js";
 import { registerMcpCommand } from "./mcp.js";
-import { registerPrdCommands } from "./prd.js";
 import { registerArchCommands } from "./arch.js";
 import { registerApproveAliases } from "./approve.js";
 import { registerSdlcCommands } from "./sdlc.js";
-import { registerReqCommands, registerDevCommands, registerTestCommands, registerMigrateCommand, registerStageStatusCommand } from "./stages.js";
+import { registerReqCommands, registerDevCommands, registerTestCommands, registerStageStatusCommand } from "./stages.js";
 import { VERSION } from "@harnessx/core";
 
 export const program = new Command("hx")
@@ -24,14 +23,12 @@ registerBehaviourCommands(program);
 registerSteeringCommands(program);
 registerAssetCommands(program);
 registerOrchestrationCommands(program);
-registerPrdCommands(program);
 registerArchCommands(program);
 registerApproveAliases(program);
 registerSdlcCommands(program);
 registerReqCommands(program);
 registerDevCommands(program);
 registerTestCommands(program);
-registerMigrateCommand(program);
 registerStageStatusCommand(program);
 registerMcpCommand(program);
 

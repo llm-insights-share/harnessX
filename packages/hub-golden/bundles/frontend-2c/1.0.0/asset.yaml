@@ -8,3 +8,4 @@ provenance:
   - type: golden-package
     ref: harnessx/bundles/frontend-2c
 metrics: {}
+stage: dev

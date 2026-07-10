@@ -15,7 +15,7 @@ import {
   mergeChangeIntoSpecs,
   readMainSpec,
   archiveChange,
-  setStatus,
+  setStageTask,
   importOpenspec,
   readMeta
 } from "@harnessx/core";
@@ -28,7 +28,7 @@ const sensorDef: SensorDef = {
   id: "spec-validate",
   kind: "sensor.script",
   execution: "computational",
-  trigger: "phase",
+  trigger: "task",
   on_fail: "block",
   max_retries: 0,
   timeout_ms: 120000
@@ -158,7 +158,8 @@ describe("T-102 change create", () => {
 
   it("creates workspace dirs and meta.yaml; requires domains", () => {
     const res = createChange(ws, "add-auth", ["auth"]);
-    expect(res.meta.status).toBe("proposed");
+    expect(res.meta.stage).toBe("dev");
+    expect(res.meta.task).toBe("propose");
     expect(fs.existsSync(ws.metaFile("add-auth"))).toBe(true);
     expect(fs.existsSync(path.join(ws.changeDir("add-auth"), "specs"))).toBe(true);
     expect(() => createChange(ws, "no-domains", [])).toThrow(/domains/);
@@ -229,9 +230,9 @@ describe("T-106 archive", () => {
 
     const blocked = archiveChange(ws, "add-auth");
     expect(blocked.ok).toBe(false);
-    expect(blocked.problems[0]).toMatch(/verified/);
+    expect(blocked.problems[0]).toMatch(/dev\/verify/);
 
-    setStatus(ws, "add-auth", "verified");
+    setStageTask(ws, "add-auth", "dev", "verify");
     const res = archiveChange(ws, "add-auth");
     expect(res.ok).toBe(true);
     expect(readMainSpec(ws, "auth").requirements.map((r) => r.name)).toContain("Session expiry");
@@ -272,7 +273,7 @@ describe("T-108 M1 acceptance: propose→archive E2E", () => {
     // author a real delta, validate, verify, archive
     writeDelta(ws, "session-expiry", "auth", GOOD_DELTA);
     expect(specValidate({ ws, change: "session-expiry", def: sensorDef }).status).toBe("pass");
-    setStatus(ws, "session-expiry", "verified");
+    setStageTask(ws, "session-expiry", "dev", "verify");
     const res = archiveChange(ws, "session-expiry");
     expect(res.ok).toBe(true);
     expect(readMainSpec(ws, "auth").requirements[0].name).toBe("Session expiry");

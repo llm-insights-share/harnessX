@@ -57,7 +57,7 @@ describe("M22-M27 enterprise SDLC workflow", () => {
     const wo = createWorkOrder(ws, {
       type: "req-review",
       title: "Review PRD",
-      scope: "prephase",
+      scope: "req",
       ref: { prd: "member-badge" },
       assigneeRole: "tech-manager",
       createdBy: "pm.chen",
@@ -89,7 +89,7 @@ describe("M22-M27 enterprise SDLC workflow", () => {
 
     const content = fs.readFileSync(ws.prdFile("orders"), "utf8");
     expect(content).toContain("New requirement paragraph");
-    const store = YAML.parse(fs.readFileSync(path.join(ws.root, "docs", ".prephase-approvals.yaml"), "utf8"));
+    const store = YAML.parse(fs.readFileSync(path.join(ws.root, "docs", ".stage-approvals.yaml"), "utf8"));
     expect(store.prd.orders).toBeUndefined();
   });
 

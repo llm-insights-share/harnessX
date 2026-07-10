@@ -1,10 +1,11 @@
 id: proposal-template
 kind: guide.template
 category: maintainability
-phase: [propose]
 version: 1.0.0
 origin: builtin
 status: enforced
 execution: computational
 provenance: []
 metrics: {}
+stage: dev
+task: propose

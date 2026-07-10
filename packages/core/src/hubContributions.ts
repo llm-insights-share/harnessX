@@ -168,7 +168,7 @@ export function hubAcceptContribution(hubRoot: string, ref: ContributionRef, rev
       kind: asset.manifest.kind,
       owner: ref.actor,
       status: asset.manifest.status,
-      phases: asset.manifest.phase ?? [],
+      stages: asset.manifest.stage ? [asset.manifest.stage] : [],
       provenance: { source: `contribution:${ref.actor}`, evidence: [] },
       security: { hash: hashHubAssetDir(official) },
       updatedAt: new Date().toISOString()

@@ -4,8 +4,9 @@ version: 1.0.0
 origin: hub
 status: enforced
 execution: computational
-phase: [plan, apply]
 provenance:
   - type: golden-package
     ref: harnessx/hub-golden
 metrics: {}
+stage: dev
+task: plan

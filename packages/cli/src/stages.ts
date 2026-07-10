@@ -1,14 +1,5 @@
 import { Command } from "commander";
-import fs from "node:fs";
-import YAML from "yaml";
-import {
-  Workspace,
-  migrateMeta,
-  STAGE_INFO,
-  STAGE_TASKS,
-  stageStatus,
-  type DeliveryStage
-} from "@harnessx/core";
+import { Workspace, STAGE_INFO, STAGE_TASKS, stageStatus, readMeta, type DeliveryStage } from "@harnessx/core";
 import { registerPrdOnParent } from "./prd.js";
 
 const ws = () => Workspace.locate(process.cwd());
@@ -33,7 +24,7 @@ export function registerReqCommands(program: Command): void {
   const req = program.command("req").description("Requirements stage (org-level PRD)");
   req.command("status").description("Show req stage task completion").action(() => printStageTasks("req"));
   const prd = req.command("prd").description("PRD authoring");
-  registerPrdOnParent(prd, { deprecatedPrefix: "hx prd" });
+  registerPrdOnParent(prd);
 }
 
 export function registerDevCommands(program: Command): void {
@@ -43,9 +34,9 @@ export function registerDevCommands(program: Command): void {
     .description("Show dev stage task progress")
     .action((change: string) => {
       const w = ws();
-      const meta = migrateMeta(w, change, true);
+      const meta = readMeta(w, change);
       printStageTasks("dev", meta.stageProgress?.dev?.completed ?? []);
-      console.log(`\ncurrent: ${meta.stage}/${meta.task} (legacy status: ${meta.status})`);
+      console.log(`\ncurrent: ${meta.stage}/${meta.task}`);
     });
 }
 
@@ -56,31 +47,8 @@ export function registerTestCommands(program: Command): void {
     .description("Show test stage task progress")
     .action((change: string) => {
       const w = ws();
-      const meta = migrateMeta(w, change, true);
+      const meta = readMeta(w, change);
       printStageTasks("test", meta.stageProgress?.test?.completed ?? []);
-    });
-}
-
-export function registerMigrateCommand(program: Command): void {
-  program
-    .command("migrate")
-    .description("Migrate to four-stage delivery model (v0.5)")
-    .option("--dry-run", "preview without writing meta.yaml")
-    .option("--delivery-mode <mode>", "set config delivery_mode: phases|stages")
-    .action((opts: { dryRun?: boolean; deliveryMode?: string }) => {
-      const w = ws();
-      if (opts.deliveryMode) {
-        if (!["phases", "stages"].includes(opts.deliveryMode)) throw new Error("delivery-mode must be phases or stages");
-        const config = { ...w.readConfig(), delivery_mode: opts.deliveryMode as "phases" | "stages" };
-        fs.writeFileSync(w.configFile, YAML.stringify(config));
-        console.log(`config delivery_mode → ${opts.deliveryMode}`);
-      }
-      const changes = w.listChanges();
-      if (!changes.length) console.log("no active changes to migrate");
-      for (const change of changes) {
-        const meta = migrateMeta(w, change, !!opts.dryRun);
-        console.log(`${change}: stage=${meta.stage} task=${meta.task}${opts.dryRun ? " (dry-run)" : ""}`);
-      }
     });
 }
 
@@ -97,7 +65,7 @@ export function registerStageStatusCommand(program: Command): void {
         return;
       }
       if (!change) throw new Error("change id required for dev/test stage status");
-      const meta = migrateMeta(w, change, true);
+      const meta = readMeta(w, change);
       printStageTasks(st, meta.stageProgress?.[st]?.completed ?? []);
       console.log(`\ncurrent: ${meta.stage}/${meta.task}`);
     });

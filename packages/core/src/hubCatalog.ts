@@ -15,7 +15,7 @@ export interface HubCatalogEntry {
   category: HubAssetCategory;
   kind?: string;
   status?: string;
-  phase?: string[];
+  stages?: string[];
   description?: string;
   owner?: string;
   review?: string;
@@ -25,7 +25,7 @@ export interface HubCatalogEntry {
 export interface HubCatalogFilters {
   kind?: string;
   category?: HubAssetCategory;
-  phase?: string;
+  stage?: string;
   status?: string;
   owner?: string;
   query?: string;
@@ -83,7 +83,7 @@ export function buildHubCatalog(hubRoot: string): HubCatalogEntry[] {
           category,
           kind: manifest?.kind,
           status: meta.status ?? manifest?.status,
-          phase: manifest?.phase ?? meta.phases,
+          stages: manifest?.stage ? [manifest.stage] : meta.stages,
           description: readDesc(dir, category),
           owner: meta.owner,
           review: review.status,
@@ -105,7 +105,7 @@ export function buildHubCatalog(hubRoot: string): HubCatalogEntry[] {
         category: "package",
         kind: manifest?.kind ?? loc.kind,
         status: meta.status ?? manifest?.status,
-        phase: manifest?.phase ?? meta.phases,
+        stages: manifest?.stage ? [manifest.stage] : meta.stages,
         description: readDesc(dir, "package"),
         owner: meta.owner,
         review: review.status,
@@ -125,7 +125,7 @@ export function queryHubCatalog(hubRoot: string, filters: HubCatalogFilters = {}
   return buildHubCatalog(hubRoot).filter((e) => {
     if (filters.kind && e.kind !== filters.kind) return false;
     if (filters.category && e.category !== filters.category) return false;
-    if (filters.phase && !(e.phase ?? []).includes(filters.phase)) return false;
+    if (filters.stage && !(e.stages ?? []).includes(filters.stage)) return false;
     if (filters.status && e.status !== filters.status) return false;
     if (filters.owner && e.owner !== filters.owner) return false;
     if (q) {

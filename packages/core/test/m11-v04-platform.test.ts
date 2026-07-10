@@ -25,7 +25,7 @@ describe("v0.4 platform upgrade", () => {
     const ws = initWorkspace(tmp()).ws;
     createChange(ws, "ui1", ["web"], "enterprise");
     fs.writeFileSync(path.join(ws.changeDir("ui1"), "proposal.md"), "## What Changes\n\nNew checkout UI pages\n");
-    const def = { id: "prototype-complete", kind: "sensor.script" as const, execution: "computational" as const, trigger: "phase" as const, on_fail: "block" as const, max_retries: 0, timeout_ms: 5000 };
+    const def = { id: "prototype-complete", kind: "sensor.script" as const, execution: "computational" as const, trigger: "task" as const, on_fail: "block" as const, max_retries: 0, timeout_ms: 5000 };
     const report = prototypeComplete({ ws, change: "ui1", def });
     expect(report.status).toBe("fail");
   });
@@ -33,7 +33,7 @@ describe("v0.4 platform upgrade", () => {
   it("uat-complete requires uat-checklist.md", () => {
     const ws = initWorkspace(tmp()).ws;
     createChange(ws, "r1", ["auth"], "enterprise");
-    const def = { id: "uat-complete", kind: "sensor.script" as const, execution: "computational" as const, trigger: "phase" as const, on_fail: "block" as const, max_retries: 0, timeout_ms: 5000 };
+    const def = { id: "uat-complete", kind: "sensor.script" as const, execution: "computational" as const, trigger: "task" as const, on_fail: "block" as const, max_retries: 0, timeout_ms: 5000 };
     expect(uatComplete({ ws, change: "r1", def }).status).toBe("fail");
     fs.writeFileSync(
       path.join(ws.changeDir("r1"), "uat-checklist.md"),
@@ -44,7 +44,7 @@ describe("v0.4 platform upgrade", () => {
 
   it("drift sensor is registered and runs without crash", () => {
     const ws = initWorkspace(tmp()).ws;
-    const def = { id: "drift", kind: "sensor.drift" as const, execution: "computational" as const, trigger: "phase" as const, on_fail: "warn" as const, max_retries: 0, timeout_ms: 5000 };
+    const def = { id: "drift", kind: "sensor.drift" as const, execution: "computational" as const, trigger: "task" as const, on_fail: "warn" as const, max_retries: 0, timeout_ms: 5000 };
     const report = driftSensor({ ws, def });
     expect(report.status).toBe("pass");
     expect(builtinSensors.drift).toBeDefined();
@@ -52,7 +52,7 @@ describe("v0.4 platform upgrade", () => {
 
   it("integration-smoke skips when no integration script", () => {
     const ws = initWorkspace(tmp()).ws;
-    const def = { id: "integration-smoke", kind: "sensor.script" as const, execution: "computational" as const, trigger: "phase" as const, on_fail: "warn" as const, max_retries: 0, timeout_ms: 5000 };
+    const def = { id: "integration-smoke", kind: "sensor.script" as const, execution: "computational" as const, trigger: "task" as const, on_fail: "warn" as const, max_retries: 0, timeout_ms: 5000 };
     const report = integrationSmoke({ ws, def });
     expect(report.status).toBe("pass");
     expect(report.summary).toMatch(/skipped/);
@@ -84,7 +84,7 @@ describe("v0.4 platform upgrade", () => {
     const ws = initWorkspace(tmp()).ws;
     createChange(ws, "c1", ["auth"]);
     const html = renderDashboard(ws);
-    expect(html).toContain("Phase funnel");
+    expect(html).toContain("Stage funnel");
     expect(html).toContain("Asset effectiveness");
     expect(html).toContain("First-attempt pass");
     expect(phaseFunnel(ws).length).toBeGreaterThan(0);

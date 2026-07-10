@@ -3,48 +3,10 @@ import { z } from "zod";
 /** Plugin API version (NFR-008): consumers accept same major. */
 export const PLUGIN_API_VERSION = "1.0.0";
 
-import type { DeliveryStage } from "./stages.js";
+export const DELIVERY_STAGE = z.enum(["req", "arch", "dev", "test"]);
+export type DeliveryStage = z.infer<typeof DELIVERY_STAGE>;
 
-/* ── Phase model (§15.1): legacy gate commands — prefer DELIVERY_STAGES + STAGE_TASKS in stages.ts ── */
-
-export const PHASE_STATES = [
-  "explore",
-  "proposed",
-  "designed",
-  "specified",
-  "planned",
-  "test_designed",
-  "implementing",
-  "verified",
-  "archived"
-] as const;
-export type PhaseState = (typeof PHASE_STATES)[number];
-
-export interface PhaseInfo {
-  display: string;
-  state: PhaseState;
-  command: string;
-}
-
-/** Single mapping between the three naming schemes (design doc §15.1). */
-export const PHASES: PhaseInfo[] = [
-  { display: "Explore", state: "explore", command: "explore" },
-  { display: "Propose", state: "proposed", command: "propose" },
-  { display: "Design", state: "designed", command: "design" },
-  { display: "Spec", state: "specified", command: "spec" },
-  { display: "Plan", state: "planned", command: "plan" },
-  { display: "TestDesign", state: "test_designed", command: "test-design" },
-  { display: "Apply", state: "implementing", command: "apply" },
-  { display: "Verify", state: "verified", command: "verify" },
-  { display: "Archive", state: "archived", command: "archive" }
-];
-
-export const phaseByCommand = (cmd: string): PhaseInfo | undefined =>
-  PHASES.find((p) => p.command === cmd);
-export const phaseByState = (state: string): PhaseInfo | undefined =>
-  PHASES.find((p) => p.state === state);
-
-/* ── Asset kinds: direction is encoded in the kind prefix; execution is orthogonal (§8.1) ── */
+/* ── Asset kinds ── */
 
 export const GUIDE_KINDS = [
   "guide.template",
@@ -92,8 +54,7 @@ export const GuideDef = z.object({
   id: z.string(),
   kind: z.enum(GUIDE_KINDS),
   execution: Execution,
-  phase: z.array(z.string()).default([]),
-  stage: z.enum(["req", "arch", "dev", "test"]).optional(),
+  stage: DELIVERY_STAGE,
   task: z.string().optional(),
   source: z.string(),
   priority: z.number().optional()
@@ -106,10 +67,9 @@ export const SensorDef = z.object({
   id: z.string(),
   kind: z.enum(SENSOR_KINDS),
   execution: Execution,
-  phase: z.array(z.string()).optional(),
-  stage: z.enum(["req", "arch", "dev", "test"]).optional(),
+  stage: DELIVERY_STAGE.optional(),
   task: z.string().optional(),
-  trigger: z.enum(["phase", "file-save", "schedule"]).default("phase"),
+  trigger: z.enum(["task", "file-save", "schedule"]).default("task"),
   scope: z.array(z.string()).optional(),
   run: z.string().optional(),
   builtin: z.string().optional(),
@@ -123,10 +83,7 @@ export const SensorDef = z.object({
 export type SensorDef = z.infer<typeof SensorDef>;
 
 export const ProfileDef = z.object({
-  /** Legacy phase sequence (compat delivery_mode: phases). */
-  phases: z.array(z.string()).optional(),
-  /** Four-stage delivery model (delivery_mode: stages). */
-  stages: z.array(z.enum(["req", "arch", "dev", "test"])).optional(),
+  stages: z.array(DELIVERY_STAGE),
   dev_tasks: z.array(z.string()).optional(),
   test_tasks: z.array(z.string()).optional(),
   req_tasks: z.array(z.string()).optional(),
@@ -175,8 +132,6 @@ export const ConfigYaml = z.object({
   profile: z.string().default("standard"),
   locale: z.enum(["en", "zh-CN"]).default("en"),
   compat_mode: z.enum(["openspec"]).optional(),
-  /** phases = legacy 9 gate phases; stages = req/arch/dev/test model (v0.5). */
-  delivery_mode: z.enum(["phases", "stages"]).default("phases"),
   hub: HubConfigField.optional(),
   adapter: z
     .object({
@@ -194,8 +149,8 @@ export const ConfigYaml = z.object({
 });
 export type ConfigYaml = z.infer<typeof ConfigYaml>;
 
-/** Delivery blueprint — composes profile, phase assets, and hub dependencies. */
-export const BlueprintPhaseDef = z.object({
+/** Delivery blueprint — composes profile, stage assets, and hub dependencies. */
+export const BlueprintStageDef = z.object({
   guides: z.array(z.string()).optional(),
   sensors: z.array(z.string()).optional()
 });
@@ -204,7 +159,7 @@ export const BlueprintYaml = z.object({
   name: z.string(),
   extends: z.string().optional(),
   hub_deps: z.array(z.string()).default([]),
-  phases: z.record(BlueprintPhaseDef).optional()
+  stages: z.record(BlueprintStageDef).optional()
 });
 export type BlueprintYaml = z.infer<typeof BlueprintYaml>;
 
@@ -230,9 +185,8 @@ export const WaiverRecord = z.object({
 export type WaiverRecord = z.infer<typeof WaiverRecord>;
 
 export const GateHistoryEntry = z.object({
-  phase: z.string().optional(),
-  stage: z.enum(["req", "arch", "dev", "test"]).optional(),
-  task: z.string().optional(),
+  stage: DELIVERY_STAGE,
+  task: z.string(),
   suite: z.string().optional(),
   at: z.string(),
   passed: z.boolean(),
@@ -259,14 +213,14 @@ export const ArchRegistry = z.object({
 });
 export type ArchRegistry = z.infer<typeof ArchRegistry>;
 
-/** Org-level pre-phase approvals at docs/.prephase-approvals.yaml */
-export const PrephaseApprovals = z.object({
-  version: z.string().default("1.1"),
+/** Org-level req/arch approvals at docs/.stage-approvals.yaml */
+export const StageApprovals = z.object({
+  version: z.string().default("2.0"),
   prd: z.record(ApprovalRecord).default({}),
   arch: ApprovalRecord.optional(),
   archLld: z.record(ApprovalRecord).default({})
 });
-export type PrephaseApprovals = z.infer<typeof PrephaseApprovals>;
+export type StageApprovals = z.infer<typeof StageApprovals>;
 
 /* ── Work orders (enterprise SDLC) ── */
 
@@ -327,7 +281,7 @@ export const WorkOrderYaml = z.object({
   type: z.enum(WORK_ORDER_TYPES),
   title: z.string(),
   status: z.enum(WORK_ORDER_STATUSES),
-  scope: z.enum(["prephase", "change"]),
+  scope: z.enum(["req", "arch", "change"]),
   ref: WorkOrderRef.default({}),
   assigneeRole: z.string(),
   createdBy: z.string(),
@@ -452,9 +406,8 @@ export type TaskHistoryEntry = z.infer<typeof TaskHistoryEntry>;
 
 export const MetaYaml = z.object({
   change: z.string(),
-  status: z.enum(PHASE_STATES),
-  stage: z.enum(["req", "arch", "dev", "test"]).optional(),
-  task: z.string().optional(),
+  stage: DELIVERY_STAGE,
+  task: z.string(),
   stageProgress: z.record(StageProgressEntry).optional(),
   taskHistory: z.array(TaskHistoryEntry).default([]),
   profile: z.string(),
@@ -483,8 +436,7 @@ export const AssetManifest = z.object({
   id: z.string(),
   kind: AssetKind,
   category: z.enum(["maintainability", "architecture", "behaviour"]).optional(),
-  phase: z.array(z.string()).default([]),
-  stage: z.enum(["req", "arch", "dev", "test"]).optional(),
+  stage: DELIVERY_STAGE,
   task: z.string().optional(),
   version: z.string().default("0.1.0"),
   owner: z.string().optional(),
@@ -505,7 +457,7 @@ export const HubAssetMetaYaml = z.object({
   category: z.enum(["package", "bundle", "blueprint"]),
   status: z.enum(["draft", "trial", "enforced", "deprecated", "archived"]).default("trial"),
   owner: z.string().optional(),
-  phases: z.array(z.string()).default([]),
+  stages: z.array(DELIVERY_STAGE).default([]),
   tags: z.array(z.string()).default([]),
   security: z.object({ hash: z.string().optional(), signature: z.string().optional() }).optional(),
   updatedAt: z.string().optional()

@@ -1,35 +1,42 @@
 id: mobile-app
-description: Topology bundle for mobile apps (screens/features layering, offline, binary size)
+description: Topology bundle for mobile apps (screens/features layering,
+  offline, binary size)
 guides:
   - id: mobile-architecture
     kind: guide.skill
     execution: inferential
-    phase: [design, apply]
     source: assets/bundles/mobile-app/skills/mobile-architecture.md
+    stage: dev
   - id: layering-rules
     kind: guide.constraint
     execution: computational
-    phase: [apply, verify]
     source: assets/bundles/mobile-app/constraints/layering.yaml
+    stage: dev
   - id: performance-budget
     kind: guide.skill
     execution: inferential
-    phase: [design, apply, verify]
     source: assets/bundles/mobile-app/skills/performance-budget.md
+    stage: dev
 sensors:
   - id: arch-boundary
     kind: sensor.arch
     execution: computational
-    phase: [verify]
     builtin: arch-boundary
     on_fail: block
     fix_hint: "Keep dependencies inward: screens → features → domain → shared"
+    stage: dev
+    task: verify
   - id: perf-budget
     kind: sensor.budget
     execution: computational
-    phase: [verify]
     builtin: budget
     on_fail: warn
-    fix_hint: "Split large screens; move data access behind domain services"
+    fix_hint: Split large screens; move data access behind domain services
+    stage: dev
+    task: verify
 suites:
-  verification: [spec-validate, spec-trace, arch-boundary, perf-budget]
+  verification:
+    - spec-validate
+    - spec-trace
+    - arch-boundary
+    - perf-budget

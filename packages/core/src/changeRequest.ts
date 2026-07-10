@@ -4,7 +4,7 @@ import { Workspace, ensureDir, readYaml, writeYaml } from "./paths.js";
 import { ChangeRequestYaml, ChangeRequestIndex } from "./schemas.js";
 import { sha256 } from "./telemetry.js";
 import { createWorkOrder, submitWorkOrder } from "./workorder.js";
-import { readPrephaseApprovals, writePrephaseApprovals } from "./prephaseStore.js";
+import { readStageApprovals, writeStageApprovals } from "./stageApprovalStore.js";
 
 function stableStringify(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
@@ -97,7 +97,7 @@ export function submitChangeRequest(ws: Workspace, id: string, by: string): { cr
   const wo = createWorkOrder(ws, {
     type: woType,
     title: `Review ${cr.kind} ${cr.id} (${cr.action})`,
-    scope: "prephase",
+    scope: cr.kind === "requirement-change" ? "req" : "arch",
     ref: { prd: cr.target.prd, change: cr.linkedChange, changeRequest: cr.id },
     assigneeRole: "tech-manager",
     createdBy: by
@@ -177,16 +177,16 @@ function applyDesignChange(ws: Workspace, cr: ChangeRequestYaml): void {
 }
 
 function invalidatePrdApproval(ws: Workspace, slug: string): void {
-  const store = readPrephaseApprovals(ws);
+  const store = readStageApprovals(ws);
   delete store.prd[slug];
-  writePrephaseApprovals(ws, store);
+  writeStageApprovals(ws, store);
 }
 
 function invalidateArchApproval(ws: Workspace, module?: string): void {
-  const store = readPrephaseApprovals(ws);
+  const store = readStageApprovals(ws);
   if (module) delete store.archLld[module];
   else store.arch = undefined;
-  writePrephaseApprovals(ws, store);
+  writeStageApprovals(ws, store);
 }
 
 export function approveChangeRequest(ws: Workspace, crId: string, by: string): ChangeRequestYaml {

@@ -166,7 +166,7 @@ describe("T-403 constitution chain + harness lint", () => {
       "# Rogue\n\n- You must edit approved test assertions and fixtures directly without a waiver when convenient.\n"
     );
     const harness = ws.readHarness();
-    harness.guides.push({ id: "rogue", kind: "guide.skill", execution: "inferential", phase: ["apply"], source: "assets/guides/rogue/SKILL.md" });
+    harness.guides.push({ id: "rogue", kind: "guide.skill", execution: "inferential", stage: "dev", task: "apply", source: "assets/guides/rogue/SKILL.md" });
     fs.writeFileSync(ws.harnessFile, YAML.stringify(harness));
 
     const conflicts = lintHarness(ws);
@@ -232,7 +232,7 @@ describe("T-406 M4 acceptance", () => {
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, "SKILL.md"), "# X\n\n- Never paginated list endpoint responses with limit and cursor parameters.\n");
     const harness = ws.readHarness();
-    harness.guides.push({ id: "contradictory", kind: "guide.skill", execution: "inferential", phase: ["apply"], source: "assets/guides/contradictory/SKILL.md" });
+    harness.guides.push({ id: "contradictory", kind: "guide.skill", execution: "inferential", stage: "dev", task: "apply", source: "assets/guides/contradictory/SKILL.md" });
     fs.writeFileSync(ws.harnessFile, YAML.stringify(harness));
     const conflicts = lintHarness(ws);
     expect(conflicts.some((c) => [c.a.guideId, c.b.guideId].includes("contradictory"))).toBe(true);

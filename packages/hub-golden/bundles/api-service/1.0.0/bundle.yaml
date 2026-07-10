@@ -1,42 +1,52 @@
 id: api-service
-description: Topology bundle for backend API services (layered architecture + performance budgets)
+description: Topology bundle for backend API services (layered architecture +
+  performance budgets)
 guides:
   - id: api-design
     kind: guide.skill
     execution: inferential
-    phase: [design, apply]
     source: assets/bundles/api-service/skills/api-design.md
+    stage: dev
   - id: layering-rules
     kind: guide.constraint
     execution: computational
-    phase: [apply, verify]
     source: assets/bundles/api-service/constraints/layering.yaml
+    stage: dev
   - id: performance-budget
     kind: guide.skill
     execution: inferential
-    phase: [design, apply, verify]
     source: assets/bundles/api-service/skills/performance-budget.md
+    stage: dev
 sensors:
   - id: arch-boundary
     kind: sensor.arch
     execution: computational
-    phase: [verify]
     builtin: arch-boundary
     on_fail: block
-    fix_hint: "Move the import so dependencies point inward: routes -> services -> repositories"
+    fix_hint: "Move the import so dependencies point inward: routes -> services ->
+      repositories"
+    stage: dev
+    task: verify
   - id: perf-budget
     kind: sensor.budget
     execution: computational
-    phase: [verify]
     builtin: budget
     on_fail: warn
+    stage: dev
+    task: verify
   - id: integration-smoke
     kind: sensor.script
     execution: computational
-    phase: [verify]
     builtin: integration-smoke
     on_fail: warn
     timeout_ms: 120000
-    fix_hint: "Add npm run test:integration or fix failing integration tests"
+    fix_hint: Add npm run test:integration or fix failing integration tests
+    stage: dev
+    task: verify
 suites:
-  verification: [spec-validate, spec-trace, arch-boundary, perf-budget, integration-smoke]
+  verification:
+    - spec-validate
+    - spec-trace
+    - arch-boundary
+    - perf-budget
+    - integration-smoke

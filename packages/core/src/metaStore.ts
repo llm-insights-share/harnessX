@@ -1,10 +1,10 @@
 import fs from "node:fs";
+import path from "node:path";
 import YAML from "yaml";
-import { MetaYaml, type GateHistoryEntry, type ApprovalRecord, type WaiverRecord, type PhaseState } from "./schemas.js";
-import { ensureStageFields, migrateMetaV04ToV05 } from "./stageMigration.js";
+import { MetaYaml, type GateHistoryEntry, type ApprovalRecord, type WaiverRecord } from "./schemas.js";
+import type { DeliveryStage } from "./stages.js";
 import { Workspace, ensureDir, writeYaml } from "./paths.js";
 import { sha256, runsLogHash } from "./telemetry.js";
-import path from "node:path";
 
 /**
  * Exclusive meta.yaml writer (FR-050): every mutation goes through this module,
@@ -35,15 +35,7 @@ export function writeMeta(ws: Workspace, meta: MetaYaml): void {
 }
 
 export function readMeta(ws: Workspace, change: string): MetaYaml {
-  const meta = MetaYaml.parse(YAML.parse(fs.readFileSync(ws.metaFile(change), "utf8")));
-  return ensureStageFields(meta);
-}
-
-export function migrateMeta(ws: Workspace, change: string, dryRun = false): MetaYaml {
-  const raw = MetaYaml.parse(YAML.parse(fs.readFileSync(ws.metaFile(change), "utf8")));
-  const migrated = ensureStageFields(raw);
-  if (!dryRun) writeMeta(ws, migrated);
-  return migrated;
+  return MetaYaml.parse(YAML.parse(fs.readFileSync(ws.metaFile(change), "utf8")));
 }
 
 export interface MetaVerifyResult {
@@ -81,7 +73,6 @@ export function initMeta(
 ): MetaYaml {
   const meta = MetaYaml.parse({
     change,
-    status: "proposed",
     profile,
     touchedDomains: domains,
     stage: "dev",
@@ -95,9 +86,10 @@ export function initMeta(
   return meta;
 }
 
-export function setStatus(ws: Workspace, change: string, status: PhaseState): MetaYaml {
+export function setStageTask(ws: Workspace, change: string, stage: DeliveryStage, task: string): MetaYaml {
   const meta = readMeta(ws, change);
-  meta.status = status;
+  meta.stage = stage;
+  meta.task = task;
   writeMeta(ws, meta);
   return meta;
 }

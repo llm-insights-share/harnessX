@@ -1,8 +1,8 @@
 id: fe-layout
 kind: guide.skill
 category: architecture
-phase: [design, apply]
 version: 1.0.0
 origin: builtin
 status: enforced
 execution: inferential
+stage: dev

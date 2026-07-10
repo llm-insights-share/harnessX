@@ -26,7 +26,7 @@ const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "hx-m10-"));
 
 function makeAsset(dir: string, id: string, over: Record<string, unknown> = {}, content = `# Skill: ${id}\n\n- Be excellent.\n`) {
   fs.mkdirSync(dir, { recursive: true });
-  writeYaml(path.join(dir, "asset.yaml"), { id, kind: "guide.skill", version: "1.0.0", status: "trial", ...over });
+  writeYaml(path.join(dir, "asset.yaml"), { id, kind: "guide.skill", version: "1.0.0", status: "trial", stage: "dev", task: "apply", ...over });
   fs.writeFileSync(path.join(dir, "SKILL.md"), content);
 }
 

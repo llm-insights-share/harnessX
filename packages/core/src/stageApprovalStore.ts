@@ -1,26 +1,27 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Workspace, writeYaml, readYaml } from "./paths.js";
-import { ApprovalRecord, PrephaseApprovals } from "./schemas.js";
+import { ApprovalRecord, StageApprovals } from "./schemas.js";
 import { sha256 } from "./telemetry.js";
+import type { DeliveryStage } from "./stages.js";
 
-/** Workspace-level PRD/arch human approvals (pre-phase, outside change meta). */
-export function prephaseApprovalsFile(ws: Workspace): string {
-  return path.join(ws.root, "docs", ".prephase-approvals.yaml");
+/** Workspace-level req/arch human approvals at docs/.stage-approvals.yaml */
+export function stageApprovalsFile(ws: Workspace): string {
+  return path.join(ws.root, "docs", ".stage-approvals.yaml");
 }
 
-export function readPrephaseApprovals(ws: Workspace): PrephaseApprovals {
-  const file = prephaseApprovalsFile(ws);
+export function readStageApprovals(ws: Workspace): StageApprovals {
+  const file = stageApprovalsFile(ws);
   if (!fs.existsSync(file)) {
-    return PrephaseApprovals.parse({ version: "1.1", prd: {}, arch: undefined, archLld: {} });
+    return StageApprovals.parse({ version: "2.0", prd: {}, arch: undefined, archLld: {} });
   }
   const raw = readYaml<Record<string, unknown>>(file) as Record<string, unknown> & { archLld?: unknown };
   if (!raw.archLld) raw.archLld = {};
-  return PrephaseApprovals.parse(raw);
+  return StageApprovals.parse(raw);
 }
 
-export function writePrephaseApprovals(ws: Workspace, data: PrephaseApprovals): void {
-  writeYaml(prephaseApprovalsFile(ws), data);
+export function writeStageApprovals(ws: Workspace, data: StageApprovals): void {
+  writeYaml(stageApprovalsFile(ws), data);
 }
 
 export function prdArtifactHash(ws: Workspace, slug: string): string {
@@ -43,14 +44,14 @@ export function archLldArtifactHash(ws: Workspace, moduleId: string): string {
 }
 
 /** Record human sign-off for org-level PRD, global arch HLD, or module LLD. */
-export function recordPrephaseApproval(
+export function recordStageApproval(
   ws: Workspace,
   gate: "prd" | "arch" | "arch-lld",
   approver: string,
   prdSlug?: string,
   moduleId?: string
 ): ApprovalRecord {
-  const store = readPrephaseApprovals(ws);
+  const store = readStageApprovals(ws);
   let artifactHash = "";
   if (gate === "prd") {
     if (!prdSlug) throw new Error("--prd <slug> required for gate prd");
@@ -77,27 +78,27 @@ export function recordPrephaseApproval(
   } else {
     store.archLld[moduleId!] = record;
   }
-  writePrephaseApprovals(ws, store);
+  writeStageApprovals(ws, store);
   return record;
 }
 
 export function prdApproval(ws: Workspace, slug: string): ApprovalRecord | undefined {
-  return readPrephaseApprovals(ws).prd[slug];
+  return readStageApprovals(ws).prd[slug];
 }
 
 export function archApproval(ws: Workspace): ApprovalRecord | undefined {
-  return readPrephaseApprovals(ws).arch;
+  return readStageApprovals(ws).arch;
 }
 
 export function archLldApproval(ws: Workspace, moduleId: string): ApprovalRecord | undefined {
-  return readPrephaseApprovals(ws).archLld[moduleId];
+  return readStageApprovals(ws).archLld[moduleId];
 }
 
 /** True when approval exists and still matches current artifact content. */
-export function isPrephaseApproved(ws: Workspace, gate: "prd" | "arch", prdSlug?: string): boolean {
-  const record = gate === "prd" ? prdApproval(ws, prdSlug!) : archApproval(ws);
+export function isStageApproved(ws: Workspace, stage: "req" | "arch", prdSlug?: string): boolean {
+  const record = stage === "req" ? prdApproval(ws, prdSlug!) : archApproval(ws);
   if (!record) return false;
-  const current = gate === "prd" ? prdArtifactHash(ws, prdSlug!) : archArtifactHash(ws);
+  const current = stage === "req" ? prdArtifactHash(ws, prdSlug!) : archArtifactHash(ws);
   return Boolean(current) && record.artifactHash === current;
 }
 
@@ -107,3 +108,16 @@ export function isArchLldApproved(ws: Workspace, moduleId: string): boolean {
   const current = archLldArtifactHash(ws, moduleId);
   return Boolean(current) && record.artifactHash === current;
 }
+
+/** @deprecated use isStageApproved */
+export const isPrephaseApproved = (ws: Workspace, gate: "prd" | "arch", prdSlug?: string) =>
+  isStageApproved(ws, gate === "prd" ? "req" : "arch", prdSlug);
+
+/** @deprecated use recordStageApproval */
+export const recordPrephaseApproval = recordStageApproval;
+
+/** @deprecated use readStageApprovals */
+export const readPrephaseApprovals = readStageApprovals;
+
+/** @deprecated use writeStageApprovals */
+export const writePrephaseApprovals = writeStageApprovals;

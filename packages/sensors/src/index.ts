@@ -27,7 +27,7 @@ import {
   archDrift
 } from "./arch.js";
 import {
-  woPrephaseClear,
+  woReqArchClear,
   requirementsExtendedComplete,
   testCasesComplete,
   testCasesApproved,
@@ -93,7 +93,8 @@ export const builtinSensors: Record<string, BuiltinSensor> = {
   "arch-change-align": archChangeAlign,
   "arch-approved": archApproved,
   "arch-drift": archDrift,
-  "wo-prephase-clear": woPrephaseClear,
+  "wo-req-arch-clear": woReqArchClear,
+  "wo-prephase-clear": woReqArchClear,
   "requirements-extended-complete": requirementsExtendedComplete,
   "test-cases-complete": testCasesComplete,
   "test-cases-approved": testCasesApproved,

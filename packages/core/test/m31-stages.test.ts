@@ -7,16 +7,12 @@ import {
   initWorkspace,
   createChange,
   readMeta,
-  migrateMetaV04ToV05,
-  ensureStageFields,
   profileStages,
   profileDevTasks,
-  nextTask,
-  STAGE_TASKS,
-  DELIVERY_STAGES,
-  statusToStageTask,
-  MetaYaml
+  orchestration
 } from "@harnessx/core";
+
+const { nextTask, DELIVERY_STAGES, STAGE_TASKS } = orchestration;
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "hx-m31-"));
 
@@ -28,11 +24,11 @@ describe("four-stage delivery model", () => {
     expect(STAGE_TASKS.test.map((t) => t.id)).toContain("test-case-design");
   });
 
-  it("migrates legacy meta.status to stage+task", () => {
-    const meta = MetaYaml.parse({ change: "c1", status: "planned", profile: "standard" });
-    const m = migrateMetaV04ToV05(meta);
-    expect(m.stage).toBe("dev");
-    expect(m.task).toBe("plan");
+  it("createChange initializes meta at dev/propose", () => {
+    const { ws } = initWorkspace(tmp());
+    const { meta } = createChange(ws, "c1", ["auth"], "standard");
+    expect(meta.stage).toBe("dev");
+    expect(meta.task).toBe("propose");
   });
 
   it("resolves profile stages and dev_tasks from harness.yaml", () => {
@@ -54,19 +50,14 @@ describe("four-stage delivery model", () => {
     expect(next).toEqual({ stage: "dev", task: "design" });
   });
 
-  it("statusToStageTask maps all phase states", () => {
-    expect(statusToStageTask("test_designed")).toEqual({ stage: "test", task: "test-case-design" });
-    expect(statusToStageTask("implementing")).toEqual({ stage: "dev", task: "apply" });
-  });
-
-  it("ensureStageFields fills missing stage on read", () => {
-    const dir = tmp();
-    const { ws } = initWorkspace(dir);
+  it("nextTask crosses stages when dev tasks are complete", () => {
+    const { ws } = initWorkspace(tmp());
     createChange(ws, "c2", ["billing"], "standard");
-    const raw = readMeta(ws, "c2");
-    delete (raw as { stage?: string }).stage;
-    const filled = ensureStageFields(raw);
-    expect(filled.stage).toBe("dev");
-    expect(filled.task).toBe("propose");
+    const harness = ws.readHarness();
+    const meta = readMeta(ws, "c2");
+    meta.stage = "dev";
+    meta.task = "archive";
+    const next = nextTask(harness, meta);
+    expect(next).toEqual({ stage: "test", task: "test-case-design" });
   });
 });

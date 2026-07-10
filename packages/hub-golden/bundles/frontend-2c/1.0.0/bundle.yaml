@@ -1,35 +1,42 @@
 id: frontend-2c
-description: Topology bundle for consumer-facing websites (marketing, official sites, SEO/LCP budgets)
+description: Topology bundle for consumer-facing websites (marketing, official
+  sites, SEO/LCP budgets)
 guides:
   - id: web-2c-architecture
     kind: guide.skill
     execution: inferential
-    phase: [design, apply]
     source: assets/bundles/frontend-2c/skills/web-2c-architecture.md
+    stage: dev
   - id: layering-rules
     kind: guide.constraint
     execution: computational
-    phase: [apply, verify]
     source: assets/bundles/frontend-2c/constraints/layering.yaml
+    stage: dev
   - id: performance-budget
     kind: guide.skill
     execution: inferential
-    phase: [design, apply, verify]
     source: assets/bundles/frontend-2c/skills/performance-budget.md
+    stage: dev
 sensors:
   - id: arch-boundary
     kind: sensor.arch
     execution: computational
-    phase: [verify]
     builtin: arch-boundary
     on_fail: block
     fix_hint: "Keep dependencies inward: pages → sections → components → shared"
+    stage: dev
+    task: verify
   - id: perf-budget
     kind: sensor.budget
     execution: computational
-    phase: [verify]
     builtin: budget
     on_fail: warn
-    fix_hint: "Optimize LCP/CLS-critical paths; lazy-load below-the-fold content"
+    fix_hint: Optimize LCP/CLS-critical paths; lazy-load below-the-fold content
+    stage: dev
+    task: verify
 suites:
-  verification: [spec-validate, spec-trace, arch-boundary, perf-budget]
+  verification:
+    - spec-validate
+    - spec-trace
+    - arch-boundary
+    - perf-budget

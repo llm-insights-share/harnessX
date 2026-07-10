@@ -28,7 +28,8 @@ describe("hub package kind paths", () => {
       id: "api-conventions",
       kind: "guide.skill",
       version: "1.0.0",
-      status: "trial"
+      status: "trial",
+      stage: "dev"
     });
     fs.writeFileSync(path.join(kindDir, "SKILL.md"), "# Skill\n");
 
@@ -38,7 +39,8 @@ describe("hub package kind paths", () => {
       id: "legacy-skill",
       kind: "guide.skill",
       version: "1.0.0",
-      status: "trial"
+      status: "trial",
+      stage: "dev"
     });
 
     expect(resolveHubPackageDir(hub, { id: "api-conventions", version: "1.0.0" })).toBe(kindDir);

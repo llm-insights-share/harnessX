@@ -128,7 +128,7 @@ export function registerFoundationCommands(program: Command): void {
     const w = ws();
     for (const id of w.listChanges()) {
       const meta = w.readMetaRaw(id);
-      console.log(`${id}\t${meta.status}\t${meta.profile}\t[${meta.touchedDomains.join(",")}]`);
+      console.log(`${id}\t${meta.stage}/${meta.task}\t${meta.profile}\t[${meta.touchedDomains.join(",")}]`);
     }
   });
 

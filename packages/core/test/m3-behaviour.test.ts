@@ -20,7 +20,7 @@ import {
   collectStatus,
   addWaiver,
   readMeta,
-  setStatus,
+  setStageTask,
   expiredWaivers,
   activeWaivers,
   generateTasks,
@@ -89,16 +89,16 @@ describe("T-300 traceability", () => {
 describe("T-301 verify", () => {
   it("blocks on uncovered scenarios, verifies when all covered", async () => {
     const ws = setup();
-    setStatus(ws, "c1", "implementing");
+    setStageTask(ws, "c1", "dev", "apply");
     const blocked = await verifyChange(ws, "c1", opts());
     expect(blocked.verified).toBe(false);
     expect(blocked.gate.blockers.join()).toMatch(/uncovered scenario/);
-    expect(readMeta(ws, "c1").status).toBe("implementing");
+    expect(readMeta(ws, "c1").task).toBe("apply");
 
     writeTest(ws, "auth.test.ts", ["idle timeout", "refresh resets timer"]);
     const ok = await verifyChange(ws, "c1", opts());
     expect(ok.verified).toBe(true);
-    expect(readMeta(ws, "c1").status).toBe("verified");
+    expect(readMeta(ws, "c1").task).toBe("verify");
   });
 });
 
@@ -202,7 +202,7 @@ describe("T-306 waivers", () => {
 describe("T-307 M3 acceptance", () => {
   it("uncovered blocks verify; fixture tamper detected; waiver flow unblocks", async () => {
     const ws = setup();
-    setStatus(ws, "c1", "implementing");
+    setStageTask(ws, "c1", "dev", "apply");
 
     // 1. uncovered scenarios block verify
     let res = await verifyChange(ws, "c1", opts());

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { listDeltaFiles } from "@harnessx/core/artifactStore.js";
 import { readDesignOverview, extractApiPaths } from "@harnessx/core/designLayout.js";
-import { readArchRegistry, resolveModuleByCapability, resolveModulesForChange, isPrephaseApproved } from "@harnessx/core";
+import { readArchRegistry, resolveModuleByCapability, resolveModulesForChange, isStageApproved } from "@harnessx/core";
 import { readMeta } from "@harnessx/core/metaStore.js";
 import type { Finding, SensorReport } from "@harnessx/core/schemas.js";
 import type { SensorContext } from "./types.js";
@@ -61,7 +61,7 @@ export const archHldComplete = (ctx: SensorContext): SensorReport => {
 
 /** arch-approved: human sign-off for global architecture */
 export const archApproved = (ctx: SensorContext): SensorReport => {
-  if (!isPrephaseApproved(ctx.ws, "arch")) {
+  if (!isStageApproved(ctx.ws, "arch")) {
     return block(
       [{ severity: "block", message: "global architecture not approved — run: hx gate approve --gate arch --approver <name>" }],
       ctx,
