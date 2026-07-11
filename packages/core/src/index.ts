@@ -61,6 +61,7 @@ export * from "./hubContributions.js";
 export * from "./hubPolicySchema.js";
 export * from "./hubInit.js";
 export * from "./hubScaffold.js";
+export * from "./hubInstallSkill.js";
 export * from "./hubAdvice.js";
 export * from "./hubDoctor.js";
 export * from "./hubFix.js";

@@ -45,6 +45,7 @@ import {
   readHubRepoPolicy,
   hubGitPush,
   createAssetScaffold,
+  installSkillFromGitHub,
   hubAdvice,
   runHubDoctor,
   runHubFix,
@@ -437,6 +438,57 @@ export function registerHubCommands(program: Command, opts: RegisterHubCommandsO
       console.log(`created ${result.dir}`);
       for (const f of result.files) console.log(`  + ${f}`);
     });
+
+  asset
+    .command("install-github <url>")
+    .description("Install guide.skill from a GitHub repository URL (clone + scaffold)")
+    .option("--id <id>", "asset id (defaults from repo or path basename)")
+    .option("--asset-version <ver>", "asset version", "1.0.0")
+    .option("--status <status>", "draft|trial|enforced|deprecated", "draft")
+    .option("--stage <stage>", "delivery stage: req|arch|dev|test", "dev")
+    .option("--task <task>", "task within stage")
+    .option("--out <dir>", "output directory (default packages/guide/skill/<id>/<version>)")
+    .option("--path <subdir>", "skill directory inside repo (overrides tree/blob URL path)")
+    .option("--branch <name>", "git branch to clone")
+    .option("--offline", "use cached clone without fetching")
+    .option("--skip-eval", "skip hubEvalLocal after scaffold")
+    .action(
+      (
+        url: string,
+        cmdOpts: {
+          id?: string;
+          assetVersion?: string;
+          status?: AssetStatus;
+          stage?: string;
+          task?: string;
+          out?: string;
+          path?: string;
+          branch?: string;
+          offline?: boolean;
+          skipEval?: boolean;
+        }
+      ) => {
+        const workspace = ws();
+        const result = installSkillFromGitHub({
+          workspaceRoot: workspace.root,
+          url,
+          id: cmdOpts.id,
+          version: cmdOpts.assetVersion,
+          status: cmdOpts.status,
+          stage: (cmdOpts.stage ?? "dev") as import("@harnessx/core").DeliveryStage,
+          task: cmdOpts.task,
+          outDir: cmdOpts.out,
+          subpath: cmdOpts.path,
+          branch: cmdOpts.branch,
+          skipEval: cmdOpts.skipEval,
+          resolveSourceOpts: { offline: cmdOpts.offline }
+        });
+        console.log(`installed ${result.id}@${result.version} from ${result.repoUrl}`);
+        console.log(`created ${result.dir}`);
+        for (const f of result.files) console.log(`  + ${f}`);
+        if (result.eval) console.log(`eval: PASS (${result.eval.checks.length} checks)`);
+      }
+    );
 
   asset
     .command("info <pkg>")
