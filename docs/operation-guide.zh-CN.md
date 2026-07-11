@@ -267,7 +267,8 @@ stages:
 
 ## 4. 需求阶段（req）
 
-> 权威定义：[delivery-stages.zh-CN.md](delivery-stages.zh-CN.md)。`req` 为**组织级**阶段，制品位于 `docs/prd/`。
+> 权威定义：[delivery-stages.zh-CN.md](delivery-stages.zh-CN.md)。`req` 为**组织级**阶段，制品位于 `docs/prd/`。  
+> **角色专项手册**：[产品经理需求文档编写使用手册](pm-req-manual.zh-CN.md)
 
 ### 4.1 目标与产物
 
@@ -318,7 +319,8 @@ Cursor 斜杠命令：`/hx-prd`（`hx adapter sync` 后可用）。
 
 ## 5. 设计阶段（arch）
 
-> `arch` 为**组织级**阶段，制品位于 `docs/architecture/`。
+> `arch` 为**组织级**阶段，制品位于 `docs/architecture/`。  
+> **角色专项手册**：[架构师概要设计使用手册](arch-hld-manual.zh-CN.md)
 
 ### 5.1 目标与产物
 
