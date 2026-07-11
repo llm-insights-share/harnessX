@@ -13,34 +13,44 @@ export interface ParsedGitHubSkillRef {
   subpath?: string;
 }
 
-export interface InstallSkillFromGitHubOptions {
+export interface InstallGuideSkillAssetOptions {
   workspaceRoot: string;
-  url: string;
   id?: string;
   version?: string;
   outDir?: string;
-  subpath?: string;
-  branch?: string;
   stage?: DeliveryStage;
   task?: string;
   owner?: string;
   status?: AssetStatus;
+  skipEval?: boolean;
+  /** Local directory or file containing SKILL.md. */
+  sourceDir?: string;
+  /** GitHub repository / tree / blob URL. */
+  githubUrl?: string;
+  subpath?: string;
+  branch?: string;
   gitExec?: GitExec;
   /** Test hook: use an existing directory instead of cloning. */
   repoDirOverride?: string;
   resolveSourceOpts?: Omit<ResolveHubSourceOptions, "gitExec">;
-  skipEval?: boolean;
 }
 
-export interface InstallSkillFromGitHubResult {
+export interface InstallGuideSkillAssetResult {
   dir: string;
   files: string[];
   id: string;
   version: string;
-  repoUrl: string;
   skillSourceDir: string;
+  source: "local" | "github";
+  repoUrl?: string;
   eval?: ReturnType<typeof hubEvalLocal>;
 }
+
+/** @deprecated Use InstallGuideSkillAssetOptions */
+export type InstallSkillFromGitHubOptions = InstallGuideSkillAssetOptions & { url: string };
+
+/** @deprecated Use InstallGuideSkillAssetResult */
+export type InstallSkillFromGitHubResult = InstallGuideSkillAssetResult & { repoUrl: string };
 
 /** Parse GitHub repository / tree / blob URLs into clone metadata. */
 export function parseGitHubSkillRef(input: string): ParsedGitHubSkillRef {
@@ -97,6 +107,11 @@ export function defaultSkillId(repoUrl: string, subpath?: string): string {
   return slugifyId(match?.[1] ?? "skill");
 }
 
+function defaultSkillIdFromLocal(sourcePath: string): string {
+  const base = path.basename(sourcePath, path.extname(sourcePath));
+  return slugifyId(base);
+}
+
 /** Locate a directory containing SKILL.md inside a cloned repository. */
 export function resolveSkillSourceDir(repoDir: string, subpath?: string): string {
   const candidates: string[] = [];
@@ -119,48 +134,99 @@ export function resolveSkillSourceDir(repoDir: string, subpath?: string): string
   );
 }
 
+/** Locate SKILL.md from a local directory or file path. */
+export function resolveLocalSkillSourceDir(sourcePath: string): string {
+  const resolved = path.resolve(sourcePath);
+  if (!fs.existsSync(resolved)) throw new Error(`source path not found: ${resolved}`);
+
+  const stat = fs.statSync(resolved);
+  if (stat.isFile()) {
+    const dir = path.dirname(resolved);
+    if (!/skill\.md$/i.test(resolved)) {
+      throw new Error(`source file must be SKILL.md: ${resolved}`);
+    }
+    return dir;
+  }
+
+  if (fs.existsSync(path.join(resolved, SKILL_ENTRY))) return resolved;
+  return resolveSkillSourceDir(resolved);
+}
+
 function defaultOutDir(workspaceRoot: string, id: string, version: string): string {
   return path.join(workspaceRoot, "packages", "guide", "skill", id, version);
 }
 
-function appendGitHubProvenance(
+function appendProvenance(
   assetDir: string,
-  url: string,
-  repoUrl: string,
-  subpath: string | undefined,
-  skillSourceDir: string
+  entries: { type: string; ref: string }[]
 ): void {
   const manifestFile = path.join(assetDir, "asset.yaml");
   const manifest = YAML.parse(fs.readFileSync(manifestFile, "utf8")) as AssetManifest;
-  const provenance = [...(manifest.provenance ?? [])];
-  provenance.push({ type: "github-skill-install", ref: url });
-  provenance.push({ type: "github-repo", ref: repoUrl });
-  provenance.push({ type: "github-path", ref: subpath ?? path.basename(skillSourceDir) });
-  manifest.provenance = provenance;
+  manifest.provenance = [...(manifest.provenance ?? []), ...entries];
   fs.writeFileSync(manifestFile, YAML.stringify(manifest), "utf8");
 }
 
-/** Clone (or refresh) a GitHub repo and scaffold a guide.skill Hub asset from SKILL.md. */
-export function installSkillFromGitHub(opts: InstallSkillFromGitHubOptions): InstallSkillFromGitHubResult {
-  const parsed = parseGitHubSkillRef(opts.url);
-  const branch = opts.branch ?? parsed.branch;
-  const subpath = opts.subpath ?? parsed.subpath;
+function runEvalUnlessSkipped(
+  assetDir: string,
+  skipEval?: boolean
+): ReturnType<typeof hubEvalLocal> | undefined {
+  if (skipEval) return undefined;
+  const evalResult = hubEvalLocal(assetDir);
+  if (!evalResult.passed) {
+    const failed = evalResult.checks.filter((c) => !c.ok).map((c) => c.name).join(", ");
+    throw new Error(`skill asset failed evaluation: ${failed}`);
+  }
+  return evalResult;
+}
 
-  const repoDir =
-    opts.repoDirOverride ??
-    resolveHubSource(opts.workspaceRoot, parsed.repoUrl, {
-      updateRemote: true,
-      refresh: true,
-      branch,
-      gitExec: opts.gitExec,
-      ...opts.resolveSourceOpts
-    });
+/** Scaffold a guide.skill Hub asset from a local directory or a GitHub repository. */
+export function installGuideSkillAsset(opts: InstallGuideSkillAssetOptions): InstallGuideSkillAssetResult {
+  const hasLocal = !!opts.sourceDir;
+  const hasGitHub = !!opts.githubUrl;
+  if (hasLocal === hasGitHub) {
+    throw new Error("provide exactly one of sourceDir or githubUrl");
+  }
 
-  const skillSourceDir = resolveSkillSourceDir(repoDir, subpath);
-  const id = opts.id ?? defaultSkillId(parsed.repoUrl, subpath);
   const version = opts.version ?? "1.0.0";
-  const outDir = path.resolve(opts.outDir ?? defaultOutDir(opts.workspaceRoot, id, version));
+  let skillSourceDir: string;
+  let id: string;
+  let provenance: { type: string; ref: string }[];
+  let source: "local" | "github";
+  let repoUrl: string | undefined;
 
+  if (hasLocal) {
+    const sourcePath = path.resolve(opts.sourceDir!);
+    skillSourceDir = resolveLocalSkillSourceDir(sourcePath);
+    id = opts.id ?? defaultSkillIdFromLocal(skillSourceDir);
+    provenance = [{ type: "local-skill-source", ref: sourcePath }];
+    source = "local";
+  } else {
+    const parsed = parseGitHubSkillRef(opts.githubUrl!);
+    const branch = opts.branch ?? parsed.branch;
+    const subpath = opts.subpath ?? parsed.subpath;
+    repoUrl = parsed.repoUrl;
+
+    const repoDir =
+      opts.repoDirOverride ??
+      resolveHubSource(opts.workspaceRoot, parsed.repoUrl, {
+        updateRemote: true,
+        refresh: true,
+        branch,
+        gitExec: opts.gitExec,
+        ...opts.resolveSourceOpts
+      });
+
+    skillSourceDir = resolveSkillSourceDir(repoDir, subpath);
+    id = opts.id ?? defaultSkillId(parsed.repoUrl, subpath);
+    provenance = [
+      { type: "github-skill-install", ref: opts.githubUrl! },
+      { type: "github-repo", ref: parsed.repoUrl },
+      { type: "github-path", ref: subpath ?? path.basename(skillSourceDir) }
+    ];
+    source = "github";
+  }
+
+  const outDir = path.resolve(opts.outDir ?? defaultOutDir(opts.workspaceRoot, id, version));
   const scaffold = createAssetScaffold({
     rootDir: outDir,
     id,
@@ -173,24 +239,24 @@ export function installSkillFromGitHub(opts: InstallSkillFromGitHubOptions): Ins
     sourceDir: skillSourceDir
   });
 
-  appendGitHubProvenance(scaffold.dir, opts.url, parsed.repoUrl, subpath, skillSourceDir);
+  appendProvenance(scaffold.dir, provenance);
 
-  const result: InstallSkillFromGitHubResult = {
+  const result: InstallGuideSkillAssetResult = {
     dir: scaffold.dir,
     files: scaffold.files,
     id,
     version,
-    repoUrl: parsed.repoUrl,
-    skillSourceDir
+    skillSourceDir,
+    source,
+    repoUrl
   };
 
-  if (!opts.skipEval) {
-    result.eval = hubEvalLocal(scaffold.dir);
-    if (!result.eval.passed) {
-      const failed = result.eval.checks.filter((c) => !c.ok).map((c) => c.name).join(", ");
-      throw new Error(`installed skill failed evaluation: ${failed}`);
-    }
-  }
-
+  result.eval = runEvalUnlessSkipped(scaffold.dir, opts.skipEval);
   return result;
+}
+
+/** @deprecated Use installGuideSkillAsset with githubUrl instead. */
+export function installSkillFromGitHub(opts: InstallSkillFromGitHubOptions): InstallSkillFromGitHubResult {
+  const result = installGuideSkillAsset({ ...opts, githubUrl: opts.url });
+  return { ...result, repoUrl: result.repoUrl! };
 }

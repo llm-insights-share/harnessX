@@ -45,7 +45,7 @@ import {
   readHubRepoPolicy,
   hubGitPush,
   createAssetScaffold,
-  installSkillFromGitHub,
+  installGuideSkillAsset,
   hubAdvice,
   runHubDoctor,
   runHubFix,
@@ -420,70 +420,88 @@ export function registerHubCommands(program: Command, opts: RegisterHubCommandsO
     .option("--task <task>", "task within stage")
     .option("--out <dir>", "target directory")
     .option("--source-dir <dir>", "source path (directory or single file) for this asset scaffold")
+    .option("--from-github <url>", "import guide.skill from a GitHub repository URL (clone + scaffold)")
+    .option("--path <subdir>", "skill directory inside repo (with --from-github; overrides tree/blob URL path)")
+    .option("--branch <name>", "git branch to clone (with --from-github)")
+    .option("--offline", "use cached clone without fetching (with --from-github)")
+    .option("--skip-eval", "skip hubEvalLocal after guide.skill import")
     .option("--interactive", "ask prompts interactively")
-    .action(async (cmdOpts: { kind?: AssetKind; id?: string; assetVersion?: string; status?: AssetStatus; stage?: string; task?: string; out?: string; sourceDir?: string; interactive?: boolean }) => {
-      const result =
-        cmdOpts.interactive || !cmdOpts.kind || !cmdOpts.id
-          ? await interactiveCreateAsset(cmdOpts.out, cmdOpts.sourceDir)
-          : createAssetScaffold({
-              rootDir: path.resolve(cmdOpts.out ?? cmdOpts.id),
-              id: cmdOpts.id,
-              kind: cmdOpts.kind,
-              version: cmdOpts.assetVersion,
-              status: cmdOpts.status,
-              stage: (cmdOpts.stage ?? "dev") as import("@harnessx/core").DeliveryStage,
-              task: cmdOpts.task,
-              sourceDir: cmdOpts.sourceDir
-            });
-      console.log(`created ${result.dir}`);
-      for (const f of result.files) console.log(`  + ${f}`);
-    });
-
-  asset
-    .command("install-github <url>")
-    .description("Install guide.skill from a GitHub repository URL (clone + scaffold)")
-    .option("--id <id>", "asset id (defaults from repo or path basename)")
-    .option("--asset-version <ver>", "asset version", "1.0.0")
-    .option("--status <status>", "draft|trial|enforced|deprecated", "draft")
-    .option("--stage <stage>", "delivery stage: req|arch|dev|test", "dev")
-    .option("--task <task>", "task within stage")
-    .option("--out <dir>", "output directory (default packages/guide/skill/<id>/<version>)")
-    .option("--path <subdir>", "skill directory inside repo (overrides tree/blob URL path)")
-    .option("--branch <name>", "git branch to clone")
-    .option("--offline", "use cached clone without fetching")
-    .option("--skip-eval", "skip hubEvalLocal after scaffold")
     .action(
-      (
-        url: string,
-        cmdOpts: {
-          id?: string;
-          assetVersion?: string;
-          status?: AssetStatus;
-          stage?: string;
-          task?: string;
-          out?: string;
-          path?: string;
-          branch?: string;
-          offline?: boolean;
-          skipEval?: boolean;
+      async (cmdOpts: {
+        kind?: AssetKind;
+        id?: string;
+        assetVersion?: string;
+        status?: AssetStatus;
+        stage?: string;
+        task?: string;
+        out?: string;
+        sourceDir?: string;
+        fromGithub?: string;
+        path?: string;
+        branch?: string;
+        offline?: boolean;
+        skipEval?: boolean;
+        interactive?: boolean;
+      }) => {
+        if (cmdOpts.fromGithub && cmdOpts.sourceDir) {
+          throw new Error("use either --source-dir or --from-github, not both");
         }
-      ) => {
+        if (cmdOpts.fromGithub && cmdOpts.kind && cmdOpts.kind !== "guide.skill") {
+          throw new Error("--from-github only supports guide.skill assets");
+        }
+
         const workspace = ws();
-        const result = installSkillFromGitHub({
-          workspaceRoot: workspace.root,
-          url,
-          id: cmdOpts.id,
-          version: cmdOpts.assetVersion,
-          status: cmdOpts.status,
-          stage: (cmdOpts.stage ?? "dev") as import("@harnessx/core").DeliveryStage,
-          task: cmdOpts.task,
-          outDir: cmdOpts.out,
-          subpath: cmdOpts.path,
-          branch: cmdOpts.branch,
-          skipEval: cmdOpts.skipEval,
-          resolveSourceOpts: { offline: cmdOpts.offline }
-        });
-        console.log(`installed ${result.id}@${result.version} from ${result.repoUrl}`);
+        const stage = (cmdOpts.stage ?? "dev") as import("@harnessx/core").DeliveryStage;
+        const isGuideSkillImport =
+          cmdOpts.fromGithub || (cmdOpts.kind === "guide.skill" && !!cmdOpts.sourceDir);
+
+        let result: { dir: string; files: string[]; id?: string; version?: string; source?: string; repoUrl?: string; eval?: { passed: boolean; checks: { name: string }[] } };
+
+        if (cmdOpts.fromGithub) {
+          const imported = installGuideSkillAsset({
+            workspaceRoot: workspace.root,
+            githubUrl: cmdOpts.fromGithub,
+            id: cmdOpts.id,
+            version: cmdOpts.assetVersion,
+            status: cmdOpts.status,
+            stage,
+            task: cmdOpts.task,
+            outDir: cmdOpts.out,
+            subpath: cmdOpts.path,
+            branch: cmdOpts.branch,
+            skipEval: cmdOpts.skipEval,
+            resolveSourceOpts: { offline: cmdOpts.offline }
+          });
+          result = imported;
+          console.log(`imported ${imported.id}@${imported.version} from ${imported.repoUrl}`);
+        } else if (isGuideSkillImport) {
+          const imported = installGuideSkillAsset({
+            workspaceRoot: workspace.root,
+            sourceDir: cmdOpts.sourceDir,
+            id: cmdOpts.id,
+            version: cmdOpts.assetVersion,
+            status: cmdOpts.status,
+            stage,
+            task: cmdOpts.task,
+            outDir: cmdOpts.out ?? (cmdOpts.id ? path.resolve(cmdOpts.id) : undefined),
+            skipEval: cmdOpts.skipEval
+          });
+          result = imported;
+        } else if (cmdOpts.interactive || !cmdOpts.kind || !cmdOpts.id) {
+          result = await interactiveCreateAsset(cmdOpts.out, cmdOpts.sourceDir);
+        } else {
+          result = createAssetScaffold({
+            rootDir: path.resolve(cmdOpts.out ?? cmdOpts.id),
+            id: cmdOpts.id,
+            kind: cmdOpts.kind,
+            version: cmdOpts.assetVersion,
+            status: cmdOpts.status,
+            stage,
+            task: cmdOpts.task,
+            sourceDir: cmdOpts.sourceDir
+          });
+        }
+
         console.log(`created ${result.dir}`);
         for (const f of result.files) console.log(`  + ${f}`);
         if (result.eval) console.log(`eval: PASS (${result.eval.checks.length} checks)`);

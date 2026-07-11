@@ -319,6 +319,30 @@ source: assets/guides/business-insight
 
 `hxhub asset create --source-dir` 会复制源目录内除 `asset.yaml` 外的全部附属文件。`hx adapter sync` 将整包同步到 `.cursor/skills/<id>/`。
 
+**从 GitHub 导入 `guide.skill`**（与 `--source-dir` 共用同一命令，默认输出 `packages/guide/skill/<id>/<version>/`）：
+
+```bash
+# 整个仓库即 skill（根目录有 SKILL.md）
+hxhub asset create \
+  --from-github git@github.com:your-org/clock-safety-skill.git \
+  --id clock-safety --stage dev --task apply
+
+# 单仓多 skill：tree URL 或 --path
+hxhub asset create \
+  --from-github https://github.com/your-org/skills/tree/main/packages/clock \
+  --id clock-safety --out ./packages/guide/skill/clock-safety/1.0.0
+```
+
+| 选项 | 说明 |
+| --- | --- |
+| `--from-github <url>` | 支持 `git@github.com:org/repo.git`、`https://github.com/org/repo`、tree/blob URL |
+| `--path` | 仓库内 skill 子目录（覆盖 tree/blob URL 中的 path） |
+| `--branch` | 克隆分支（tree/blob URL 可自动解析） |
+| `--offline` | 使用本地缓存克隆，不 fetch |
+| `--skip-eval` | 跳过导入后 `hubEvalLocal` 校验 |
+
+导入流程：解析 URL → `git clone` 到 `harnessX/.hub-remotes/<hash>/repo` → 定位含 `SKILL.md` 的目录 → 脚手架化并写入 `provenance`（github-skill-install / github-repo / github-path）。`--source-dir` 导入时写入 `local-skill-source` provenance。默认执行本地 eval，失败则中止。
+
 #### 3.3.3 按 kind 的完整样例
 
 **样例 A — `guide.skill`（编码规范）**
@@ -885,13 +909,20 @@ hxhub asset create [选项]
 | `--stage` | 交付阶段：`req` \| `arch` \| `dev` \| `test`，默认 `dev` |
 | `--task` | 阶段内任务（可选）；省略则对该 stage 所有 task 生效 |
 | `--out` | 输出目录；默认以 `--id` 为目录名 |
-| `--source-dir` | 源路径（**目录或单个文件**），复制已有 SKILL/模版/Rubric 内容 |
+| `--source-dir` | 源路径（**目录或单个文件**），复制已有 SKILL/模版/Rubric 内容；`guide.skill` 时默认执行 eval 并写入 provenance |
+| `--from-github <url>` | 从 GitHub 克隆并脚手架化 `guide.skill`（与 `--source-dir` 二选一） |
+| `--path` | 仓库内 skill 子目录（仅 `--from-github`） |
+| `--branch` | 克隆分支（仅 `--from-github`） |
+| `--offline` | 使用缓存克隆、不 fetch（仅 `--from-github`） |
+| `--skip-eval` | 跳过 `guide.skill` 导入后的 `hubEvalLocal` |
 | `--interactive` | 交互式问答创建 |
 
 **行为说明**：
 
-- 缺少 `--kind` 或 `--id` 时自动进入交互模式。
-- 写入 `asset.yaml`（含 `stage`/`task`/`execution` 等）及 kind 对应骨架文件。
+- 缺少 `--kind` 或 `--id` 时自动进入交互模式（`--from-github` 除外，可省略 `--kind`/`--id`，默认 `guide.skill` 并从 URL 推断 id）。
+- `--source-dir` 与 `--from-github` 互斥；`--from-github` 仅支持 `guide.skill`。
+- `guide.skill` 配合 `--source-dir` 或 `--from-github` 时：脚手架化整包、写入 provenance、默认执行 `hubEvalLocal`（可用 `--skip-eval` 跳过）。
+- 其他 kind 或空白骨架：写入 `asset.yaml` 及 kind 对应骨架文件，不执行 eval。
 - **不**连接 Hub、**不**发布；发布须另行执行 `hxhub promote` 或 `hxhub submit`。
 
 **自动生成文件**：
@@ -911,55 +942,16 @@ hxhub asset create [选项]
 hxhub asset create --kind guide.skill --id clock-safety --asset-version 1.0.0 \
   --stage dev --task apply --source-dir ./drafts/clock-safety --out ./assets/clock-safety
 
+# Skill：从 GitHub 导入
+hxhub asset create --from-github git@github.com:your-org/clock-safety-skill.git \
+  --id clock-safety --stage dev --task apply
+
 # 模版：从单个 Markdown 导入
 hxhub asset create --kind guide.template --id feature-template \
   --stage dev --task propose --source-dir ./模版.md --out ./assets/feature-template
 
 # 交互式
 hxhub asset create --interactive
-```
-
-#### `hxhub asset install-github`
-
-从 GitHub 仓库**直接克隆**并脚手架化 `guide.skill` 资产（含 `asset.yaml`、整包 `SKILL.md` 与 `references/` 等附属文件）。适用于 Cursor/开源 Skill 仓库、组织内 Skill 模板仓等。
-
-```bash
-hxhub asset install-github <github-url> [选项]
-```
-
-| 选项 | 说明 |
-| --- | --- |
-| `<github-url>` | 支持 `git@github.com:org/repo.git`、`https://github.com/org/repo`、`https://github.com/org/repo/tree/<branch>/<path>`、`.../blob/<branch>/.../SKILL.md` |
-| `--id` | 资产 ID；默认取 repo 名或 path 末段 |
-| `--asset-version` | 版本号，默认 `1.0.0` |
-| `--out` | 输出目录；默认 `packages/guide/skill/<id>/<version>/` |
-| `--path` | 仓库内 skill 子目录（覆盖 tree/blob URL 中的 path） |
-| `--branch` | 克隆分支（tree/blob URL 可自动解析） |
-| `--stage` / `--task` | 绑定交付阶段任务，默认 `dev` |
-| `--offline` | 使用本地缓存克隆，不 fetch |
-| `--skip-eval` | 跳过安装后 `hubEvalLocal` |
-
-**行为说明**：
-
-1. 解析 URL → `git clone` 到 `harnessX/.hub-remotes/<hash>/repo`（可复用缓存）。
-2. 定位含 `SKILL.md` 的目录（根目录、`--path`、或常见 `.cursor/skills` 等）。
-3. 调用 `createAssetScaffold` 生成 Hub 包，并写入 `provenance`（github-skill-install / github-repo / github-path）。
-4. 默认执行 `hxhub eval --local` 等价校验；失败则中止。
-
-**示例**：
-
-```bash
-# 整个仓库即 skill（根目录有 SKILL.md）
-hxhub asset install-github git@github.com:your-org/clock-safety-skill.git \
-  --id clock-safety --stage dev --task apply
-
-# 单仓多 skill：tree URL 或 --path
-hxhub asset install-github https://github.com/your-org/skills/tree/main/packages/clock \
-  --id clock-safety --out ./packages/guide/skill/clock-safety/1.0.0
-
-# 发布后走常规流程
-hx asset promote ./packages/guide/skill/clock-safety/1.0.0 --to trial
-hxhub promote ./packages/guide/skill/clock-safety/1.0.0 --by lin.platform
 ```
 
 #### `hxhub asset info`
