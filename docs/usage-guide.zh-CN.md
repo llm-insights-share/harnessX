@@ -834,6 +834,7 @@ harness-hub/
 | [开发人员应用交付使用手册](dev-manual.zh-CN.md) | dev 阶段交付与多人协同 |
 | [产品经理需求文档编写使用手册](pm-req-manual.zh-CN.md) | req 阶段 PRD |
 | [架构师概要设计使用手册](arch-hld-manual.zh-CN.md) | arch 阶段 HLD/LLD |
+| [Sensor 机制与各 Kind 配置指南](sensor-guide.zh-CN.md) | 反馈传感器类型与 harness 配置 |
 | [场景选择指南](examples/00-场景选择指南.md) | 19 个场景快速选型 |
 | [概念词表](glossary.zh-CN.md) | 术语定义 |
 | [系统设计](harness-delivery-system-design.html) | 完整设计文档 |
