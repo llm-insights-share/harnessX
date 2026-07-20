@@ -114,7 +114,7 @@ function kindMatchesWithFilter(kind: string | undefined, filters: Set<SeedWithFi
   if (filters.has("all") || filters.size === 0) return true;
   if (!kind) return true;
   if (filters.has("guides") && kind.startsWith("guide.")) return true;
-  if (filters.has("commands") && kind === "guide.command") return true;
+  if (filters.has("commands") && (kind === "guide.command" || kind === "guide.workflow")) return true;
   if (filters.has("rubrics") && kind === "sensor.rubric") return true;
   if (filters.has("sensors") && kind.startsWith("sensor.") && kind !== "sensor.rubric") return true;
   return false;

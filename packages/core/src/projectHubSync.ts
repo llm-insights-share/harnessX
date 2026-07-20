@@ -10,6 +10,7 @@ import { hubAdd, hubSync, hubSyncApply, type HubSyncApplyResult } from "./hub.js
 import { DEFAULT_PROFILE_STAGES } from "./stages.js";
 import { resolveProfileAssets } from "./profileAssets.js";
 import { bindTaskSensorToSuites } from "./suiteBind.js";
+import { assertHarnessCompleteness } from "./harnessCompleteness.js";
 
 function copyDir(src: string, dest: string) {
   fs.mkdirSync(dest, { recursive: true });
@@ -61,6 +62,8 @@ export interface LandHubAssetsOptions {
   profile?: string;
   /** Restrict landing to these package ids. */
   only?: string[];
+  /** Skip harness completeness assert after write (tests / --force). */
+  skipCompleteness?: boolean;
 }
 
 export interface LandedAsset {
@@ -73,7 +76,7 @@ export interface LandedAsset {
 /** Copy `.hub-cache` packages into `assets/` and upsert harness guides/sensors/dependencies. */
 export function landHubAssets(ws: Workspace, hubRoot: string, opts: LandHubAssetsOptions = {}): { landed: LandedAsset[] } {
   if (opts.profile) {
-    const resolution = resolveProfileAssets(hubRoot, opts.profile);
+    const resolution = resolveProfileAssets(hubRoot, opts.profile, ws);
     for (const asset of resolution.assets) {
       if (opts.only?.length && !opts.only.includes(asset.id)) continue;
       const cacheManifest = path.join(ws.base, ".hub-cache", asset.id, "asset.yaml");
@@ -139,6 +142,10 @@ export function landHubAssets(ws: Workspace, hubRoot: string, opts: LandHubAsset
   }
 
   writeYaml(ws.harnessFile, harness);
+  if (!opts.skipCompleteness) {
+    const profile = opts.profile ?? ws.readConfig().profile;
+    assertHarnessCompleteness(ws, { profile });
+  }
   return { landed };
 }
 
@@ -201,7 +208,7 @@ export function syncProjectFromHub(ws: Workspace, hubRoot: string, opts: SyncPro
     syncResults = hubSyncApply(ws, hubRoot, { force: opts.force, only: opts.only });
   }
 
-  const profileIds = new Set(resolveProfileAssets(hubRoot, profile).assets.map((a) => a.id));
+  const profileIds = new Set(resolveProfileAssets(hubRoot, profile, ws).assets.map((a) => a.id));
   for (const entry of hubSync(ws, hubRoot)) {
     if (entry.state !== "available") continue;
     if (opts.only?.length && !opts.only.includes(entry.id)) continue;
@@ -211,7 +218,11 @@ export function syncProjectFromHub(ws: Workspace, hubRoot: string, opts: SyncPro
     installedAvailable.push(`${entry.id}@${entry.latest}`);
   }
 
-  const { landed } = landHubAssets(ws, hubRoot, { profile, only: opts.only });
+  const { landed } = landHubAssets(ws, hubRoot, {
+    profile,
+    only: opts.only,
+    skipCompleteness: opts.force === true
+  });
   const lock = writeLock(ws);
 
   return {

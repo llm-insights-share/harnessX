@@ -307,52 +307,52 @@ guides:
     source: assets/guides/spec-writing/SKILL.md
     stage: dev
     task: propose
-  - id: cmd-explore
-    kind: guide.command
+  - id: wf-requirements-research
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/explore.md
+    source: assets/workflows/req/requirements-research.md
     stage: req
     task: requirements-research
-  - id: cmd-biz-understanding
-    kind: guide.command
+  - id: wf-biz-understanding
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/biz-understanding.md
+    source: assets/workflows/req/biz-understanding.md
     stage: req
     task: biz-understanding
-  - id: cmd-propose
-    kind: guide.command
+  - id: wf-propose
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/propose.md
+    source: assets/workflows/dev/propose.md
     stage: dev
     task: propose
-  - id: cmd-design
-    kind: guide.command
+  - id: wf-design
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/design.md
+    source: assets/workflows/dev/design.md
     stage: dev
     task: design
-  - id: cmd-plan
-    kind: guide.command
+  - id: wf-plan
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/plan.md
+    source: assets/workflows/dev/plan.md
     stage: dev
     task: plan
-  - id: cmd-apply
-    kind: guide.command
+  - id: wf-apply
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/apply.md
+    source: assets/workflows/dev/apply.md
     stage: dev
     task: apply
-  - id: cmd-verify
-    kind: guide.command
+  - id: wf-verify
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/verify.md
+    source: assets/workflows/dev/verify.md
     stage: dev
     task: verify
-  - id: cmd-archive
-    kind: guide.command
+  - id: wf-archive
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/archive.md
+    source: assets/workflows/dev/archive.md
     stage: dev
     task: archive
   - id: prd-template
@@ -367,22 +367,22 @@ guides:
     source: assets/guides/prd-authoring/SKILL.md
     stage: req
     task: prd-writing
-  - id: cmd-prd
-    kind: guide.command
+  - id: wf-prd-writing
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/prd.md
+    source: assets/workflows/req/prd-writing.md
     stage: req
     task: prd-writing
-  - id: cmd-requirements-analysis
-    kind: guide.command
+  - id: wf-requirements-analysis
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/requirements-analysis.md
+    source: assets/workflows/req/requirements-analysis.md
     stage: req
     task: requirements-analysis
-  - id: cmd-prototype-design
-    kind: guide.command
+  - id: wf-prototype-design
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/prototype-design.md
+    source: assets/workflows/req/prototype-design.md
     stage: req
     task: prototype-design
   - id: arch-hld-template
@@ -397,34 +397,34 @@ guides:
     source: assets/guides/arch-authoring/SKILL.md
     stage: arch
     task: subsystem-division
-  - id: cmd-arch
-    kind: guide.command
+  - id: wf-subsystem-division
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/arch.md
+    source: assets/workflows/arch/subsystem-division.md
     stage: arch
     task: subsystem-division
-  - id: cmd-tech-selection
-    kind: guide.command
+  - id: wf-tech-selection
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/tech-selection.md
+    source: assets/workflows/arch/tech-selection.md
     stage: arch
     task: tech-selection
-  - id: cmd-database-design
-    kind: guide.command
+  - id: wf-database-design
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/database-design.md
+    source: assets/workflows/arch/database-design.md
     stage: arch
     task: database-design
-  - id: cmd-interface-design
-    kind: guide.command
+  - id: wf-interface-design
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/interface-design.md
+    source: assets/workflows/arch/interface-design.md
     stage: arch
     task: interface-design
-  - id: cmd-key-mechanisms
-    kind: guide.command
+  - id: wf-key-mechanisms
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/key-mechanisms.md
+    source: assets/workflows/arch/key-mechanisms.md
     stage: arch
     task: key-mechanisms
   - id: arch-lld-template
@@ -439,22 +439,22 @@ guides:
     source: assets/guides/arch-module-boundary/SKILL.md
     stage: arch
     task: internal-interface
-  - id: cmd-arch-lld
-    kind: guide.command
+  - id: wf-internal-interface
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/arch-lld.md
+    source: assets/workflows/arch/internal-interface.md
     stage: arch
     task: internal-interface
-  - id: cmd-test-design
-    kind: guide.command
+  - id: wf-test-case-design
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/test-design.md
+    source: assets/workflows/test/test-case-design.md
     stage: test
     task: test-case-design
-  - id: cmd-test-execution
-    kind: guide.command
+  - id: wf-test-execution
+    kind: guide.workflow
     execution: inferential
-    source: assets/commands/test-execution.md
+    source: assets/workflows/test/test-execution.md
     stage: test
     task: test-execution
   - id: requirements-research-outline

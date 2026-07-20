@@ -15,6 +15,7 @@ import {
   readMeta,
   gitChangedFiles,
   lintHarness,
+  validateHarnessCompleteness,
   rebaseCheck,
   recommendProfile,
   applyProfileChoice,
@@ -148,20 +149,43 @@ export function registerBehaviourCommands(program: Command): void {
   });
 
   const harness = program.command("harness").description("Harness self-checks (FR-034)");
-  harness.command("lint").action(() => {
-    const conflicts = lintHarness(ws());
-    if (!conflicts.length) {
-      console.log("no conflicting guide directives found");
-      return;
-    }
-    for (const c of conflicts) {
-      console.error(`CONFLICT between "${c.a.guideId}" (${c.a.layer}) and "${c.b.guideId}" (${c.b.layer}):`);
-      console.error(`  A: ${c.a.text}`);
-      console.error(`  B: ${c.b.text}`);
-      console.error(`  → ${c.resolution}`);
-    }
-    process.exit(1);
-  });
+  harness
+    .command("lint")
+    .option("--completeness", "also check STAGE_TASKS / hub-cache / harness registration completeness")
+    .option("--strict", "treat completeness warnings as errors (exit 1)")
+    .action((opts: { completeness?: boolean; strict?: boolean }) => {
+      const w = ws();
+      const conflicts = lintHarness(w);
+      let failed = false;
+      if (!conflicts.length) {
+        console.log("no conflicting guide directives found");
+      } else {
+        failed = true;
+        for (const c of conflicts) {
+          console.error(`CONFLICT between "${c.a.guideId}" (${c.a.layer}) and "${c.b.guideId}" (${c.b.layer}):`);
+          console.error(`  A: ${c.a.text}`);
+          console.error(`  B: ${c.b.text}`);
+          console.error(`  → ${c.resolution}`);
+        }
+      }
+
+      if (opts.completeness || opts.strict) {
+        const report = validateHarnessCompleteness(w, { strict: opts.strict });
+        if (!report.findings.length) {
+          console.log("harness completeness: ok");
+        } else {
+          console.log(`harness completeness: ${report.findings.length} finding(s)`);
+          for (const f of report.findings) {
+            const line = `[${f.level}] ${f.code}: ${f.message}${f.suggestion ? ` — ${f.suggestion}` : ""}`;
+            if (f.level === "error" || (opts.strict && f.level === "warn")) console.error(line);
+            else console.log(line);
+          }
+          if (!report.ok) failed = true;
+        }
+      }
+
+      if (failed) process.exit(1);
+    });
 
   const rebase = program.command("rebase").description("Concurrent-change rebase check (FR-011)");
   rebase.command("check <change>").action((change: string) => {

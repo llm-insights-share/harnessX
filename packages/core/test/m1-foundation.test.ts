@@ -79,7 +79,7 @@ describe("T-100 hx init", () => {
     expect(constitution).toContain("项目宪法");
     const harness = res.ws.readHarness();
     expect(harness.guides.map((g) => g.id)).toContain("design-template");
-    const proposeCmd = fs.readFileSync(path.join(res.ws.assetsDir, "commands/propose.md"), "utf8");
+    const proposeCmd = fs.readFileSync(path.join(res.ws.assetsDir, "workflows/dev/propose.md"), "utf8");
     expect(proposeCmd).toContain("/hx-dev-propose");
     expect(proposeCmd).toContain("--stage dev --task propose");
     expect(res.nextSteps[0]).toContain("constitution.md");

@@ -108,9 +108,9 @@ guides:
   #   task: design  # (or a separate guide with task: apply)
 ```
 
-### 3. Customize the `/hx-dev-design` phase command (critical)
+### 3. Customize the `/hx-dev-design` task shell (critical)
 
-Edit `harnessX/assets/commands/design.md`. Change step 2 to explicitly reference the template:
+Edit `harnessX/assets/workflows/dev/design.md` (or register an optional `guide.command` override). Change step 2 to explicitly reference the template:
 
 ```markdown
 2. Fill `harnessX/changes/<change>/design/overview.md` using the **design-template** guide in this Context Pack:
@@ -208,17 +208,17 @@ advanced: dev/propose → dev/design
 | ADR Consequences | `/hx-dev-plan` requires a task per consequence |
 | Observability / Rollback | Human review + optional custom Sensors (scenario 10) |
 
-There is **no** dedicated `design-validate` sensor like `spec-validate` — structural compliance relies on **guide.template + customized command + human review**; architecture violations are still caught by Architecture Sensors at apply/verify.
+There is **no** dedicated `design-validate` sensor like `spec-validate` — structural compliance relies on **guide.template + customized workflow shell + human review**; architecture violations are still caught by Architecture Sensors at apply/verify.
 
 ## Key mechanisms
 
-- **Dual customization**: template asset (`guide.template`) defines **shape**; command asset (`guide.command`) defines **which sections agents must fill and when to stop**; Skill (`guide.skill`) defines **domain norms** (e.g. RFC 7807 errors).
+- **Dual customization**: template asset (`guide.template`) defines **shape**; workflow shell (`guide.workflow`, optional `guide.command` override) defines **which sections agents must fill and when to stop**; Skill (`guide.skill`) defines **domain norms** (e.g. RFC 7807 errors). Task-level command/skill projections are shells only.
 - **Task-isolated Context Pack**: `dev:design` injects `proposal.md` + `design/overview.md` + design Guides — no apply-task noise (see `guideEngine.ts` artifact selection by stage/task).
 - **Pairs with scenario 11**: compliance fields added to the proposal template should be referenced in the design template **Context** section for requirements → design traceability.
 - **Permissions**: design-task agents primarily edit `changes/<id>/design/**` and `changes/<id>/specs/**` (when design finalizes delta).
 
 ## Common pitfalls
 
-1. **Template only, no `commands/design.md` edit** — agents may follow the default three-step flow and skip Observability / Rollback. Change command and template together.
-2. **Hand-editing `.cursor/commands/hx-dev-design.md`** — overwritten on next `adapter sync`; edit `harnessX/assets/commands/design.md` only.
+1. **Template only, no `workflows/dev/design.md` edit** — agents may follow the default three-step flow and skip Observability / Rollback. Change workflow and template together.
+2. **Hand-editing `.cursor/commands/hx-dev-design.md`** — overwritten on next `adapter sync`; edit `harnessX/assets/workflows/dev/design.md` (or an optional `guide.command` override) only.
 3. **Removing ADR / Architecture Constraints from the template** — not immediately Gate-blocked, but `/hx-dev-plan` and verify sensors lose leverage; extend sections rather than delete core ones.

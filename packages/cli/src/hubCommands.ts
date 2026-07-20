@@ -132,7 +132,7 @@ async function interactiveCreateAsset(outDir?: string, sourceDir?: string) {
   const rl = createInterface({ input, output });
   try {
     const id = (await rl.question("asset id: ")).trim();
-    const kind = (await rl.question("kind (guide.skill/guide.template/sensor.rubric/guide.command/guide.constraint): ")).trim() as AssetKind;
+    const kind = (await rl.question("kind (guide.skill/guide.template/sensor.rubric/guide.workflow/guide.command/guide.constraint): ")).trim() as AssetKind;
     const version = (await rl.question("version [0.1.0]: ")).trim() || "0.1.0";
     const status = ((await rl.question("status [draft]: ")).trim() || "draft") as AssetStatus;
     const stageRaw = (await rl.question("stage [dev]: ")).trim() || "dev";
@@ -179,7 +179,7 @@ export function registerHubCommands(program: Command, opts: RegisterHubCommandsO
       }
       if (!hubRef) throw new Error("--hub is required (or set config.yaml hub)");
       const { hubRoot } = resolveHubContext(ws(), { hubRef, action: "hub.search" });
-      const resolution = resolveProfileAssets(hubRoot, cmdOpts.profile);
+      const resolution = resolveProfileAssets(hubRoot, cmdOpts.profile, ws());
       console.log(JSON.stringify(resolution, null, 2));
     });
 
@@ -228,6 +228,9 @@ export function registerHubCommands(program: Command, opts: RegisterHubCommandsO
       if (!version) throw new Error("use <id>@<version>");
       const res = hubAdd(workspace, hubRoot, { id, version }, { requireApproved });
       console.log(`installed ${id}@${version} → ${res.dir}`);
+      console.log(
+        "Note: hub add only updates .hub-cache. Run `hx harness lint --completeness` or `hx project sync-hub` to register in harness.yaml."
+      );
     });
 
   root

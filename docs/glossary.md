@@ -42,7 +42,15 @@ A unit of work within a stage, e.g. `prd-writing` in `req`, `propose`/`design`/`
 
 ### Guide (FeedForward)
 
-Rules, templates, skills, constraints, commands — injected into agent context before work.
+Rules, templates, skills, constraints, workflows, commands — injected into agent context before work.
+
+- **`guide.skill` / `guide.template`**: domain norms and output shape (the real assets).
+- **`guide.workflow`**: task-shell body (Input / Steps / Output) at `assets/workflows/<stage>/<task>.md`.
+- **`guide.command` (optional)**: overrides the workflow body for a custom slash-command shell.
+
+### TaskShell
+
+Task-level commands/skills are thin shells: `assembleTaskShell` composes the workflow (or command override) with bound skills/templates, suite sensors, and gate reminders, then projects the same content as a slash command or a task-entry skill depending on IDE capabilities.
 
 ### Sensor (FeedBack)
 

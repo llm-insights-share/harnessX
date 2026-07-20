@@ -42,7 +42,15 @@
 
 ### Guide（FeedForward）
 
-前馈资产：Rules、Template、Skill、Constraint、Command 等。在任务开始前注入 Agent 上下文。
+前馈资产：Rules、Template、Skill、Constraint、Workflow、Command 等。在任务开始前注入 Agent 上下文。
+
+- **`guide.skill` / `guide.template`**：领域规范与产出形状（真正起作用的实体）。
+- **`guide.workflow`**：任务壳正文（Input / Steps / Output），位于 `assets/workflows/<stage>/<task>.md`。
+- **`guide.command`（可选）**：覆盖 workflow 正文的自定义斜杠命令壳；未配置时由 workflow 组装。
+
+### TaskShell（任务壳）
+
+任务级 command / skill **只是壳**：`assembleTaskShell` 将 workflow（或 command 覆盖）与绑定的 skill/template、suite sensors、gate 提醒组装成同一内容，再按 IDE 能力投影为 slash command 或任务入口 skill。
 
 ### Sensor（FeedBack）
 

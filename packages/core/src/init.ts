@@ -14,6 +14,7 @@ import {
 import { BUILTIN_SCAFFOLD_DIR } from "./harnessCompose.js";
 import type { DeliveryStage } from "./schemas.js";
 import { DEFAULT_PROFILE_STAGES } from "./stages.js";
+import { validateScaffoldCompleteness } from "./harnessCompleteness.js";
 
 function copyDir(src: string, dest: string) {
   ensureDir(dest);
@@ -197,6 +198,8 @@ export function initWorkspace(root: string, opts: InitOptions = {}): InitResult 
     ...(opts.locale === "hx-cn" ? { locale: "zh-CN" } : {})
   });
 
+  validateScaffoldCompleteness(ws, { profile });
+
   const nextSteps = opts.locale === "hx-cn" ? NEXT_STEPS_ZH : NEXT_STEPS_EN;
   return { ws, created, nextSteps };
 }
@@ -272,7 +275,7 @@ export function createProject(root: string, opts: ProjectCreateOptions): Project
   res.created.push(...applied.installed.map((d) => `asset ${d}`));
   res.nextSteps = opts.locale === "hx-cn" ? NEXT_STEPS_PROJECT_ZH : NEXT_STEPS_PROJECT_EN;
 
-  const resolution = resolveProfileAssets(hubRoot, opts.profile);
+  const resolution = resolveProfileAssets(hubRoot, opts.profile, res.ws);
   resolution.assets = applied.assets;
 
   return { ...res, resolution };

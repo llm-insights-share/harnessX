@@ -6,6 +6,7 @@ import { readHubRepoPolicy } from "./hubPolicySchema.js";
 import { hubGovernanceReport } from "./hubGovernance.js";
 import { listHubContributions } from "./hubContributions.js";
 import { listHubEvalSets } from "./hub.js";
+import { validateHarnessCompleteness } from "./harnessCompleteness.js";
 
 export interface HubDoctorFinding {
   level: "error" | "warn" | "info";
@@ -70,6 +71,23 @@ export function runHubDoctor(ws: Workspace, opts: { hubRef?: string } = {}): Hub
       message: `Pending contributions: ${pending.length}`,
       suggestion: "Review with `hxhub contributions list --status pending`."
     });
+  }
+
+  if (fs.existsSync(ws.harnessFile)) {
+    const completeness = validateHarnessCompleteness(ws);
+    for (const f of completeness.findings) {
+      if (f.level === "info" && f.code !== "hub_cache_unregistered") continue;
+      findings.push({
+        level: f.level,
+        code: `harness_completeness:${f.code}`,
+        message: f.message,
+        suggestion: f.suggestion
+      });
+    }
+    if (completeness.findings.some((f) => f.code === "hub_cache_unregistered")) {
+      hints.push("hx project sync-hub  # register hub-cache packages into harness.yaml");
+      hints.push("hx harness lint --completeness");
+    }
   }
 
   const evalSets = listHubEvalSets(hubRoot);

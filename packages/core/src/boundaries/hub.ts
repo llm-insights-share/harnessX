@@ -31,4 +31,4 @@ export {
   guideDefFromHubAsset,
   parseImportRef
 } from "../harnessCompose.js";
-export { resolveProfileAssets, applyProfileAssets, validateActiveStages } from "../profileAssets.js";
+export { resolveProfileAssets, applyProfileAssets, validateActiveStages, effectiveProfileTaskSet } from "../profileAssets.js";

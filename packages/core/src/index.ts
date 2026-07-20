@@ -51,6 +51,8 @@ export * from "./testFirst.js";
 export * from "./sync.js";
 export * from "./view.js";
 export * from "./harnessLint.js";
+export * from "./harnessCompleteness.js";
+export * from "./taskShell.js";
 export * from "./profileRecommend.js";
 export * from "./rebase.js";
 export * from "./steering.js";

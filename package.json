@@ -1,6 +1,6 @@
 {
   "name": "hx-lite",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "hx-lite — simplified HarnessX: Profile → Stage → Task with Guides, Sensors and fail-closed Gates",
   "type": "module",
   "license": "MIT",

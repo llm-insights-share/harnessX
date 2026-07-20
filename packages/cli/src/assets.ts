@@ -162,7 +162,7 @@ export function registerAssetCommands(program: Command): void {
       }
       if (!hubRef) throw new Error("--hub is required (or set config.yaml hub)");
       const { hubRoot } = resolveHubContext(ws(), { hubRef, action: "hub.search" });
-      const resolution = resolveProfileAssets(hubRoot, opts.profile);
+      const resolution = resolveProfileAssets(hubRoot, opts.profile, ws());
       console.log(JSON.stringify(resolution, null, 2));
     });
   hub
@@ -212,7 +212,9 @@ export function registerAssetCommands(program: Command): void {
       if (!version) throw new Error("use <id>@<version>");
       const res = hubAdd(workspace, hubRoot, { id, version }, { requireApproved });
       console.log(`installed ${id}@${version} → ${res.dir}`);
-      console.log("run hx lock write to pin it");
+      console.log(
+        "Note: hub add only updates .hub-cache. Run `hx harness lint --completeness` or `hx project sync-hub` to register in harness.yaml, then `hx lock write` to pin."
+      );
     });
   hub
     .command("sync")

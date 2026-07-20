@@ -2,13 +2,15 @@ import fs from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
 import { AssetManifest, type DeliveryStage, type GuideDef, type HarnessYaml, type SensorDef, GUIDE_KINDS, SENSOR_KINDS } from "./schemas.js";
-import { DEFAULT_PROFILE_STAGES, STAGE_TASKS, type DeliveryStage as StageId } from "./stages.js";
+import { DEFAULT_PROFILE_STAGES, STAGE_TASKS, taskById, type DeliveryStage as StageId } from "./stages.js";
 import { walkHubPackages, type HubPackageLocation } from "./hubPackagePaths.js";
 import { hubAdd } from "./hub.js";
 import { Workspace, writeYaml } from "./paths.js";
-import { guideDefFromHubAsset } from "./harnessCompose.js";
+import { builtinHarness, guideDefFromHubAsset } from "./harnessCompose.js";
+import { profileTaskIds, resolveProfile } from "./profileResolve.js";
 import { SKILL_ENTRY } from "./skill.js";
 import { bindTaskSensorToSuites } from "./suiteBind.js";
+import { assertHarnessCompleteness } from "./harnessCompleteness.js";
 
 export interface ProfileTaskRef {
   stage: DeliveryStage;
@@ -57,6 +59,54 @@ export function profileTaskSet(profile: string): ProfileTaskRef[] {
   return tasks;
 }
 
+/** Optional tasks enabled via profile `suites` keys (e.g. req.biz-understanding). */
+export function optionalTasksFromSuites(profile: string, harness: HarnessYaml): ProfileTaskRef[] {
+  const stages = new Set(DEFAULT_PROFILE_STAGES[profile]?.stages ?? []);
+  const suites = resolveProfile(harness, profile).suites;
+  const out: ProfileTaskRef[] = [];
+  for (const key of Object.keys(suites)) {
+    const dot = key.indexOf(".");
+    if (dot <= 0) continue;
+    const stage = key.slice(0, dot) as DeliveryStage;
+    const taskId = key.slice(dot + 1);
+    if (!stages.has(stage)) continue;
+    if (!taskById(stage, taskId)) continue;
+    out.push({ stage, taskId });
+  }
+  return out;
+}
+
+/**
+ * Required profile tasks plus optional tasks bound via `profiles.*.suites`.
+ * Used for hub asset resolution and harness completeness checks.
+ */
+export function effectiveProfileTaskSet(profile: string, harness: HarnessYaml): ProfileTaskRef[] {
+  const seen = new Set<string>();
+  const out: ProfileTaskRef[] = [];
+  const add = (stage: DeliveryStage, taskId: string) => {
+    const k = taskKey(stage, taskId);
+    if (seen.has(k)) return;
+    seen.add(k);
+    out.push({ stage, taskId });
+  };
+
+  const stages = DEFAULT_PROFILE_STAGES[profile]?.stages ?? [];
+  for (const stage of stages) {
+    for (const taskId of profileTaskIds(harness, profile, stage)) {
+      add(stage, taskId);
+    }
+  }
+  for (const { stage, taskId } of optionalTasksFromSuites(profile, harness)) {
+    add(stage, taskId);
+  }
+  return out;
+}
+
+function harnessForProfileResolution(ws?: Workspace): HarnessYaml {
+  if (ws && fs.existsSync(ws.harnessFile)) return ws.readHarness();
+  return builtinHarness();
+}
+
 function taskKey(stage: string, taskId: string): string {
   return `${stage}.${taskId}`;
 }
@@ -95,12 +145,14 @@ function latestById(locs: HubPackageLocation[]): HubPackageLocation[] {
 
 /**
  * Resolve hub guide/sensor packages whose asset.yaml stage(+task) fall under the profile's stages/tasks.
+ * Includes optional tasks declared in harness `profiles.*.suites` (e.g. biz-understanding).
  */
-export function resolveProfileAssets(hubRoot: string, profile: string): ProfileAssetResolution {
+export function resolveProfileAssets(hubRoot: string, profile: string, ws?: Workspace): ProfileAssetResolution {
   const defaults = DEFAULT_PROFILE_STAGES[profile];
   if (!defaults) throw new Error(`unknown profile "${profile}" — expected lite|standard|strict|enterprise`);
 
-  const tasks = profileTaskSet(profile);
+  const harness = harnessForProfileResolution(ws);
+  const tasks = effectiveProfileTaskSet(profile, harness);
   const allowed = new Set(tasks.map((t) => taskKey(t.stage, t.taskId)));
   const assets: ResolvedProfileAsset[] = [];
 
@@ -175,7 +227,7 @@ function upsertDependency(deps: string[], id: string, version: string): void {
  * - pins dependencies
  */
 export function applyProfileAssets(ws: Workspace, hubRoot: string, profile: string): { installed: string[]; assets: ResolvedProfileAsset[] } {
-  const resolution = resolveProfileAssets(hubRoot, profile);
+  const resolution = resolveProfileAssets(hubRoot, profile, ws);
   const harness = ws.readHarness();
   const installed: string[] = [];
 
@@ -220,6 +272,7 @@ export function applyProfileAssets(ws: Workspace, hubRoot: string, profile: stri
   }
 
   writeYaml(ws.harnessFile, harness);
+  assertHarnessCompleteness(ws, { profile });
   return { installed, assets: resolution.assets };
 }
 

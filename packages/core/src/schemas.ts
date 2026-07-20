@@ -18,6 +18,7 @@ export const GUIDE_KINDS = [
   "guide.glossary",
   "guide.capability",
   "guide.command",
+  "guide.workflow",
   "guide.env"
 ] as const;
 

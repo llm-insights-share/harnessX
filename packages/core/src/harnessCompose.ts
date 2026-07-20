@@ -32,16 +32,15 @@ export function parseImportRef(ref: string): { id: string; version?: string } {
 
 let builtinHarnessCache: HarnessYaml | null = null;
 
-function builtinHarness(): HarnessYaml {
+export function builtinHarness(): HarnessYaml {
   if (!builtinHarnessCache) {
     const file = path.join(BUILTIN_SCAFFOLD_DIR, "base", "harness.yaml");
     builtinHarnessCache = HarnessYaml.parse(YAML.parse(fs.readFileSync(file, "utf8")));
   }
   return builtinHarnessCache;
 }
-
 function findAssetContentFile(assetDir: string): string {
-  for (const name of ["SKILL.md", "template.md", "COMMAND.md", "constraint.yaml", "rules.yaml"]) {
+  for (const name of ["SKILL.md", "template.md", "workflow.md", "COMMAND.md", "constraint.yaml", "rules.yaml"]) {
     if (fs.existsSync(path.join(assetDir, name))) return name;
   }
   for (const e of fs.readdirSync(assetDir, { withFileTypes: true })) {

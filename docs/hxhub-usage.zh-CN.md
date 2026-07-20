@@ -39,7 +39,8 @@ task: apply                # 可选；省略则对该 stage 全部 task 生效
 | --- | --- | --- |
 | `guide.skill` | `SKILL.md` | Agent 规范 / 写作技能 |
 | `guide.template` | `template.md` | 脚手架模版 |
-| `guide.command` | `*.md` | 斜杠命令说明 |
+| `guide.workflow` | `assets/workflows/<stage>/<task>.md` | 任务壳正文（作业清单） |
+| `guide.command` | `*.md`（可选） | 覆盖 workflow 的自定义斜杠命令壳 |
 | `guide.constraint` | `*.yaml` | 硬约束 |
 | `sensor.rubric` | `rules.yaml` | AI Review 规则集 |
 | `sensor.*` | 按类型 | 脚本 / 规则等反馈资产 |
@@ -163,13 +164,22 @@ hx project sync-hub                  # 默认同步并落地；可选 --adapter-
 #   hx project pull-assets --adapter-sync
 ```
 
-单包安装后也建议走同一落地命令（`hxhub add` 只写 `.hub-cache`）：
+单包安装后也建议走同一落地命令（`hxhub add` / `hx hub add` 只写 `.hub-cache`，**不会**自动写入 `harness.yaml`）：
 
 ```bash
 hxhub add prd-writing@1.0.0
-hx project sync-hub --no-apply       # 仅 land cache → assets + lock
+# 或：hx hub add business-insight@0.1.0
+hx harness lint --completeness   # 应出现 hub_cache_unregistered 警告
+hx project sync-hub --no-apply   # land cache → assets + harness.yaml + lock
+hx harness lint --completeness   # 警告消失后即可 adapter sync
 hx lock verify
 ```
+
+完整性校验说明：
+
+- `hx project create` / `hx project sync-hub` 结束后会自动做 harness 完整性检查（error 级失败会阻断）。
+- Profile 解析会包含 `profiles.*.suites` 中的可选任务（如 `req.biz-understanding`），避免 Hub 上绑定到可选任务的 skill 被静默遗漏。
+- `hx harness lint --completeness` 可随时复查；`--strict` 将 warn 视为失败。
 
 成员只更新项目仓资产（不覆盖 `changes/` / `docs/` / 业务代码）：
 
@@ -299,7 +309,7 @@ Steering 闭环（业务仓失败沉淀 → Hub）：见交付手册「技术经
 | 评审、策略、推远程 | Owner：`hx project sync-hub`；成员：`hx project pull-assets` |
 | `resolve --profile` 看装配面 | Adapter sync、hooks、lock、CI |
 
-`hx adapter sync` 会按 `harness.yaml` 里各 task 绑定的 `guide.skill` / `guide.template` **自动丰富**斜杠命令正文（Context Pack 加载步骤、绑定清单；多个 Skill/Template 时要求 Agent 自选并先向用户确认）。手改 `.cursor/commands/` 会被下次 sync 覆盖；改绑定只需改资产/`harness.yaml` 后重新 sync。
+`hx adapter sync` 会按 `harness.yaml` 里各 task 绑定的 `guide.skill` / `guide.template` **自动组装任务壳**（Context Pack 加载步骤、绑定清单；多个 Skill/Template 时要求 Agent 自选并先向用户确认）。支持 slash command 的 IDE（Cursor / Claude / Qoder）落盘为 `/hx-<stage>-<task>`；不支持 command 的 IDE（generic / Codex / OpenCode / Trae）则将同一壳安装为任务入口 skill（或 inline 进 `AGENTS.md` / rules）。手改 IDE 生成物会被下次 sync 覆盖；改绑定只需改 `assets/workflows/`、资产或 `harness.yaml` 后重新 sync。
 
 在 Cursor 项目中，`hx adapter sync` 生成的 hooks 还会在 Agent 回合结束后自动触发 `hx gate check`（通过 `stop` hook），Gate 失败会以 followup message 回注到 IDE 供 Agent 迭代修复（默认最多 3 轮）；若为审批类/缺输入阻塞，Agent 应停止并提示人工处理。
 

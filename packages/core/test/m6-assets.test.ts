@@ -238,11 +238,14 @@ describe("T-605..T-608 target emitters", () => {
     expect(hooksJson).not.toContain("<!--");
     expect(JSON.parse(hooksJson).version).toBe(1);
 
-    // trae: rules + planner/executor agents
+    // trae: rules + planner/executor agents + inlined task entry shells
     const agents = fs.readFileSync(path.join(ws.root, ".trae/agents.yaml"), "utf8");
     expect(agents).toContain("hx-planner");
     expect(agents).toContain("hx-executor");
-    expect(fs.readFileSync(path.join(ws.root, ".trae/rules/project_rules.md"), "utf8")).toContain("HarnessX ground rules");
+    const traeRules = fs.readFileSync(path.join(ws.root, ".trae/rules/project_rules.md"), "utf8");
+    expect(traeRules).toContain("HarnessX ground rules");
+    expect(traeRules).toContain("## Task entrypoints");
+    expect(traeRules).toContain("hx-dev-propose");
 
     // qoder: rules + skills + mcp
     expect(fs.existsSync(path.join(ws.root, ".qoder/rules/harnessx.md"))).toBe(true);
@@ -259,8 +262,9 @@ describe("T-605..T-608 target emitters", () => {
     expect(claudeSettings).not.toContain("<!--");
     expect(JSON.parse(claudeSettings).permissions.deny).toContain("Edit(tests/fixtures/**)");
 
-    // generic fallback: AGENTS.md contains rules + every command
+    // generic fallback: AGENTS.md contains rules + task entry shells + CLI reference
     const agentsMd = fs.readFileSync(path.join(ws.root, "AGENTS.md"), "utf8");
+    expect(agentsMd).toContain("## Task entrypoints");
     for (const c of cmds) expect(agentsMd).toContain(c.run);
 
     // consistency: every target mentions the same stage/task hx commands
@@ -334,7 +338,7 @@ describe("T-605..T-608 target emitters", () => {
     expect(reported.additional_context).toContain("tests/fixtures/expected.json");
   });
 
-  it("compiles guide.command workflow prompts into slash-command bodies (cursor/claude/qoder)", () => {
+  it("compiles guide.workflow task shells into slash-command bodies (cursor/claude/qoder)", () => {
     const ws = initWorkspace(tmp()).ws;
     compileAdapters(ws, ["cursor", "claude", "qoder"]);
 
@@ -362,13 +366,26 @@ describe("T-605..T-608 target emitters", () => {
       expect(apply).toContain("task-pack");
     }
 
+    // cursor with commands=true must NOT also land task-entry skills
+    expect(fs.existsSync(path.join(ws.root, ".cursor/skills/hx-dev-propose/SKILL.md"))).toBe(false);
+
     // the spec-writing skill ships to tools alongside commands
     expect(fs.readFileSync(path.join(ws.root, ".cursor/skills/spec-writing/SKILL.md"), "utf8")).toContain("Scenario names are contract identifiers");
 
-    // command prompts also flow into the phase context pack (single source, two consumers)
+    // workflow prompts also flow into the phase context pack (single source, two consumers)
     createChange(ws, "cp1", ["auth"]);
     const pack = buildContextPack(ws, "cp1", "dev", "apply");
-    expect(pack.sections.some((s) => s.title.includes("cmd-apply"))).toBe(true);
+    expect(pack.sections.some((s) => s.title.includes("wf-apply"))).toBe(true);
+  });
+
+  it("generic adapter installs task shells as inlined entry skills when commands are unsupported", () => {
+    const ws = initWorkspace(tmp()).ws;
+    compileAdapters(ws, ["generic"]);
+    const agentsMd = fs.readFileSync(path.join(ws.root, "AGENTS.md"), "utf8");
+    expect(agentsMd).toContain("## Task entrypoints");
+    expect(agentsMd).toContain("hx-dev-propose");
+    expect(agentsMd).toContain("harnessx:bound-guides");
+    expect(fs.existsSync(path.join(ws.root, ".cursor/commands"))).toBe(false);
   });
 
   it("adapter sync appendix asks the user when multiple skills or templates bind to a task", () => {
@@ -525,7 +542,8 @@ describe("T-612 M6 acceptance", () => {
 
     // adapters compile the same command surface in repo B
     const results = compileAdapters(wsB, ["cursor", "trae", "qoder", "claude"]);
-    expect(results.every((r) => r.tier === 1)).toBe(true);
+    expect(results.filter((r) => r.target !== "trae").every((r) => r.tier === 1)).toBe(true);
+    expect(results.find((r) => r.target === "trae")?.tier).toBe(2);
     for (const target of [".cursor/commands", ".claude/commands"]) {
       expect(fs.readdirSync(path.join(wsB.root, target)).length).toBe(collectCommands(wsB).length);
     }

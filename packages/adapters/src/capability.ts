@@ -35,7 +35,8 @@ export const TARGETS: Record<string, TargetSpec> = {
   },
   trae: {
     name: "Trae",
-    capabilities: { commands: true, skills: false, rules: true, hooks: false, agents: true, mcp: true, permissions: false }
+    // No native slash-command surface; task shells land as inlined entry skills in rules.
+    capabilities: { commands: false, skills: false, rules: true, hooks: false, agents: true, mcp: true, permissions: false }
   },
   qoder: {
     name: "Qoder",
@@ -47,11 +48,12 @@ export const TARGETS: Record<string, TargetSpec> = {
   },
   codex: {
     name: "Codex CLI",
-    capabilities: { commands: true, skills: false, rules: true, hooks: false, agents: false, mcp: false, permissions: false }
+    // AGENTS.md only — task shells install as inlined entry skills.
+    capabilities: { commands: false, skills: false, rules: true, hooks: false, agents: false, mcp: false, permissions: false }
   },
   opencode: {
     name: "OpenCode",
-    capabilities: { commands: true, skills: false, rules: true, hooks: false, agents: false, mcp: false, permissions: false }
+    capabilities: { commands: false, skills: false, rules: true, hooks: false, agents: false, mcp: false, permissions: false }
   },
   generic: {
     name: "Generic (AGENTS.md)",

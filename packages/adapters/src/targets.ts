@@ -2,7 +2,13 @@ import fs from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
 import { Workspace, ensureDir, readTasks, listDeltaFiles } from "@harnessx/core";
-import { commandBody, skillInlineBody, type TargetEmitter } from "./compiler.js";
+import {
+  skillInlineBody,
+  emitCommandFiles,
+  emitTaskEntrySkillDirs,
+  taskEntryInlineSection,
+  type TargetEmitter
+} from "./compiler.js";
 
 /**
  * T-605..T-608: target emitters. All content comes from the shared EmitContext
@@ -184,9 +190,8 @@ process.exit(0);
 
 export const cursorEmitter: TargetEmitter = (ws, ctx) => {
   const files: string[] = [];
-  for (const c of ctx.commands) {
-    files.push(ctx.write(`.cursor/commands/${c.name}.md`, commandBody(c)));
-  }
+  emitCommandFiles(ctx, ".cursor/commands");
+  emitTaskEntrySkillDirs(ctx, ".cursor/skills");
   for (const s of ctx.skills) {
     for (const f of s.files) {
       const rel = f.rel.replace(/\\/g, "/");
@@ -244,9 +249,10 @@ export const cursorEmitter: TargetEmitter = (ws, ctx) => {
 /* ── T-606 Trae: project rules + planner/executor agents + MCP ── */
 
 export const traeEmitter: TargetEmitter = (_ws, ctx) => {
+  const entry = taskEntryInlineSection(ctx);
   ctx.write(
     `.trae/rules/project_rules.md`,
-    `${ctx.rules}\n\n## Skills\n\n${ctx.skills.map((s) => skillInlineBody(s)).join("\n\n---\n\n")}\n`
+    `${ctx.rules}\n\n## Skills\n\n${ctx.skills.map((s) => skillInlineBody(s)).join("\n\n---\n\n")}\n${entry}`
   );
   ctx.write(
     `.trae/agents.yaml`,
@@ -256,13 +262,15 @@ export const traeEmitter: TargetEmitter = (_ws, ctx) => {
           name: "hx-planner",
           role: "Planning agent: runs propose/design/spec/plan phases",
           prompt: "You plan changes for this repo. Use hx CLI commands (hx propose, hx plan). Never write implementation code.",
-          allowedCommands: ctx.commands.filter((c) => ["hx-propose", "hx-design", "hx-spec", "hx-plan"].includes(c.name)).map((c) => c.run)
+          allowedCommands: ctx.commands
+            .filter((c) => ["hx-dev-propose", "hx-dev-design", "hx-dev-plan"].includes(c.name))
+            .map((c) => c.run)
         },
         {
           name: "hx-executor",
           role: "Execution agent: runs apply/verify phases task-by-task",
           prompt: "You implement planned tasks. After each task run the fast suite via hx apply. Never modify specs or meta.yaml.",
-          allowedCommands: ctx.commands.filter((c) => ["hx-apply", "hx-verify"].includes(c.name)).map((c) => c.run)
+          allowedCommands: ctx.commands.filter((c) => ["hx-dev-apply", "hx-dev-verify"].includes(c.name)).map((c) => c.run)
         }
       ],
       mcp: { servers: { harnessx: { command: "hx", args: ["mcp"], description: "HarnessX CLI bridge" } } }
@@ -277,7 +285,8 @@ export const traeEmitter: TargetEmitter = (_ws, ctx) => {
 export const qoderEmitter: TargetEmitter = (_ws, ctx) => {
   ctx.write(`.qoder/rules/harnessx.md`, ctx.rules);
   for (const s of ctx.skills) ctx.write(`.qoder/skills/${s.id}.md`, skillInlineBody(s));
-  for (const c of ctx.commands) ctx.write(`.qoder/commands/${c.name}.md`, commandBody(c));
+  emitCommandFiles(ctx, ".qoder/commands");
+  emitTaskEntrySkillDirs(ctx, ".qoder/skills");
   ctx.write(
     `.qoder/mcp.json`,
     JSON.stringify({ mcpServers: { harnessx: { command: "hx", args: ["mcp"] } } }, null, 2),
@@ -321,13 +330,13 @@ export const claudeEmitter: TargetEmitter = (_ws, ctx) => {
   const skillSection = ctx.skills.length
     ? `\n\n## Skills\n\n${ctx.skills.map((s) => skillInlineBody(s)).join("\n\n---\n\n")}\n`
     : "";
-  ctx.write(
-    `CLAUDE.md`,
-    `${ctx.rules}${skillSection}\n## Commands\n\n${ctx.commands.map((c) => `- \`/${c.name}\` → \`${c.run}\``).join("\n")}\n`
-  );
-  for (const c of ctx.commands) {
-    ctx.write(`.claude/commands/${c.name}.md`, commandBody(c));
-  }
+  const entry = taskEntryInlineSection(ctx);
+  const commandList = ctx.capabilities.commands
+    ? `\n## Commands\n\n${ctx.commands.map((c) => `- \`/${c.name}\` → \`${c.run}\``).join("\n")}\n`
+    : "";
+  ctx.write(`CLAUDE.md`, `${ctx.rules}${skillSection}${entry}${commandList}`);
+  emitCommandFiles(ctx, ".claude/commands");
+  emitTaskEntrySkillDirs(ctx, ".claude/skills");
   ctx.write(
     `.claude/settings.json`,
     JSON.stringify(
@@ -353,11 +362,11 @@ export const claudeEmitter: TargetEmitter = (_ws, ctx) => {
 };
 
 export const genericEmitter: TargetEmitter = (_ws, ctx) => {
-  ctx.write(
-    `AGENTS.md`,
-    `${ctx.rules}\n\n## Skills\n\n${ctx.skills.map((s) => skillInlineBody(s)).join("\n\n---\n\n")}\n\n## Commands\n\n${ctx.commands
-      .map((c) => `- ${c.description}: \`${c.run}\``)
-      .join("\n")}\n`
-  );
+  const domainSkills = ctx.skills.length
+    ? `\n\n## Skills\n\n${ctx.skills.map((s) => skillInlineBody(s)).join("\n\n---\n\n")}\n`
+    : "";
+  const entry = taskEntryInlineSection(ctx);
+  const cliRef = `\n## CLI reference\n\n${ctx.commands.map((c) => `- ${c.description}: \`${c.run}\``).join("\n")}\n`;
+  ctx.write(`AGENTS.md`, `${ctx.rules}${domainSkills}${entry}${cliRef}`);
   return { files: [], skipped: [] };
 };

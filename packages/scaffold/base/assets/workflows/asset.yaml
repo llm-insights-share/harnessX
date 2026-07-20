@@ -1,5 +1,5 @@
-id: phase-commands
-kind: guide.command
+id: phase-workflows
+kind: guide.workflow
 category: maintainability
 version: 1.0.0
 origin: builtin
